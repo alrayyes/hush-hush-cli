@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.2.0...v1.2.1) (2026-09-03)
+
+
+### Bug Fixes
+
+* **packaging:** bump PKGBUILD to v1.2.0, the actual latest release ([#24](https://github.com/alrayyes/hush-hush-cli/issues/24)) ([b9915ac](https://github.com/alrayyes/hush-hush-cli/commit/b9915acc654be56c8ea6ab2ad2a6ff08b379b116))
+
 ## [1.2.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.1.0...v1.2.0) (2026-09-03)
 
 
