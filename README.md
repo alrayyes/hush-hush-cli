@@ -1,6 +1,7 @@
 # hush-hush-cli
 
 [![CI](https://github.com/alrayyes/hush-hush-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/alrayyes/hush-hush-cli/actions)
+[![pkg.go.dev](https://pkg.go.dev/badge/github.com/alrayyes/hush-hush-cli.svg)](https://pkg.go.dev/github.com/alrayyes/hush-hush-cli)
 [![licence](https://img.shields.io/badge/licence-GPL--3.0-blue)](LICENSE)
 
 Client for the [hush-hush](https://github.com/alrayyes/hush-hush) secrets
@@ -9,18 +10,12 @@ secret, fetch and decrypt one, rotate a value, delete an object.
 
 ## Status
 
-The code has moved here from `hush-hush` and is verified working - `go
-build/vet/test` and `golangci-lint run` are clean, and inject/get/update/
-delete round-trip against a real `hush-hush` server, matching the examples
-below. There's no tagged release yet, so `go install ...@latest` doesn't
-resolve to anything until one ships - see
-[hush-hush-cli#6](https://github.com/alrayyes/hush-hush-cli/issues/6) for
-that and the rest of the migration's follow-up (packaging, Docker image).
-Until then, build from source.
-
-`hush-hush` still ships its own copy of this CLI for now; that copy is
-removed and its README repointed here once this repo's first release is
-out.
+The code has moved here from `hush-hush`, verified working, and has
+shipped real releases with binaries, packages, and an AUR package - see
+[INSTALL.md](INSTALL.md). `hush-hush` still ships its own copy of this
+CLI for now; that copy is removed once packaging parity is confirmed -
+[hush-hush-cli#6](https://github.com/alrayyes/hush-hush-cli/issues/6)
+tracks what's left (a Docker image, Nix flake).
 
 ## Requirements
 
@@ -33,17 +28,8 @@ out.
 
 ## Installation
 
-```sh
-go install github.com/alrayyes/hush-hush-cli/cmd/hush-hush-cli@latest
-```
-
-Or build from source until a release exists:
-
-```sh
-git clone https://github.com/alrayyes/hush-hush-cli
-cd hush-hush-cli
-go build -o hush-hush-cli ./cmd/hush-hush-cli
-```
+See [INSTALL.md](INSTALL.md) - AUR, `.deb`/`.rpm`, `go install`, or from
+source.
 
 ## Usage
 
