@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.3.1...v1.4.0) (2026-09-03)
+
+
+### Features
+
+* **nix:** add a flake.nix, CI verification, and flake.lock automation ([#31](https://github.com/alrayyes/hush-hush-cli/issues/31)) ([3419c39](https://github.com/alrayyes/hush-hush-cli/commit/3419c3964c293c2cbd11513766a6d3ff5b3be9fe))
+
 ## [1.3.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.3.0...v1.3.1) (2026-09-03)
 
 
