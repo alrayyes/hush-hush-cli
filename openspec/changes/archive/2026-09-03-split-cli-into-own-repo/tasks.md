@@ -21,11 +21,15 @@
 ## 4. First release and packaging (follow-up, doesn't block the migration itself)
 
 - [x] 4.1 Cut this repo's first real release and verify a binary is attached to it (tracked as [#13](https://github.com/alrayyes/hush-hush-cli/issues/13), closed - [v1.0.0](https://github.com/alrayyes/hush-hush-cli/releases/tag/v1.0.0))
-- [ ] 4.2 Refile `hush-hush#152` (Docker image), `hush-hush#139` (Nix flake CI verification), `hush-hush#153` (`flake.lock` update automation) as issues here, and resolve each (refiled as [#7](https://github.com/alrayyes/hush-hush-cli/issues/7)/[#8](https://github.com/alrayyes/hush-hush-cli/issues/8)/[#9](https://github.com/alrayyes/hush-hush-cli/issues/9); resolving each is still open)
+- [x] 4.2 Refile `hush-hush#152` (Docker image), `hush-hush#139` (Nix flake CI verification), `hush-hush#153` (`flake.lock` update automation) as issues here, and resolve each (refiled and closed as [#7](https://github.com/alrayyes/hush-hush-cli/issues/7)/[#8](https://github.com/alrayyes/hush-hush-cli/issues/8)/[#9](https://github.com/alrayyes/hush-hush-cli/issues/9))
 - [x] 4.3 Restore man-page generation (`cmd/hush-hush-cli/man.go`, the `go run ./cmd/hush-hush-cli man manpages` goreleaser hook, and the manpage entries in `.goreleaser.yml`'s `archives`/`nfpms`, per that file's own comment) and verify `man hush-hush-cli` works after a package install (tracked as [#14](https://github.com/alrayyes/hush-hush-cli/issues/14))
 - [x] 4.4 Add a `PKGBUILD` for `hush-hush-cli-bin`, matching `hush-hush`'s own AUR package - proposal.md's own "What Changes" committed to this moving here, but no task or issue tracked it until now (tracked as [#15](https://github.com/alrayyes/hush-hush-cli/issues/15))
 
 ## 5. Remove the old copy from hush-hush
 
-- [ ] 5.1 Once 3.1 and 3.2 are verified, remove `cmd/hush-hush-cli`, `internal/cli`, `internal/client`, `internal/seal`, `internal/cliconfig`, the CLI's AUR/deb/rpm/Nix packaging (PKGBUILD, `flake.nix`, the `.goreleaser.yml` `hush-hush-cli` build/archive/nfpm blocks), and its pact consumer test from `hush-hush`, and verify `hush-hush`'s own CI stays green with only the server left
-- [ ] 5.2 Update `hush-hush`'s README to point here instead of documenting the CLI directly, and verify no stale CLI usage instructions remain there
+- [x] 5.1 Once 3.1 and 3.2 are verified, remove `cmd/hush-hush-cli`, `internal/cli`, `internal/client`, `internal/seal`, `internal/cliconfig`, the CLI's AUR/deb/rpm/Nix packaging (PKGBUILD, `flake.nix`, the `.goreleaser.yml` `hush-hush-cli` build/archive/nfpm blocks), and its pact consumer test from `hush-hush`, and verify `hush-hush`'s own CI stays green with only the server left (`hush-hush#160`)
+- [x] 5.2 Update `hush-hush`'s README to point here instead of documenting the CLI directly, and verify no stale CLI usage instructions remain there (`hush-hush#160`)
+
+The split is done: every task above is closed, `hush-hush-cli` ships its
+own releases (AUR, `.deb`/`.rpm`, Docker, Nix, `go install`), and
+`hush-hush` has removed its copy. Archive this change.
