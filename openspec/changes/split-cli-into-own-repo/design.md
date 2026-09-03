@@ -145,3 +145,14 @@ mid-migration state a user can be stuck in.
   without depending on that package) - it satisfies "replace the
   in-process real server" without losing the round-trip fidelity the
   existing tests rely on.
+
+  This resolves what replaces `newTestServer(t)` for `internal/cli`'s and
+  `cmd/hush-hush-cli`'s own fast tests - it doesn't mean this repo has no
+  real-server tier at all. Ryan asked directly for one after this decision
+  landed: `integration/` (build-tagged `integration`, its own CI job and
+  `pre-push` hook, matching `hush-hush`'s own `container-integration`
+  test's shape) boots the real, published `ghcr.io/alrayyes/hush-hush`
+  image via `testcontainers-go` and drives `internal/cli`'s functions
+  against it - the check on `internal/testserver`'s own fidelity, run
+  separately because it needs a Docker daemon and network access neither
+  `go test ./...` nor CI's fast `test` job should require.

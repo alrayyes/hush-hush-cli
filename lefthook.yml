@@ -40,6 +40,22 @@ pre-push:
     - name: test
       run: go test ./...
 
+    # Boots the real, published hush-hush server image and drives
+    # internal/cli's actual functions against it - internal/testserver's
+    # fake is what `test` above exercises, this is the check on the fake's
+    # own fidelity (rules/go-test.md: "The container/integration layer uses
+    # testcontainers-go").
+    #
+    # Deliberately NOT Docker-wrapped, unlike a Docker-wrapped Go job would
+    # be (hush-hush-cli#10 tracks that for the others): testcontainers-go
+    # needs a real Docker daemon to pull and run against, which the host
+    # already has - wrapping this command in another container would need
+    # Docker-outside-of-Docker (mounting /var/run/docker.sock into it) for
+    # no benefit over just not nesting, the same reasoning ci.yml's own
+    # container-integration job gives for staying off a `container:` runner.
+    - name: container-integration
+      run: go test -tags=integration ./integration/... -v
+
     - name: golangci-lint run
       run: golangci-lint run ./...
 
