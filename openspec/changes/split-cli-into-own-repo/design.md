@@ -131,8 +131,17 @@ mid-migration state a user can be stuck in.
 
 ## Open Questions
 
-- **Prism-mock vs. real-server-in-CI for this repo's own test suite**:
-  genuinely open until someone's actually writing the tests task
-  (tasks.md's migration step) - doesn't change the proposal, the decision
-  to drop same-repo pact testing, or the task breakdown either way, just
-  which fake backs the tests that replace `newTestServer(t)`.
+- ~~**Prism-mock vs. real-server-in-CI for this repo's own test suite**~~
+  **Resolved: neither.** The moved tests (`TestGetDecryptsTheStoredValue`,
+  `TestInjectCreatesAnObjectTheMatchingIdentityCanDecrypt`, and others)
+  depend on real stateful create-then-get round trips and specific
+  401/404/409 semantics against live state - a Prism spec-mock only
+  returns canned per-operation examples with no cross-request state, so it
+  can't reproduce that, and real-server-in-CI reintroduces the exact
+  cross-repo coupling this migration removes. `internal/testserver` is a
+  small hand-written in-memory stateful fake implementing the four
+  `/objects` endpoints internal/client actually calls (matching
+  `internal/api`'s handler contract in status codes and response shape,
+  without depending on that package) - it satisfies "replace the
+  in-process real server" without losing the round-trip fidelity the
+  existing tests rely on.

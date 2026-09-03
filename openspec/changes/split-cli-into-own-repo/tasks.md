@@ -8,9 +8,9 @@
 
 ## 2. Migrate the code
 
-- [ ] 2.1 Move `cmd/hush-hush-cli`, `internal/cli`, `internal/client`, `internal/seal`, `internal/cliconfig` verbatim from `hush-hush` and verify `go build ./...` succeeds with import paths updated
-- [ ] 2.2 Resolve design.md's Open Question (Prism-mock vs. real-server-in-CI), replace the `newTestServer(t)` httptest-against-real-server helper accordingly, and verify every existing test still passes against the replacement
-- [ ] 2.3 Verify `golangci-lint run ./...` reports 0 issues on the moved code
+- [x] 2.1 Move `cmd/hush-hush-cli`, `internal/cli`, `internal/client`, `internal/seal`, `internal/cliconfig` verbatim from `hush-hush` and verify `go build ./...` succeeds with import paths updated
+- [x] 2.2 Resolve design.md's Open Question (Prism-mock vs. real-server-in-CI), replace the `newTestServer(t)` httptest-against-real-server helper accordingly, and verify every existing test still passes against the replacement
+- [x] 2.3 Verify `golangci-lint run ./...` reports 0 issues on the moved code
 
 ## 3. Verify parity
 
