@@ -43,10 +43,11 @@ bun run lint:md
 `hush-hush-cli` split out of [`hush-hush`](https://github.com/alrayyes/hush-hush),
 which still owns the server and the secrets-object-store design this client
 talks to. See [`openspec/changes/split-cli-into-own-repo/`](openspec/changes/split-cli-into-own-repo/)
-for why the split happened and what's moving. Until that change's tasks are
-done, this repo is a bootstrap shell — the actual `cmd/hush-hush-cli`,
-`internal/cli`, `internal/client`, `internal/seal` and `internal/cliconfig`
-packages still live in `hush-hush` and haven't moved yet.
+for why the split happened and what's moved. The code (`cmd/hush-hush-cli`,
+`internal/cli`, `internal/client`, `internal/seal`, `internal/cliconfig`) is
+here and verified working; what's left is a first release and packaging
+([hush-hush-cli#6](https://github.com/alrayyes/hush-hush-cli/issues/6)), and
+`hush-hush` removing its own copy once that ships.
 
 ## Commit messages
 
