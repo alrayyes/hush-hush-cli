@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.3.0...v1.3.1) (2026-09-03)
+
+
+### Bug Fixes
+
+* **ci:** use RELEASE_TOKEN for Dependabot auto-merge ([#28](https://github.com/alrayyes/hush-hush-cli/issues/28)) ([7ee1c7e](https://github.com/alrayyes/hush-hush-cli/commit/7ee1c7eb2bed3f2287187bd052283c4b4bf2aab1))
+
 ## [1.3.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.2.1...v1.3.0) (2026-09-03)
 
 
