@@ -22,7 +22,19 @@ jobs:
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-24.04
     steps:
+      # RELEASE_TOKEN, not the default GITHUB_TOKEN: a `github-actions`-app
+      # token can never get a `workflows` permission (it isn't a grantable
+      # key in a workflow's own `permissions:` block), and GitHub refuses
+      # to enable auto-merge on any PR whose diff touches
+      # .github/workflows/* without one - "refusing to allow a GitHub App
+      # to create or update workflow ... without workflows permission
+      # (enablePullRequestAutoMerge)", hit live on a github-actions
+      # Dependabot group bump that only touched release.yml. Every
+      # Dependabot PR here can touch a workflow file (the actions
+      # ecosystem's whole job), so this needs the real PAT unconditionally,
+      # not just for that one group - same fix release-auto-merge.yml
+      # already uses, for its own, different reason.
       - run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
