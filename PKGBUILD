@@ -6,7 +6,7 @@
 # to offer over downloading it.
 #
 pkgname=hush-hush-cli-bin
-pkgver=1.1.0
+pkgver=1.2.0
 pkgrel=1
 pkgdesc="Client for the hush-hush secrets object store"
 arch=('x86_64' 'aarch64')
@@ -20,8 +20,8 @@ conflicts=('hush-hush-cli')
 # (rules/pkgbuild.md).
 source_x86_64=("$url/releases/download/v$pkgver/hush-hush-cli_${pkgver}_linux_amd64.tar.gz")
 source_aarch64=("$url/releases/download/v$pkgver/hush-hush-cli_${pkgver}_linux_arm64.tar.gz")
-sha256sums_x86_64=('37f194059c02deeb78c849947e20a5b8a3538666079a92a368f9bf983cd2e9c5')
-sha256sums_aarch64=('3f805f552c1e84d93404e0d3a8dbd6455d91920c0eeabe628623b7e765a5256e')
+sha256sums_x86_64=('9ab3f8b3e7ec3933f6d0ef12113c4d989ae6183d528ad11d7509f4e743f6b5f2')
+sha256sums_aarch64=('3565f4aceb23472b56be3ad3e896a08066eb72c5d0fc21c2535ccbe6933d9a1f')
 
 package() {
   install -Dm755 hush-hush-cli "$pkgdir/usr/bin/hush-hush-cli"
