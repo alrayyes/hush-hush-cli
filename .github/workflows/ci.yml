@@ -89,6 +89,8 @@ jobs:
           go-version-file: go.mod
       - name: go mod edit -fmt
         run: go mod edit -fmt go.mod && git diff --exit-code go.mod
+      - name: go mod tidy -diff
+        run: go mod tidy -diff
 
   govulncheck:
     runs-on: ubuntu-24.04
@@ -116,10 +118,10 @@ jobs:
   # .deb/.rpm - a bad contents: path - fails here instead of on the first
   # real release.
   #
-  # No man-page assertion yet - cmd/hush-hush-cli/man.go and the man-page
-  # goreleaser hook haven't moved in from hush-hush yet (tasks.md §4.3).
-  # Restore `test -s /usr/share/man/man1/hush-hush-cli.1` on both smoke
-  # tests below once they have.
+  # No man-page assertion yet - the man-page goreleaser hook hasn't landed
+  # yet (hush-hush-cli#14). Restore `test -s
+  # /usr/share/man/man1/hush-hush-cli.1` on both smoke tests below once it
+  # has.
   package:
     runs-on: ubuntu-24.04
     steps:
