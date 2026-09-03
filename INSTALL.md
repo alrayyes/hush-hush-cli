@@ -15,6 +15,16 @@ Pick whichever fits:
   go install github.com/alrayyes/hush-hush-cli/cmd/hush-hush-cli@latest
   ```
 
+- **Docker**:
+
+  ```sh
+  docker run --rm ghcr.io/alrayyes/hush-hush-cli:latest --help
+  ```
+
+  Anywhere the CLI needs config or an identity file, mount it in and pass
+  the usual flags/environment variables - same as running the binary
+  directly.
+
 - **Anywhere else, or from source**:
 
   ```sh
@@ -23,11 +33,11 @@ Pick whichever fits:
   go build -o hush-hush-cli ./cmd/hush-hush-cli
   ```
 
-Every path except `go install` installs a man page too - `man
-hush-hush-cli` once it's on `PATH`. None of these are a hosted apt/dnf
-repository - each is a downloadable file attached to the GitHub release,
-not something `apt update` discovers on its own.
+Every path except `go install` and Docker installs a man page too - `man
+hush-hush-cli` once it's on `PATH`. None of the packages are a hosted
+apt/dnf repository - each is a downloadable file attached to the GitHub
+release, not something `apt update` discovers on its own.
 
-No Docker image or Nix flake yet - see
-[hush-hush-cli#7](https://github.com/alrayyes/hush-hush-cli/issues/7) and
-[#8](https://github.com/alrayyes/hush-hush-cli/issues/8).
+No Nix flake yet - see
+[hush-hush-cli#8](https://github.com/alrayyes/hush-hush-cli/issues/8) and
+[#9](https://github.com/alrayyes/hush-hush-cli/issues/9).

@@ -54,13 +54,12 @@ bun run lint:md
 `hush-hush-cli` split out of [`hush-hush`](https://github.com/alrayyes/hush-hush),
 which still owns the server and the secrets-object-store design this client
 talks to. See [`openspec/changes/split-cli-into-own-repo/`](openspec/changes/split-cli-into-own-repo/)
-for why the split happened and what's moved. The code (`cmd/hush-hush-cli`,
-`internal/cli`, `internal/client`, `internal/seal`, `internal/cliconfig`) is
-here, verified working, and has shipped a first real release
-([v1.0.0](https://github.com/alrayyes/hush-hush-cli/releases/tag/v1.0.0));
-what's left is the rest of packaging (Docker image, Nix, AUR - see
-[hush-hush-cli#6](https://github.com/alrayyes/hush-hush-cli/issues/6)) and
-`hush-hush` removing its own copy once that's done.
+for why the split happened. The split is done: the code
+(`cmd/hush-hush-cli`, `internal/cli`, `internal/client`, `internal/seal`,
+`internal/cliconfig`) lives only here now, `hush-hush` has removed its own
+copy, and every packaging path (AUR, `.deb`/`.rpm`, Docker, `go install`)
+ships from this repo's own release pipeline - see [INSTALL.md](INSTALL.md).
+Nix (`hush-hush-cli#8`/`#9`) is what's left, not blocking anything.
 
 ## Commit messages
 

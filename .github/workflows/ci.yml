@@ -80,6 +80,28 @@ jobs:
           go-version-file: go.mod
       - run: go build ./...
 
+  hadolint:
+    runs-on: ubuntu-24.04
+    container:
+      image: hadolint/hadolint:v2.15.1-alpine@sha256:a1d49ae1a4e83c1dbad26b8c1ad7588c8bd1e04f4866b34ad3cac50335198552
+    steps:
+      # hadolint never shells out to git, so unlike every other job here it
+      # doesn't need the safe.directory fix (or git installed at all).
+      - run: apk add --no-cache nodejs
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: hadolint Dockerfile Dockerfile.release
+
+  # hadolint reads the Dockerfile as text and never proves it actually
+  # builds. Dockerfile.release gets that proof for free from `package`
+  # below, once goreleaser's dockers: block runs as part of its snapshot
+  # release - this job is only for the from-source Dockerfile, which
+  # nothing else here ever builds (rules/containers.md).
+  docker-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: docker build -t hush-hush-cli:ci-check -f Dockerfile .
+
   # Boots the real, published server image via testcontainers-go and drives
   # internal/cli's actual functions against it - the layer neither `test`
   # above (internal/testserver's fake) nor a unit test reaches. Not run in
