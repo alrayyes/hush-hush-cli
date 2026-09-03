@@ -5,6 +5,11 @@ project_name: hush-hush-cli
 before:
   hooks:
     - go mod download
+    # Generated from hush-hush-cli's own command tree (cmd/hush-hush-cli/man.go)
+    # rather than hand-written, so a page can't drift out of sync with the
+    # command it documents. `go run`, not a pre-built binary: this runs
+    # before the builds below produce one.
+    - go run ./cmd/hush-hush-cli man manpages
 
 builds:
   - id: hush-hush-cli
@@ -36,7 +41,23 @@ archives:
     ids: [hush-hush-cli]
     formats: [tar.gz]
     name_template: "hush-hush-cli_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    # The same six pages the nfpms below package into the .deb/.rpm - every
+    # distribution path carries the same docs, no exceptions. Not a
+    # manpages/*.1 glob: that would also pick up cobra's auto-generated
+    # completion-* pages, which the deb/rpm deliberately leave out.
     files:
+      - src: manpages/hush-hush-cli.1
+        dst: man1/hush-hush-cli.1
+      - src: manpages/hush-hush-cli-init.1
+        dst: man1/hush-hush-cli-init.1
+      - src: manpages/hush-hush-cli-inject.1
+        dst: man1/hush-hush-cli-inject.1
+      - src: manpages/hush-hush-cli-get.1
+        dst: man1/hush-hush-cli-get.1
+      - src: manpages/hush-hush-cli-update.1
+        dst: man1/hush-hush-cli-update.1
+      - src: manpages/hush-hush-cli-delete.1
+        dst: man1/hush-hush-cli-delete.1
       - src: LICENSE
         dst: LICENSE
 
@@ -44,14 +65,6 @@ archives:
 # apt/dnf repo, which would need its own signing key and publishing
 # pipeline for no real gain over `dpkg -i`/`rpm -i` on a personal tool's
 # release cadence.
-#
-# No man pages packaged yet - cmd/hush-hush-cli/man.go and the real
-# command tree it walks have moved in from hush-hush (`hush-hush-cli man
-# <dir>` works today), but the goreleaser wiring hasn't - tracked as
-# hush-hush-cli#14. Once it lands, restore the
-# `go run ./cmd/hush-hush-cli man manpages` before-hook and the six
-# manpages/hush-hush-cli*.1 file entries hush-hush's own .goreleaser.yml
-# carries, in both archives and nfpms below.
 nfpms:
   - id: hush-hush-cli
     ids: [hush-hush-cli]
@@ -62,6 +75,18 @@ nfpms:
     homepage: https://github.com/alrayyes/hush-hush-cli
     license: GPL-3.0
     contents:
+      - src: manpages/hush-hush-cli.1
+        dst: /usr/share/man/man1/hush-hush-cli.1
+      - src: manpages/hush-hush-cli-init.1
+        dst: /usr/share/man/man1/hush-hush-cli-init.1
+      - src: manpages/hush-hush-cli-inject.1
+        dst: /usr/share/man/man1/hush-hush-cli-inject.1
+      - src: manpages/hush-hush-cli-get.1
+        dst: /usr/share/man/man1/hush-hush-cli-get.1
+      - src: manpages/hush-hush-cli-update.1
+        dst: /usr/share/man/man1/hush-hush-cli-update.1
+      - src: manpages/hush-hush-cli-delete.1
+        dst: /usr/share/man/man1/hush-hush-cli-delete.1
       - src: LICENSE
         dst: /usr/share/licenses/hush-hush-cli/LICENSE
 

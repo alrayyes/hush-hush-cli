@@ -133,11 +133,6 @@ jobs:
   # tag needed) and installs each into the distro it targets, so a broken
   # .deb/.rpm - a bad contents: path - fails here instead of on the first
   # real release.
-  #
-  # No man-page assertion yet - the man-page goreleaser hook hasn't landed
-  # yet (hush-hush-cli#14). Restore `test -s
-  # /usr/share/man/man1/hush-hush-cli.1` on both smoke tests below once it
-  # has.
   package:
     runs-on: ubuntu-24.04
     steps:
@@ -156,17 +151,22 @@ jobs:
         run: |
           sudo dpkg -i dist/hush-hush-cli_*_linux_amd64.deb
           hush-hush-cli --version
+          test -s /usr/share/man/man1/hush-hush-cli.1
 
       # No native rpm tooling on ubuntu-24.04 - a Fedora container is the
       # least-friction way to actually install and run the package, not
-      # just inspect its file list.
+      # just inspect its file list. Plain fedora, not fedora-minimal: the
+      # minimal image drops man pages on install the same way
+      # debian/python's -slim variants do (rules/packaging.md), which
+      # would pass this check either way and prove nothing.
       - name: install and smoke-test the .rpm
         run: |
           docker run --rm -v "$PWD/dist:/dist" \
             fedora@sha256:f1a3fab47bcb3c3ddf3135d5ee7ba8b7b25f2e809a47440936212a3a50957f3d \
             sh -c '
               rpm -i /dist/hush-hush-cli_*_linux_amd64.rpm &&
-              hush-hush-cli --version
+              hush-hush-cli --version &&
+              test -s /usr/share/man/man1/hush-hush-cli.1
             '
 
   markdown:
