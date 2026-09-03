@@ -19,8 +19,8 @@ secret, fetch and decrypt one, rotate a value, delete an object.
 
 ## Installation
 
-See [INSTALL.md](INSTALL.md) - AUR, `.deb`/`.rpm`, Docker, `go install`,
-or from source.
+See [INSTALL.md](INSTALL.md) - AUR, `.deb`/`.rpm`, Docker, Nix,
+`go install`, or from source.
 
 ## Usage
 
