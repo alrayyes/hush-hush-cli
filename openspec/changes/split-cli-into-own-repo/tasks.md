@@ -14,8 +14,8 @@
 
 ## 3. Verify parity
 
-- [ ] 3.1 Build the real `hush-hush-cli` binary from this repo and verify it round-trips inject/get/update/delete against a running `hush-hush` server, matching `hush-hush`'s own README examples
-- [ ] 3.2 Verify config precedence (flags > environment > config file > defaults) and the `--token-command` feature both still work
+- [x] 3.1 Build the real `hush-hush-cli` binary from this repo and verify it round-trips inject/get/update/delete against a running `hush-hush` server, matching `hush-hush`'s own README examples
+- [x] 3.2 Verify config precedence (flags > environment > config file > defaults) and the `--token-command` feature both still work
 
 ## 4. First release and packaging (follow-up, doesn't block the migration itself)
 
