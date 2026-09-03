@@ -15,9 +15,6 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  GOLANGCI_LINT_VERSION: v2.13.1
-
 jobs:
   actionlint:
     runs-on: ubuntu-24.04
@@ -30,16 +27,25 @@ jobs:
 
   lint:
     runs-on: ubuntu-24.04
+    container:
+      # Version-pinned by the image tag itself, so there's nothing separate
+      # to keep in sync with a golangci-lint-action version - and this
+      # sidesteps a real bug found live: golangci-lint-action's own
+      # `config verify` preflight rejects this repo's `.golangci.yml`
+      # (`additional properties 'exclusions' not allowed`) even though the
+      # same config and the same golangci-lint version run this file clean
+      # directly - confirmed on hush-hush-cli's first CI run. hush-hush's
+      # own lint job already uses this direct-container shape for exactly
+      # this reason.
+      image: golangci/golangci-lint:v2.13.1@sha256:d371321370bf2907bd13a8f6f8baff0e0ca7438d76fdf636b281eadf7e2305e3
     steps:
+      - run: apt-get update && apt-get install -y --no-install-recommends ca-certificates git nodejs
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with:
-          version: ${{ env.GOLANGCI_LINT_VERSION }}
-      - name: gofmt
-        run: gofmt -l . | (! grep .)
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: golangci-lint fmt
+        run: golangci-lint fmt --diff
+      - name: golangci-lint run
+        run: golangci-lint run
 
   test:
     runs-on: ubuntu-24.04
@@ -107,8 +113,13 @@ jobs:
   # `goreleaser check` above only validates the config; this actually
   # builds the nfpm packages via a --snapshot release (no publish, no real
   # tag needed) and installs each into the distro it targets, so a broken
-  # .deb/.rpm - a bad contents: path, a missing man page - fails here
-  # instead of on the first real release.
+  # .deb/.rpm - a bad contents: path - fails here instead of on the first
+  # real release.
+  #
+  # No man-page assertion yet - cmd/hush-hush-cli/man.go and the man-page
+  # goreleaser hook haven't moved in from hush-hush yet (tasks.md §4.3).
+  # Restore `test -s /usr/share/man/man1/hush-hush-cli.1` on both smoke
+  # tests below once they have.
   package:
     runs-on: ubuntu-24.04
     steps:
@@ -127,7 +138,6 @@ jobs:
         run: |
           sudo dpkg -i dist/hush-hush-cli_*_linux_amd64.deb
           hush-hush-cli --version
-          test -s /usr/share/man/man1/hush-hush-cli.1
 
       # No native rpm tooling on ubuntu-24.04 - a Fedora container is the
       # least-friction way to actually install and run the package, not
@@ -138,8 +148,7 @@ jobs:
             fedora@sha256:f1a3fab47bcb3c3ddf3135d5ee7ba8b7b25f2e809a47440936212a3a50957f3d \
             sh -c '
               rpm -i /dist/hush-hush-cli_*_linux_amd64.rpm &&
-              hush-hush-cli --version &&
-              test -s /usr/share/man/man1/hush-hush-cli.1
+              hush-hush-cli --version
             '
 
   markdown:
