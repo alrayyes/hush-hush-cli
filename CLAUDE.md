@@ -9,27 +9,30 @@ what's specific to this repo.
 The client for [hush-hush](https://github.com/alrayyes/hush-hush)'s
 secrets object store, split out of that repo into its own — see
 [`openspec/changes/split-cli-into-own-repo/`](openspec/changes/split-cli-into-own-repo/)
-for why and what's moving, and [issue #1](https://github.com/alrayyes/hush-hush-cli/issues/1)
+for why and what's moving, and [issue #6](https://github.com/alrayyes/hush-hush-cli/issues/6)
 for the migration's own tracking.
 
 ## Gotchas
 
-- **This repo is a bootstrap shell until the migration lands.** No
-  `cmd/`/`internal/` yet — those packages (`cmd/hush-hush-cli`,
-  `internal/cli`, `internal/client`, `internal/seal`, `internal/cliconfig`)
-  still live in `hush-hush` and move here as tracked tasks.
+- **The code has landed** (`cmd/hush-hush-cli`, `internal/cli`,
+  `internal/client`, `internal/seal`, `internal/cliconfig`), verified
+  against a real running `hush-hush` server — see
+  [`openspec/changes/split-cli-into-own-repo/`](openspec/changes/split-cli-into-own-repo/)
+  for what's still open (first release, packaging, `hush-hush` removing
+  its own copy).
 - **`LICENSE` is GPL-3.0**, matching `hush-hush`'s own choice — code
   extracted from a GPL-3.0 repo stays GPL-3.0.
 - **No Vale/ltex prose-quality tier**, unlike `hush-hush` itself — Markdown
   gets Prettier + markdownlint (mechanics) only, matching the leaner
   `hush-hush-{go,python,node,php}` sibling repos rather than `hush-hush`'s
   own heavier tooling.
-- **No pact/contract-testing job yet.** `hush-hush`'s own
-  `internal/client`/`internal/api` pact suite assumed same-repo access to
-  the provider, which the split breaks — the replacement strategy (mock
-  server against the pinned spec, `hush-hush-go`'s Prism-based `contract`
-  job, or dropping it in favor of integration/e2e tests) is an open
-  question in the migration's `design.md`, not decided yet.
+- **No pact/contract-testing job.** `hush-hush`'s own `internal/client`/
+  `internal/api` pact suite assumed same-repo access to the provider,
+  which the split breaks. This repo drops the consumer side rather than
+  standing up a broker; `internal/testserver`'s hand-written stateful fake
+  (not Prism, not a real server in CI — design.md's resolved Open
+  Question) covers the create/get/update/delete round trip instead. Pact
+  stays on `hush-hush`'s provider side only.
 - **No Docker image, PKGBUILD, or Nix flake yet** — each was a `hush-hush`
   ticket before the split (`hush-hush#152`/`#153`/`#139`) and moves here
-  once there's real code and a first release to package.
+  once there's a first release to package (tasks.md §4).

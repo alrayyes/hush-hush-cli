@@ -9,12 +9,18 @@ secret, fetch and decrypt one, rotate a value, delete an object.
 
 ## Status
 
-This repo is a bootstrap shell, not yet a working client. `hush-hush-cli`
-is splitting out of the `hush-hush` repo, which still owns it today —
-see [`openspec/changes/split-cli-into-own-repo/`](openspec/changes/split-cli-into-own-repo/)
-for the plan and [hush-hush-cli#1](https://github.com/alrayyes/hush-hush-cli/issues/1)
-for progress. Until that migration lands, keep using the CLI documented in
-[`hush-hush`'s own README](https://github.com/alrayyes/hush-hush#use-the-cli).
+The code has moved here from `hush-hush` and is verified working - `go
+build/vet/test` and `golangci-lint run` are clean, and inject/get/update/
+delete round-trip against a real `hush-hush` server, matching the examples
+below. There's no tagged release yet, so `go install ...@latest` doesn't
+resolve to anything until one ships - see
+[hush-hush-cli#6](https://github.com/alrayyes/hush-hush-cli/issues/6) for
+that and the rest of the migration's follow-up (packaging, Docker image).
+Until then, build from source.
+
+`hush-hush` still ships its own copy of this CLI for now; that copy is
+removed and its README repointed here once this repo's first release is
+out.
 
 ## Requirements
 
@@ -24,6 +30,92 @@ for progress. Until that migration lands, keep using the CLI documented in
   only ever handles already-sealed ciphertext, never a private key or
   plaintext value outside a single `inject`/`get` call.
 - A running `hush-hush` server to talk to.
+
+## Installation
+
+```sh
+go install github.com/alrayyes/hush-hush-cli/cmd/hush-hush-cli@latest
+```
+
+Or build from source until a release exists:
+
+```sh
+git clone https://github.com/alrayyes/hush-hush-cli
+cd hush-hush-cli
+go build -o hush-hush-cli ./cmd/hush-hush-cli
+```
+
+## Usage
+
+A consumer needs an age keypair to receive a secret -
+[`age-keygen`](https://github.com/FiloSottile/age) generates one:
+
+```sh
+age-keygen -o consumer.key
+# Public key: age1...
+```
+
+Inject a secret, sealed to one or more recipients (a write token comes from
+`hush-hush token issue` on the server):
+
+```sh
+export HUSH_HUSH_SERVER=http://localhost:8080
+export HUSH_HUSH_TOKEN=9f8e7d6c...
+
+echo -n "hunter2" | hush-hush-cli inject mattermost_deploy_webhook \
+  --recipients age1... --used-by homelab/vps-docker \
+  --description "prod deploy webhook"
+```
+
+Fetch and decrypt it - only whoever holds a matching private key can.
+`--identity` takes the bare key, so pull it out of `age-keygen`'s comment
+header first:
+
+```sh
+hush-hush-cli get mattermost_deploy_webhook --identity "$(tail -1 consumer.key)"
+```
+
+Rotate the value, then remove the object once nothing needs it any more:
+
+```sh
+echo -n "new-value" | hush-hush-cli update mattermost_deploy_webhook \
+  --recipients age1...
+hush-hush-cli delete mattermost_deploy_webhook
+```
+
+`inject` and `update` both read the new plaintext from stdin rather than a
+flag or argument, so it never ends up in shell history or a process
+listing.
+
+## Configuration
+
+Settings are read in this order, each layer overriding the one before it:
+**flags > environment variables > config file > defaults**. None of them
+are required - environment variables alone are enough for a CI job or a
+container - but `init` writes a starter file the first time it matters:
+
+```sh
+hush-hush-cli init      # writes ~/.config/hush-hush-cli/config.yaml
+```
+
+(`$XDG_CONFIG_HOME` instead of `~/.config` if it's set.) Run the command
+with nothing configured yet - no config file, no relevant environment
+variable - on an interactive terminal, and it offers to write that starter
+file itself before continuing; `--yes` skips the prompt and writes it
+unconditionally, for a script that wants the file without a person to
+answer for it. `--force` on `init` itself overwrites an existing file,
+which the prompt never does.
+
+| Flag              | Environment variable      | config key      | Meaning                                                                                  |
+| ----------------- | ------------------------- | --------------- | ---------------------------------------------------------------------------------------- |
+| `--server`        | `HUSH_HUSH_SERVER`        | `server`        | Server base URL. Default `http://localhost:8080`.                                        |
+| `--token`         | `HUSH_HUSH_TOKEN`         | `token`         | Bearer token, for `inject`/`update`/`delete`.                                            |
+| `--token-command` | `HUSH_HUSH_TOKEN_COMMAND` | `token_command` | Command whose trimmed stdout is the token instead - wins over `--token` if both are set. |
+| `--caller`        | `HUSH_HUSH_CALLER`        | `caller`        | Self-presented identity recorded in the audit log. Optional.                             |
+| `--recipients`    | `HUSH_HUSH_RECIPIENTS`    | `recipients`    | Comma-separated age recipients, for `inject`/`update`.                                   |
+| `--identity`      | `HUSH_HUSH_IDENTITY`      | `identity`      | Comma-separated age private keys, for `get`.                                             |
+| `--used-by`       | -                         | -               | Consumers of the secret (repeatable or comma-separated), `inject` only.                  |
+| `--description`   | -                         | -               | Free-text label, fixed at creation, `inject` only.                                       |
 
 ## Contributing
 

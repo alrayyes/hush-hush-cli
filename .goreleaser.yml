@@ -46,8 +46,9 @@ archives:
 # release cadence.
 #
 # No man pages packaged yet - cmd/hush-hush-cli/man.go and the real
-# command tree it walks haven't moved in from hush-hush yet (this repo is
-# still a placeholder, see CLAUDE.md). Once they have, restore the
+# command tree it walks have moved in from hush-hush (`hush-hush-cli man
+# <dir>` works today), but the goreleaser wiring hasn't - tracked as
+# hush-hush-cli#14. Once it lands, restore the
 # `go run ./cmd/hush-hush-cli man manpages` before-hook and the six
 # manpages/hush-hush-cli*.1 file entries hush-hush's own .goreleaser.yml
 # carries, in both archives and nfpms below.
