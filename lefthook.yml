@@ -3,14 +3,13 @@
 
 pre-commit:
   jobs:
-    - name: gofmt
+    # golangci-lint fmt, not gofmt: .golangci.yml's formatters block runs
+    # gofumpt/goimports/gci too, and CI's own `golangci-lint fmt --diff`
+    # checks against all three - plain gofmt only covers the first.
+    - name: golangci-lint fmt
       glob: "*.go"
-      run: gofmt -w {staged_files}
+      run: golangci-lint fmt {staged_files}
       stage_fixed: true
-
-    - name: golangci-lint
-      glob: "*.go"
-      run: golangci-lint run ./...
 
     - name: gomod
       glob: "go.mod"
@@ -41,8 +40,21 @@ pre-push:
     - name: test
       run: go test ./...
 
+    - name: golangci-lint run
+      run: golangci-lint run ./...
+
+    # No check-only flag on `go mod edit -fmt`, so the gate is running it
+    # again and diffing. A no-op on a go.mod pre-commit already
+    # canonicalized; only fails if that got bypassed.
     - name: gomod
       run: go mod edit -fmt go.mod && git diff --exit-code go.mod
+
+    # A separate, broader check from the fmt gate above: catches a stale
+    # require, a non-canonical version string, or a go.sum entry for
+    # something nothing imports anymore - real drift `go build`/`go test`
+    # never catches on their own (rules/go-mod.md).
+    - name: gomod-tidy
+      run: go mod tidy -diff
 
     - name: prettier
       run: bun run format:check

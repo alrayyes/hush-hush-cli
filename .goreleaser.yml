@@ -67,9 +67,8 @@ nfpms:
 checksum:
   name_template: checksums.txt
 
-# No dockers: block yet - tracked separately, a Docker image for this CLI
-# is its own ticket (moved here from hush-hush#152 when this repo split
-# out).
+# No dockers: block yet - tracked as hush-hush-cli#7 (refiled from
+# hush-hush#152 when this repo split out).
 
 # release-please already wrote the notes, curated from the same commits, and
 # created the release carrying them. A second shortlog generated here would
