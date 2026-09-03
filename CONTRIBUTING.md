@@ -59,7 +59,9 @@ commit-msg and again in CI.
 ## Branching, review, and release
 
 Every change goes through a pull request — nothing is pushed straight to
-`main`, including the commit that bootstrapped this repo.
+`main`. The one unavoidable exception is the commit that bootstrapped this
+repo: there's no branch to open a pull request against before the first
+commit exists.
 
 The pull request **title** has to be a valid Conventional Commit too —
 `pr-title.yml` checks it, since a squash merge defaults the squash commit's
