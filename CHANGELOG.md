@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.0.0...v1.1.0) (2026-09-03)
+
+
+### Features
+
+* **release:** restore man-page generation, matching hush-hush's own wiring ([#19](https://github.com/alrayyes/hush-hush-cli/issues/19)) ([005ca33](https://github.com/alrayyes/hush-hush-cli/commit/005ca33a15edc15a5ec464d538d4403ea46dcbbd))
+
 ## 1.0.0 (2026-09-03)
 
 
