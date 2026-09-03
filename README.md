@@ -14,7 +14,7 @@ build/vet/test` and `golangci-lint run` are clean, and inject/get/update/
 delete round-trip against a real `hush-hush` server, matching the examples
 below. There's no tagged release yet, so `go install ...@latest` doesn't
 resolve to anything until one ships - see
-[hush-hush-cli#1](https://github.com/alrayyes/hush-hush-cli/issues/1) for
+[hush-hush-cli#6](https://github.com/alrayyes/hush-hush-cli/issues/6) for
 that and the rest of the migration's follow-up (packaging, Docker image).
 Until then, build from source.
 

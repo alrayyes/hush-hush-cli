@@ -9,7 +9,7 @@ what's specific to this repo.
 The client for [hush-hush](https://github.com/alrayyes/hush-hush)'s
 secrets object store, split out of that repo into its own — see
 [`openspec/changes/split-cli-into-own-repo/`](openspec/changes/split-cli-into-own-repo/)
-for why and what's moving, and [issue #1](https://github.com/alrayyes/hush-hush-cli/issues/1)
+for why and what's moving, and [issue #6](https://github.com/alrayyes/hush-hush-cli/issues/6)
 for the migration's own tracking.
 
 ## Gotchas
