@@ -1,0 +1,29 @@
+# Markdown this repo owns. The README is the first thing a new project's
+# author reads off this template, and a broken link or a skipped heading level
+# is exactly the sort of thing nobody notices while writing it.
+globs:
+  - "**/*.md"
+
+ignores:
+  - CHANGELOG.md # written by the release job, not by hand
+  - "**/node_modules/**"
+  - "**/.bun-cache/**"
+  # OpenSpec's own planning artifacts. tasks.md's one-line-per-checkbox shape
+  # is the tool's own parsing contract (`apply` tracks progress by matching
+  # `- [ ] X.Y ...` as a single line) - wrapping it to satisfy line-length
+  # would risk breaking that, for content nobody reads as prose anyway.
+  - "openspec/**"
+  # Claude Code's own command/skill definitions, not this repo's documentation.
+  - ".claude/**"
+
+config:
+  # markdownlint/style/prettier drops MD013 because Prettier reflows prose on
+  # proseWrap "always"/"never" — this repo runs "preserve", so Prettier never
+  # moves a line break and the check is still worth having. Re-enabled under
+  # its alias, never under MD013, or the inherited `line-length: false` wins.
+  line-length:
+    line_length: 80
+    tables: false
+    code_blocks: false
+
+extends: "markdownlint/style/prettier"

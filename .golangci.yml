@@ -1,0 +1,62 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - dupl
+    - err113
+    - errorlint
+    - funlen
+    - gocognit
+    - gocritic
+    - gocyclo
+    - gosec
+    - makezero
+    - misspell
+    - modernize
+    - nlreturn
+    - nolintlint
+    - perfsprint
+    - revive
+    - sqlclosecheck
+    - testifylint
+    - thelper
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - whitespace
+    - wrapcheck
+  settings:
+    gocognit:
+      min-complexity: 15
+    gocritic:
+      enabled-checks:
+        - emptyStringTest
+    # Defaults to 30, which almost nothing trips - not optional the way the
+    # rest of golangci-lint's settings are (rules/go-lint.md).
+    gocyclo:
+      min-complexity: 15
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    # enable-all covers every checker, including the ones motivating this -
+    # expected-actual, require-error, error-nil, len, empty, bool-compare,
+    # suite-thelper - so there's nothing left to name individually.
+    testifylint:
+      enable-all: true
+
+formatters:
+  enable:
+    - gci
+    - gofumpt
+    - goimports
+
+# A table-driven test written to go-test.md's own advice is legitimately
+# repetitive in a way dupl can't tell apart from a real copy-paste mistake -
+# without this it's noise against this repo's own conventions, not signal.
+exclusions:
+  rules:
+    - path: _test\.go
+      linters:
+        - dupl

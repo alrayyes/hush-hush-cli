@@ -1,0 +1,175 @@
+# The gate. Every command in here has a twin in lefthook.yml, so a green
+# pre-commit means a green pipeline and neither can drift into being the only
+# place a rule is enforced.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOLANGCI_LINT_VERSION: v2.13.1
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+      - name: gofmt
+        run: gofmt -l . | (! grep .)
+
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: go test
+        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+      - name: Report coverage
+        run: |
+          go tool cover -func=coverage.out | tail -1 |
+            awk '{ print "**Coverage: " $3 "**" }' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          # A Dependabot PR doesn't get repo secrets by default (GitHub's
+          # own restriction, not a misconfiguration here) - CODECOV_TOKEN
+          # is empty on that run, and this repo's branch protection makes
+          # Codecov refuse a tokenless upload. That's an upload hiccup on
+          # an unprivileged run, not a real test regression.
+          fail_ci_if_error: false
+
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go build ./...
+
+  gomod:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: go mod edit -fmt
+        run: go mod edit -fmt go.mod && git diff --exit-code go.mod
+
+  govulncheck:
+    runs-on: ubuntu-24.04
+    container:
+      image: golang:1.27-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452
+    steps:
+      - run: apt-get update && apt-get install -y --no-install-recommends ca-certificates git nodejs
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+      - run: govulncheck ./...
+
+  goreleaser-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          version: v2.17.1
+          args: check
+
+  # `goreleaser check` above only validates the config; this actually
+  # builds the nfpm packages via a --snapshot release (no publish, no real
+  # tag needed) and installs each into the distro it targets, so a broken
+  # .deb/.rpm - a bad contents: path, a missing man page - fails here
+  # instead of on the first real release.
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          version: v2.17.1
+          args: release --snapshot --clean --skip=announce,publish
+
+      - name: install and smoke-test the .deb
+        run: |
+          sudo dpkg -i dist/hush-hush-cli_*_linux_amd64.deb
+          hush-hush-cli --version
+          test -s /usr/share/man/man1/hush-hush-cli.1
+
+      # No native rpm tooling on ubuntu-24.04 - a Fedora container is the
+      # least-friction way to actually install and run the package, not
+      # just inspect its file list.
+      - name: install and smoke-test the .rpm
+        run: |
+          docker run --rm -v "$PWD/dist:/dist" \
+            fedora@sha256:f1a3fab47bcb3c3ddf3135d5ee7ba8b7b25f2e809a47440936212a3a50957f3d \
+            sh -c '
+              rpm -i /dist/hush-hush-cli_*_linux_amd64.rpm &&
+              hush-hush-cli --version &&
+              test -s /usr/share/man/man1/hush-hush-cli.1
+            '
+
+  markdown:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: bun install
+        run: bun install --frozen-lockfile
+      - name: prettier --check
+        run: bun run format:check
+      - name: markdownlint
+        run: bun run lint:md
+
+  commits:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: commitlint
+        run: |
+          bunx commitlint \
+            --from "${{ github.event.pull_request.base.sha }}" \
+            --to "${{ github.event.pull_request.head.sha }}" \
+            --verbose
