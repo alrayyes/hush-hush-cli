@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.1.0...v1.2.0) (2026-09-03)
+
+
+### Features
+
+* **packaging:** add an AUR package (PKGBUILD) for hush-hush-cli-bin ([#22](https://github.com/alrayyes/hush-hush-cli/issues/22)) ([e28bc85](https://github.com/alrayyes/hush-hush-cli/commit/e28bc853a123d61ce5fc0e861ac955d44dc5a333))
+
+
+### Bug Fixes
+
+* **hooks:** run every Go hook command through pinned Docker images ([#21](https://github.com/alrayyes/hush-hush-cli/issues/21)) ([3b949e2](https://github.com/alrayyes/hush-hush-cli/commit/3b949e299c118aaf108abcb80bf3deb5abac2b03))
+
 ## [1.1.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.0.0...v1.1.0) (2026-09-03)
 
 
