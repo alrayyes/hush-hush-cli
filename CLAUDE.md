@@ -30,9 +30,15 @@ for the migration's own tracking.
   `internal/api` pact suite assumed same-repo access to the provider,
   which the split breaks. This repo drops the consumer side rather than
   standing up a broker; `internal/testserver`'s hand-written stateful fake
-  (not Prism, not a real server in CI — design.md's resolved Open
-  Question) covers the create/get/update/delete round trip instead. Pact
+  (not Prism — design.md's resolved Open Question) covers the
+  create/get/update/delete round trip in `go test ./...` instead. Pact
   stays on `hush-hush`'s provider side only.
+- **`integration/` is a separate, build-tagged (`integration`) test tier**
+  that boots the real, published `ghcr.io/alrayyes/hush-hush` image via
+  `testcontainers-go` and checks `internal/testserver`'s fake against it -
+  not part of `go test ./...`, its own CI job and `pre-push` hook instead
+  (`go test -tags=integration ./integration/...`), since it needs a
+  Docker daemon and network access.
 - **No Docker image, PKGBUILD, or Nix flake yet** — each was a `hush-hush`
   ticket before the split (`hush-hush#152`/`#153`/`#139`) and moves here
   once there's a first release to package (tasks.md §4).
