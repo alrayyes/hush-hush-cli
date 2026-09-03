@@ -5,16 +5,22 @@ for whoever runs it.
 
 ## Getting set up
 
-- **Go 1.27 or newer.**
+- **Go 1.27 or newer** — for editor/IDE tooling (`gopls`, `go build`/`go test`
+  run by hand) and the container-integration test, which needs a real Go
+  toolchain outside the hooks. Not required for the hooks themselves; see
+  below.
+- **[Docker](https://docs.docker.com/get-docker/)**, running. Every Go hook
+  command (`golangci-lint fmt`/`run`, `go mod edit -fmt`/`tidy -diff`,
+  `go test`, `actionlint`) runs through the `golang`/`golangci-lint` image
+  `go.mod`'s own `go` directive and CI both pin, not whatever Go/
+  golangci-lint happen to be on your `PATH` — a host toolchain drifting
+  from the pinned image independently (a package manager updating one
+  without the other) is a real failure mode this closes, not a
+  hypothetical one.
 - **[bun](https://bun.sh)** for the tooling that isn't Go — commitlint,
   Prettier, markdownlint, and the [lefthook](https://lefthook.dev) that runs
   the git hooks. There's a `package.json`, but nothing here is JavaScript; it
   exists only so those tools resolve and stay pinned.
-- **[golangci-lint](https://golangci-lint.run) v2.13.1**, which the
-  pre-commit hook runs from your `PATH` while CI runs it pinned. Install
-  that version rather than whichever is current: when the two disagree, the
-  hook passes and the pipeline fails, and the reason isn't obvious from the
-  failure.
 
 One command installs the linters and the git hooks:
 
@@ -27,10 +33,15 @@ silently does nothing, which is worse than not having one.
 
 ## Everyday commands
 
+The hooks and CI both run these through the pinned Docker image; running
+them bare against your own `go`/`golangci-lint` is fine for quick
+iteration, but only the Docker-wrapped form is the actual gate.
+
 ```sh
 go build ./...
 go vet ./...
 go test ./...
+go test -tags=integration ./integration/...  # needs Docker, boots the real hush-hush server
 golangci-lint run
 golangci-lint fmt          # the fixer; `run` stays the check
 
@@ -45,9 +56,11 @@ which still owns the server and the secrets-object-store design this client
 talks to. See [`openspec/changes/split-cli-into-own-repo/`](openspec/changes/split-cli-into-own-repo/)
 for why the split happened and what's moved. The code (`cmd/hush-hush-cli`,
 `internal/cli`, `internal/client`, `internal/seal`, `internal/cliconfig`) is
-here and verified working; what's left is a first release and packaging
-([hush-hush-cli#6](https://github.com/alrayyes/hush-hush-cli/issues/6)), and
-`hush-hush` removing its own copy once that ships.
+here, verified working, and has shipped a first real release
+([v1.0.0](https://github.com/alrayyes/hush-hush-cli/releases/tag/v1.0.0));
+what's left is the rest of packaging (Docker image, Nix, AUR - see
+[hush-hush-cli#6](https://github.com/alrayyes/hush-hush-cli/issues/6)) and
+`hush-hush` removing its own copy once that's done.
 
 ## Commit messages
 
