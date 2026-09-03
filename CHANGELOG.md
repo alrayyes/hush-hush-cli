@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.2.1...v1.3.0) (2026-09-03)
+
+
+### Features
+
+* **docker:** add a Docker image for hush-hush-cli ([#26](https://github.com/alrayyes/hush-hush-cli/issues/26)) ([4b697a3](https://github.com/alrayyes/hush-hush-cli/commit/4b697a304eafe64e69b4881b33b3a965e115bb10))
+
 ## [1.2.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.2.0...v1.2.1) (2026-09-03)
 
 
