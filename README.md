@@ -8,15 +8,6 @@ Client for the [hush-hush](https://github.com/alrayyes/hush-hush) secrets
 object store — the writer's and every consumer's interface to it: inject a
 secret, fetch and decrypt one, rotate a value, delete an object.
 
-## Status
-
-The code has moved here from `hush-hush`, verified working, and has
-shipped real releases with binaries, packages, and an AUR package - see
-[INSTALL.md](INSTALL.md). `hush-hush` still ships its own copy of this
-CLI for now; that copy is removed once packaging parity is confirmed -
-[hush-hush-cli#6](https://github.com/alrayyes/hush-hush-cli/issues/6)
-tracks what's left (a Docker image, Nix flake).
-
 ## Requirements
 
 - **Go 1.27 or newer** to build from source.
@@ -28,8 +19,8 @@ tracks what's left (a Docker image, Nix flake).
 
 ## Installation
 
-See [INSTALL.md](INSTALL.md) - AUR, `.deb`/`.rpm`, `go install`, or from
-source.
+See [INSTALL.md](INSTALL.md) - AUR, `.deb`/`.rpm`, Docker, `go install`,
+or from source.
 
 ## Usage
 

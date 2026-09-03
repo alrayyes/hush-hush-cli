@@ -63,6 +63,39 @@ pre-commit:
         golang:1.27.0-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452
         go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
 
+    # Pinned by digest rather than `latest`, like any other container image
+    # (rules/dependencies.md applies to an image named in a hook command
+    # just as much as one named in the Dockerfile itself). Both Dockerfiles
+    # get hadolint (rules/containers.md: "every Dockerfile, no exceptions") -
+    # passed as file arguments rather than stdin so one invocation covers
+    # both.
+    - name: hadolint
+      glob:
+        - "Dockerfile"
+        - "Dockerfile.release"
+      run: >-
+        docker run --rm
+        -v "$(pwd)/.hadolint.yaml:/.hadolint.yaml"
+        -v "$(pwd)/Dockerfile:/Dockerfile"
+        -v "$(pwd)/Dockerfile.release:/Dockerfile.release"
+        hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d
+        hadolint Dockerfile Dockerfile.release
+
+    # hadolint reads the Dockerfile as text and never proves it actually
+    # builds (rules/containers.md). Dockerfile.release gets that proof from
+    # `container-integration`/goreleaser's own dockers: block elsewhere;
+    # this is only for the from-source Dockerfile, glob-scoped to itself
+    # plus what its own COPY instructions pull in so an unrelated commit
+    # doesn't pay for a docker build. Tagged so the check cleans up after
+    # itself rather than leaving an untagged image behind on every commit.
+    - name: docker build
+      glob:
+        - "Dockerfile"
+        - "*.go"
+        - "go.mod"
+        - "go.sum"
+      run: docker build -t hush-hush-cli:pre-commit-check -f Dockerfile .
+
 commit-msg:
   jobs:
     - name: commitlint
@@ -148,3 +181,17 @@ pre-push:
 
     - name: markdownlint
       run: bun run lint:md
+
+    - name: hadolint
+      run: >-
+        docker run --rm
+        -v "$(pwd)/.hadolint.yaml:/.hadolint.yaml"
+        -v "$(pwd)/Dockerfile:/Dockerfile"
+        -v "$(pwd)/Dockerfile.release:/Dockerfile.release"
+        hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d
+        hadolint Dockerfile Dockerfile.release
+
+    # Unconditional here, unlike pre-commit's glob-scoped copy: the check
+    # nothing gets past regardless of what changed (rules/containers.md).
+    - name: docker build
+      run: docker build -t hush-hush-cli:pre-push-check -f Dockerfile .

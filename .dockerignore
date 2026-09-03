@@ -1,0 +1,15 @@
+# Everything the Go build doesn't need - without this the build context
+# pulls in node_modules and every release/test artifact, tens of megabytes
+# docker has to hash and send to the daemon before the first instruction
+# even runs.
+.git/
+.github/
+node_modules/
+.bun-cache/
+dist/
+manpages/
+coverage.out
+*.md
+
+# Never bake a real secret into an image layer.
+.env

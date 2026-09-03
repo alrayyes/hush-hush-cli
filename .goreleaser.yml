@@ -93,8 +93,37 @@ nfpms:
 checksum:
   name_template: checksums.txt
 
-# No dockers: block yet - tracked as hush-hush-cli#7 (refiled from
-# hush-hush#152 when this repo split out).
+dockers:
+  - image_templates:
+      - "ghcr.io/alrayyes/hush-hush-cli:{{ .Version }}-amd64"
+    use: buildx
+    dockerfile: Dockerfile.release
+    ids: [hush-hush-cli]
+    goarch: amd64
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.source={{ .GitURL }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+  - image_templates:
+      - "ghcr.io/alrayyes/hush-hush-cli:{{ .Version }}-arm64"
+    use: buildx
+    dockerfile: Dockerfile.release
+    ids: [hush-hush-cli]
+    goarch: arm64
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.source={{ .GitURL }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+
+docker_manifests:
+  - name_template: "ghcr.io/alrayyes/hush-hush-cli:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/alrayyes/hush-hush-cli:{{ .Version }}-amd64"
+      - "ghcr.io/alrayyes/hush-hush-cli:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/alrayyes/hush-hush-cli:latest"
+    image_templates:
+      - "ghcr.io/alrayyes/hush-hush-cli:{{ .Version }}-amd64"
+      - "ghcr.io/alrayyes/hush-hush-cli:{{ .Version }}-arm64"
 
 # release-please already wrote the notes, curated from the same commits, and
 # created the release carrying them. A second shortlog generated here would
