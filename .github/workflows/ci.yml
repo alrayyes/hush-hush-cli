@@ -191,6 +191,27 @@ jobs:
               test -s /usr/share/man/man1/hush-hush-cli.1
             '
 
+  # Catches a stale vendorHash or a broken derivation before it reaches a
+  # release - flake.lock has no other check, since Dependabot has no nix
+  # package-ecosystem. `nix flake check` covers packages/apps/devShells;
+  # the explicit build + run after it is the same "prove it actually
+  # works" step every other packaging format's CI job already does
+  # (deb/rpm's install-and-run in `package` above).
+  nix-flake:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+      - run: nix flake check -L
+      - run: nix build .#default -L
+      - run: |
+          ./result/bin/hush-hush-cli --version
+          test -s ./result/share/man/man1/hush-hush-cli.1.gz
+
   markdown:
     runs-on: ubuntu-24.04
     steps:

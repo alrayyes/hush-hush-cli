@@ -46,7 +46,18 @@ copy of the CLI and points here instead.
   tradeoff). Never run `Dockerfile.release` by hand - it has no source to
   build from.
 - **Packaging is done**: AUR (`hush-hush-cli-bin`, repointed at this repo),
-  `.deb`/`.rpm`, `go install`, and a Docker image
-  (`ghcr.io/alrayyes/hush-hush-cli`) all ship from this repo's own release
-  pipeline. See [INSTALL.md](INSTALL.md). What's left is Nix
-  (`hush-hush-cli#8`/`#9`) - not blocking anything.
+  `.deb`/`.rpm`, `go install`, a Docker image
+  (`ghcr.io/alrayyes/hush-hush-cli`), and a Nix flake all ship from this
+  repo's own release pipeline (the flake outside it - `nix run
+github:alrayyes/hush-hush-cli` builds from source directly, no release
+  needed). See [INSTALL.md](INSTALL.md).
+- **`flake.nix` overrides `go` via `buildGoModule.override { go =
+pkgs.go_1_27; }`, not as a plain call argument.** Passing `go =
+pkgs.go_1_27;` inside the `buildGoModule { ... }` call itself is
+  silently ignored - the vendor-fetching derivation still resolves to
+  whatever the channel's default `go` attribute is, confirmed live (`nix
+eval .#default.go.version` kept reporting the channel default until
+  moved to `.override`). `go_1_27` exists as its own attribute on
+  `nixos-unstable` even though the channel's default `go` is older -
+  check `nix eval --raw '.#legacyPackages.<system>.go_1_2N.version'`
+  before assuming a version needs a whole different channel.

@@ -9,6 +9,10 @@ Pick whichever fits:
   and `sudo dpkg -i hush-hush-cli_*.deb`.
 - **Fedora/RHEL**: download the `.rpm` from the same release page and
   `sudo rpm -i hush-hush-cli_*.rpm`.
+- **Nix (flakes)**: `nix run github:alrayyes/hush-hush-cli` to try it, or
+  `nix profile install github:alrayyes/hush-hush-cli` to keep it. No
+  hosted binary cache - a first run/install builds from source, same
+  tradeoff as every other from-source path here.
 - **Any Go toolchain**:
 
   ```sh
@@ -37,7 +41,3 @@ Every path except `go install` and Docker installs a man page too - `man
 hush-hush-cli` once it's on `PATH`. None of the packages are a hosted
 apt/dnf repository - each is a downloadable file attached to the GitHub
 release, not something `apt update` discovers on its own.
-
-No Nix flake yet - see
-[hush-hush-cli#8](https://github.com/alrayyes/hush-hush-cli/issues/8) and
-[#9](https://github.com/alrayyes/hush-hush-cli/issues/9).
