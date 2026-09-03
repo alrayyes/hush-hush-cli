@@ -19,9 +19,9 @@
 
 ## 4. First release and packaging (follow-up, doesn't block the migration itself)
 
-- [ ] 4.1 Cut this repo's first real release and verify a binary is attached to it
-- [ ] 4.2 Refile `hush-hush#152` (Docker image), `hush-hush#139` (Nix flake CI verification), `hush-hush#153` (`flake.lock` update automation) as issues here, and resolve each
-- [ ] 4.3 Restore man-page generation (`cmd/hush-hush-cli/man.go`, the `go run ./cmd/hush-hush-cli man manpages` goreleaser hook, and the manpage entries in `.goreleaser.yml`'s `archives`/`nfpms`, per that file's own comment) and verify `man hush-hush-cli` works after a package install
+- [ ] 4.1 Cut this repo's first real release and verify a binary is attached to it (tracked as [#13](https://github.com/alrayyes/hush-hush-cli/issues/13))
+- [ ] 4.2 Refile `hush-hush#152` (Docker image), `hush-hush#139` (Nix flake CI verification), `hush-hush#153` (`flake.lock` update automation) as issues here, and resolve each (refiled as [#7](https://github.com/alrayyes/hush-hush-cli/issues/7)/[#8](https://github.com/alrayyes/hush-hush-cli/issues/8)/[#9](https://github.com/alrayyes/hush-hush-cli/issues/9); resolving each is still open)
+- [ ] 4.3 Restore man-page generation (`cmd/hush-hush-cli/man.go`, the `go run ./cmd/hush-hush-cli man manpages` goreleaser hook, and the manpage entries in `.goreleaser.yml`'s `archives`/`nfpms`, per that file's own comment) and verify `man hush-hush-cli` works after a package install (tracked as [#14](https://github.com/alrayyes/hush-hush-cli/issues/14))
 
 ## 5. Remove the old copy from hush-hush
 
