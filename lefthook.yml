@@ -50,6 +50,10 @@ pre-commit:
       glob: "*.md"
       run: bunx markdownlint-cli2 {staged_files}
 
+    - name: vale
+      glob: "*.md"
+      run: ./scripts/lint-vale.sh
+
     # `go run` resolves and builds actionlint through the host go toolchain
     # same as any other Go hook command - the same drift risk as gofmt/
     # golangci-lint, so it gets the same treatment.
@@ -181,6 +185,12 @@ pre-push:
 
     - name: markdownlint
       run: bun run lint:md
+
+    - name: vale
+      run: ./scripts/lint-vale.sh
+
+    - name: ltex
+      run: ./scripts/lint-ltex.sh
 
     - name: hadolint
       run: >-
