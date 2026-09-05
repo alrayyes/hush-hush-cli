@@ -16,10 +16,6 @@ copy of the CLI and points here instead.
 
 - **`LICENSE` is GPL-3.0**, matching `hush-hush`'s own choice — code
   extracted from a GPL-3.0 repo stays GPL-3.0.
-- **No Vale/ltex prose-quality tier**, unlike `hush-hush` itself — Markdown
-  gets Prettier + markdownlint (mechanics) only, matching the leaner
-  `hush-hush-{go,python,node,php}` sibling repos rather than `hush-hush`'s
-  own heavier tooling.
 - **No pact/contract-testing job.** `hush-hush`'s own `internal/client`/
   `internal/api` pact suite assumed same-repo access to the provider,
   which the split breaks. This repo drops the consumer side rather than

@@ -1,0 +1,29 @@
+{
+	"ltex": {
+		"language": "en-GB",
+		"dictionary": {
+			"en-GB": [
+				"Dockerfiles",
+				"commitlint",
+				"dnf",
+				"golangci-lint",
+				"goreleaser",
+				"hush-hush-cli",
+				"keypair",
+				"keypairs",
+				"lefthook",
+				"markdownlint",
+				"toolchain"
+			]
+		},
+		"disabledRules": {
+			"en-GB": [
+				"PASSIVE_VOICE",
+				"UPPERCASE_SENTENCE_START",
+				"EN_COMPOUNDS_HAND_WRITTEN",
+				"PREPOSITION_VERB",
+				"A_INFINITIVE"
+			]
+		}
+	}
+}
