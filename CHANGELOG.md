@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/alrayyes/hush-hush-cli/compare/v1.4.1...v1.4.2) (2026-09-09)
+
+
+### Bug Fixes
+
+* **deps:** downgrade bun.lock to lockfileVersion 1 for Dependabot ([#40](https://github.com/alrayyes/hush-hush-cli/issues/40)) ([6eb289c](https://github.com/alrayyes/hush-hush-cli/commit/6eb289cf47a6cd5cb7081e9a94c30c795fe056eb))
+
 ## [1.4.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.4.0...v1.4.1) (2026-09-09)
 
 
