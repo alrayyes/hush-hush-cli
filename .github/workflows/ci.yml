@@ -55,7 +55,9 @@ jobs:
         with:
           go-version-file: go.mod
       - name: go test
-        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+        run: >-
+          go tool gotestsum --junitfile junit.xml --
+          -race -covermode=atomic -coverprofile=coverage.out ./...
       - name: Report coverage
         run: |
           go tool cover -func=coverage.out | tail -1 |
@@ -69,6 +71,14 @@ jobs:
           # is empty on that run, and this repo's branch protection makes
           # Codecov refuse a tokenless upload. That's an upload hiccup on
           # an unprivileged run, not a real test regression.
+          fail_ci_if_error: false
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report-type: test_results
+          files: junit.xml
           fail_ci_if_error: false
 
   build:
