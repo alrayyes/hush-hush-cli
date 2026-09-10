@@ -32,4 +32,11 @@ jobs:
           pr-title: "fix(nix): update flake.lock"
           commit-msg: "fix(nix): update flake.lock"
           pr-labels: dependencies
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # RELEASE_TOKEN, not the default GITHUB_TOKEN: this repo has
+          # "Allow GitHub Actions to create and approve pull requests" off,
+          # which blocks GITHUB_TOKEN from opening a PR outright (#45) -
+          # same fix already proven on linkwarden-obsidian-sync and
+          # scaffold-python-cli, using the same PAT this repo's own
+          # release.yml/release-auto-merge.yml/dependabot-auto-merge.yml
+          # already authenticate with.
+          token: ${{ secrets.RELEASE_TOKEN }}
