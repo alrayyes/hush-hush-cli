@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.3](https://github.com/alrayyes/hush-hush-cli/compare/v1.4.2...v1.4.3) (2026-09-10)
+
+
+### Bug Fixes
+
+* **ci:** use RELEASE_TOKEN for flake-lock-update PR creation ([#46](https://github.com/alrayyes/hush-hush-cli/issues/46)) ([c60551c](https://github.com/alrayyes/hush-hush-cli/commit/c60551c66885e9f90ce1bfb61c079b09381979db)), closes [#45](https://github.com/alrayyes/hush-hush-cli/issues/45)
+
 ## [1.4.2](https://github.com/alrayyes/hush-hush-cli/compare/v1.4.1...v1.4.2) (2026-09-09)
 
 
