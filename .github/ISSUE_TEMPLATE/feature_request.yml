@@ -1,0 +1,29 @@
+name: Feature request
+description: Propose something new, as a user story with testable acceptance criteria.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: "As a ‹who›, I want ‹what›, so that ‹why›."
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: 3-5 testable Given/When/Then rules.
+      value: |
+        - Given ..., when ..., then ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: definition_of_done
+    attributes:
+      label: Definition of done
+      description: What has to be true for this to be considered shipped.
+    validations:
+      required: true
