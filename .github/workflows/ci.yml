@@ -260,6 +260,13 @@ jobs:
             echo "::error file=bun.lock::lockfileVersion is $version, Dependabot's bun updater only supports 1 (hush-hush-cli#42)"
             exit 1
           fi
+      # rules/dependencies.md: run the ecosystem's own audit tool in CI on
+      # every push, separately from whatever raises the update pull
+      # request - a real CVE already slipped through here once
+      # (smol-toml's DoS advisory, patched by hand via `overrides` in #44)
+      # before anything automated would have caught it.
+      - name: bun audit
+        run: bun audit
       - name: prettier --check
         run: bun run format:check
       - name: markdownlint

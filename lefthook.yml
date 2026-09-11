@@ -192,6 +192,11 @@ pre-push:
           exit 1;
         }
 
+    # rules/dependencies.md: the ecosystem's own audit tool, separately
+    # from whatever raises the update pull request.
+    - name: bun audit
+      run: bun audit
+
     - name: prettier
       run: bun run format:check
 
