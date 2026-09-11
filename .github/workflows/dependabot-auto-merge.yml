@@ -21,6 +21,7 @@ jobs:
   auto-merge:
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       # RELEASE_TOKEN, not the default GITHUB_TOKEN: a `github-actions`-app
       # token can never get a `workflows` permission (it isn't a grantable
