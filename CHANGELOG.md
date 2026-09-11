@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.5](https://github.com/alrayyes/hush-hush-cli/compare/v1.4.4...v1.4.5) (2026-09-11)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/alrayyes/hush-hush-go ([#50](https://github.com/alrayyes/hush-hush-cli/issues/50)) ([3ea8053](https://github.com/alrayyes/hush-hush-cli/commit/3ea8053a94613885d85d9ff1e9c0153c6a57aaf1))
+
 ## [1.4.4](https://github.com/alrayyes/hush-hush-cli/compare/v1.4.3...v1.4.4) (2026-09-10)
 
 
