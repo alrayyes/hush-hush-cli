@@ -1,0 +1,36 @@
+# flake-lock-update.yml opens its PR using RELEASE_TOKEN (needed because
+# "Allow GitHub Actions to create and approve pull requests" is off - see
+# its own comment and #45), so the PR is authored as the real `alrayyes`
+# account, not a bot - neither dependabot-auto-merge.yml's actor gate nor
+# release-auto-merge.yml's `autorelease: pending` label gate matches it.
+# An actor gate would be wrong here anyway: it would match every PR Ryan
+# opens by hand too. The branch DeterminateSystems/update-flake-lock always
+# pushes to is the automation-specific signal instead.
+#
+# pull_request, not pull_request_target: this PR lives on a branch of the
+# repo itself, never a fork, same reasoning as the other auto-merge
+# workflows here.
+name: flake-lock-auto-merge
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.head_ref == 'update_flake_lock_action'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      # RELEASE_TOKEN, not the default GITHUB_TOKEN: the identity that
+      # opens the PR and the identity that merges it have to match, or the
+      # resulting push is GITHUB_TOKEN-authored and GitHub's anti-recursion
+      # guard silently drops any workflow run that would otherwise fire on
+      # it (rules/releases.md).
+      - name: Enable auto-merge
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
