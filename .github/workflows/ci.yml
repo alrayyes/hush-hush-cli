@@ -231,6 +231,22 @@ jobs:
           bun-version-file: package.json
       - name: bun install
         run: bun install --frozen-lockfile
+      # Dependabot's bun updater only understands bun.lock lockfileVersion
+      # 1 - version 2 fails outright with
+      # "Unsupported bun.lock 'lockfileVersion' 2". This regressed silently
+      # once already (hush-hush-cli#42, hush-hush-cli#44): bun 1.4.0 wrote
+      # version 2 again on a routine `bun install` after a package.json
+      # edit, with nothing catching it until the next real Dependabot bun
+      # run failed. Fail loud here instead of relying on that happening.
+      - name: bun.lock stays lockfileVersion 1
+        run: |
+          # bun.lock is JSONC (trailing commas), not strict JSON - grep the
+          # field rather than reaching for jq.
+          version="$(grep -m1 '"lockfileVersion"' bun.lock | grep -oE '[0-9]+')"
+          if [ "$version" != "1" ]; then
+            echo "::error file=bun.lock::lockfileVersion is $version, Dependabot's bun updater only supports 1 (hush-hush-cli#42)"
+            exit 1
+          fi
       - name: prettier --check
         run: bun run format:check
       - name: markdownlint
