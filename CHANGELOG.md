@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.7](https://github.com/alrayyes/hush-hush-cli/compare/v1.4.6...v1.4.7) (2026-09-11)
+
+
+### Bug Fixes
+
+* **deps:** bump moby/go-archive and x/crypto to patched versions ([#68](https://github.com/alrayyes/hush-hush-cli/issues/68)) ([4cf709a](https://github.com/alrayyes/hush-hush-cli/commit/4cf709a536dbb9ec4958edd4994dbea275269cd2)), closes [#67](https://github.com/alrayyes/hush-hush-cli/issues/67)
+
 ## [1.4.6](https://github.com/alrayyes/hush-hush-cli/compare/v1.4.5...v1.4.6) (2026-09-11)
 
 
