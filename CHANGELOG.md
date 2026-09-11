@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.6](https://github.com/alrayyes/hush-hush-cli/compare/v1.4.5...v1.4.6) (2026-09-11)
+
+
+### Bug Fixes
+
+* **deps:** re-downgrade bun.lock lockfileVersion and guard against drift ([#59](https://github.com/alrayyes/hush-hush-cli/issues/59)) ([6bc7581](https://github.com/alrayyes/hush-hush-cli/commit/6bc758191f5c340958631569ae3b9812b9c216e4))
+
 ## [1.4.5](https://github.com/alrayyes/hush-hush-cli/compare/v1.4.4...v1.4.5) (2026-09-11)
 
 
