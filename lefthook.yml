@@ -180,6 +180,18 @@ pre-push:
         golang:1.27.0-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452
         go mod tidy -diff
 
+    # Dependabot's bun updater only understands bun.lock lockfileVersion 1;
+    # this has already regressed silently once (hush-hush-cli#42,
+    # hush-hush-cli#44) when a routine `bun install` after a package.json
+    # edit wrote version 2 again. Same check as ci.yml's `markdown` job.
+    - name: bun.lock lockfileVersion
+      run: >-
+        version="$(grep -m1 '"lockfileVersion"' bun.lock | grep -oE '[0-9]+')";
+        [ "$version" = "1" ] || {
+          echo "bun.lock lockfileVersion is $version, Dependabot's bun updater only supports 1 (hush-hush-cli#42)" >&2;
+          exit 1;
+        }
+
     - name: prettier
       run: bun run format:check
 
