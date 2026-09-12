@@ -212,6 +212,42 @@ jobs:
               test -s /usr/share/man/man1/hush-hush-cli.1
             '
 
+  # `package` above builds .deb/.rpm from a --snapshot (no real tag
+  # needed); PKGBUILD can't do that - it always points at a real,
+  # already-published GitHub release - so this builds and installs
+  # whatever pkgver is currently committed instead, catching a bad hand
+  # edit or a bad automated bump (release.yml's publish-aur job) before it
+  # reaches AUR users (hush-hush-cli#71).
+  pkgbuild:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    container: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # makepkg refuses to run as root.
+      - name: Create a non-root builder
+        run: |
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Build the AUR package
+        run: su builder -c "cd '$GITHUB_WORKSPACE' && makepkg --syncdeps --noconfirm"
+
+      # archlinux:base-devel's own pacman.conf excludes usr/share/man/* on
+      # install by default (rules/packaging.md) - the same trap
+      # debian/python's -slim images have for .deb/.rpm above. Removing it
+      # is what lets this smoke test actually catch a missing man page,
+      # not just "makepkg didn't error." The main package's filename
+      # starts with pkgver (a digit); hush-hush-cli-bin-debug's starts
+      # with "debug" instead, so the glob picks only the real package.
+      - name: install and smoke-test the package
+        run: |
+          sed -i '/NoExtract.*usr\/share\/man/d' /etc/pacman.conf
+          pacman -U --noconfirm "$GITHUB_WORKSPACE"/hush-hush-cli-bin-[0-9]*.pkg.tar.zst
+          hush-hush-cli --version
+          test -s /usr/share/man/man1/hush-hush-cli.1.gz
+
   # Catches a stale vendorHash or a broken derivation before it reaches a
   # release - flake.lock has no other check, since Dependabot has no nix
   # package-ecosystem. `nix flake check` covers packages/apps/devShells;
