@@ -260,7 +260,7 @@ func TestPromptPersistenceChoices(t *testing.T) {
 func TestPromptConfigWalksEveryFieldInOrder(t *testing.T) {
 	t.Parallel()
 
-	input := strings.NewReader(strings.Join([]string{
+	sc := scan(strings.Join([]string{
 		"https://example.com", // server
 		"caller-id",           // caller
 		"age1recipient",       // recipients
@@ -269,7 +269,7 @@ func TestPromptConfigWalksEveryFieldInOrder(t *testing.T) {
 	var out strings.Builder
 	readPassword := func(int) ([]byte, error) { return []byte(""), nil } // both credential prompts blank
 
-	result, err := cliconfig.PromptConfig(input, &out, 0, readPassword, cliconfig.Values{Server: "http://localhost:8080"})
+	result, err := cliconfig.PromptConfig(sc, &out, 0, readPassword, cliconfig.Values{Server: "http://localhost:8080"})
 	require.NoError(t, err)
 	assert.Equal(t, "https://example.com", result.Server)
 	assert.Equal(t, "caller-id", result.Caller)
@@ -284,7 +284,7 @@ func TestPromptConfigOffersPersistenceOnlyWhenACredentialValueWasEntered(t *test
 	// Field order is server, token, caller, recipients, identity (design.md)
 	// - the persistence-choice line for each credential interleaves right
 	// after that credential's value, not after every plain field.
-	input := strings.NewReader(strings.Join([]string{
+	sc := scan(strings.Join([]string{
 		"",  // server (accept default)
 		"3", // token persistence: literal
 		"",  // caller
@@ -301,7 +301,7 @@ func TestPromptConfigOffersPersistenceOnlyWhenACredentialValueWasEntered(t *test
 		return []byte(v), nil
 	}
 
-	result, err := cliconfig.PromptConfig(input, new(strings.Builder), 0, readPassword, cliconfig.Values{Server: "http://localhost:8080"})
+	result, err := cliconfig.PromptConfig(sc, new(strings.Builder), 0, readPassword, cliconfig.Values{Server: "http://localhost:8080"})
 	require.NoError(t, err)
 	assert.Equal(t, cliconfig.PersistLiteral, result.Token.Choice)
 	assert.Equal(t, "a-token", result.Token.Value)

@@ -146,13 +146,13 @@ type PromptResult struct {
 
 // PromptConfig walks every connection setting in turn - server, token,
 // caller, recipients, identity (design.md) - prompting on out and reading
-// from in, showing current's values as defaults for the three plain
-// fields. It creates exactly one *bufio.Scanner over in and threads it
-// through every plain-value and persistence-choice prompt: see Confirm's
-// doc comment for why a fresh Scanner per call would be wrong here.
-func PromptConfig(in io.Reader, out io.Writer, fd int, readPassword PasswordReader, current Values) (PromptResult, error) {
-	sc := bufio.NewScanner(in)
-
+// from sc, showing current's values as defaults for the three plain
+// fields. It takes a *bufio.Scanner, the same as Confirm, rather than
+// building its own from an io.Reader: a caller that prompts for something
+// else first (maybeOfferInit's own Confirm) needs to hand PromptConfig
+// that exact same scanner, not a fresh one over the same underlying
+// reader - see Confirm's doc comment for why.
+func PromptConfig(sc *bufio.Scanner, out io.Writer, fd int, readPassword PasswordReader, current Values) (PromptResult, error) {
 	server, err := PromptValue(sc, out, "Server URL", current.Server)
 	if err != nil {
 		return PromptResult{}, err

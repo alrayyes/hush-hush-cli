@@ -102,14 +102,14 @@ keyring-get <field>` command that reads a value previously written
 
 ## 6. Pre-command nudge uses the same interactive flow
 
-- [ ] 6.1 Write a failing test for `maybeOfferInit` confirming that, when
+- [x] 6.1 Write a failing test for `maybeOfferInit` confirming that, when
       the user confirms the "no config file found" prompt, it now produces
       the same interactively-populated config `init` would (not a blank
       template) - extend the existing `maybeOfferInit`-adjacent tests in
       `cli_test.go`/`config_test.go`. Verify: test fails, then refactor
       `maybeOfferInit` to call the same helper `init`'s `RunE` uses (task
       4.1) instead of `writeStarterConfig`, and the test passes.
-- [ ] 6.2 Confirm declining the nudge, or no TTY, still leaves defaults in
+- [x] 6.2 Confirm declining the nudge, or no TTY, still leaves defaults in
       place with the existing stderr nudge message unchanged (regression
       check on existing tests).
 

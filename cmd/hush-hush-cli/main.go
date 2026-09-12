@@ -164,7 +164,7 @@ func newInitCmd() *cobra.Command {
 
 			yes, _ := cmd.Flags().GetBool("yes")
 			if !yes && term.IsTerminal(int(os.Stdin.Fd())) {
-				return runInteractiveInit(cmd, path, term.ReadPassword)
+				return runInteractiveInit(cmd, path, bufio.NewScanner(cmd.InOrStdin()), term.ReadPassword)
 			}
 
 			return writeStarterConfig(cmd, path)
@@ -204,19 +204,23 @@ func writeStarterConfig(cmd *cobra.Command, path string) error {
 }
 
 // runInteractiveInit is the value-by-value flow behind init's own RunE and
-// (task 6) the pre-command nudge: prompt for every connection setting via
-// cliconfig.PromptConfig, apply each credential field's chosen persistence,
-// and write the result. readPassword is threaded through as a parameter
-// rather than hardcoded to term.ReadPassword so a test can fake a TTY that
-// doesn't exist in CI - production always passes term.ReadPassword itself.
-func runInteractiveInit(cmd *cobra.Command, path string, readPassword cliconfig.PasswordReader) error {
+// the pre-command nudge (maybeOfferInit): prompt for every connection
+// setting via cliconfig.PromptConfig, apply each credential field's chosen
+// persistence, and write the result. sc and readPassword are threaded
+// through as parameters rather than built from cmd.InOrStdin()/
+// term.ReadPassword directly: maybeOfferInit needs to hand this the exact
+// same scanner its own Confirm prompt just read from (see Confirm's doc
+// comment for why a fresh one over the same reader would lose input), and
+// a test needs to fake a TTY that doesn't exist in CI. init's own RunE
+// builds a fresh scanner and passes term.ReadPassword itself.
+func runInteractiveInit(cmd *cobra.Command, path string, sc *bufio.Scanner, readPassword cliconfig.PasswordReader) error {
 	current := cliconfig.Values{
 		Server:     viper.GetString("server"),
 		Caller:     viper.GetString("caller"),
 		Recipients: viper.GetString("recipients"),
 	}
 
-	result, err := cliconfig.PromptConfig(cmd.InOrStdin(), cmd.OutOrStdout(), int(os.Stdin.Fd()), readPassword, current)
+	result, err := cliconfig.PromptConfig(sc, cmd.OutOrStdout(), int(os.Stdin.Fd()), readPassword, current)
 	if err != nil {
 		return fmt.Errorf("prompt for config: %w", err)
 	}
@@ -321,6 +325,16 @@ func renderConfig(server string, token renderedSecret, caller, recipients string
 // that already sets every HUSH_HUSH_* variable, exactly the case
 // cli.md's own "runs unmodified inside CI" requirement targets, must
 // never be blocked by a nudge it was never going to act on anyway.
+//
+// The confirmed-interactively branch (yes is false, sc is non-nil) has no
+// direct test through root.Execute(): go test's own stdin is never a TTY,
+// so term.IsTerminal below is always false in CI, same limitation
+// TestRunInteractiveInit*'s own doc comment already notes for init itself.
+// What it delegates to is fully covered there instead - runInteractiveInit
+// end-to-end, and Confirm/PromptConfig sharing one scanner as
+// TestConfirmSharesAScannerWithLaterPrompts (cliconfig_test.go) - so this
+// function's own job, wiring the two together with the right scanner, is
+// what's left untested at the cobra level, not the behavior itself.
 func maybeOfferInit(cmd *cobra.Command) error {
 	anyEnvSet := anyConfigEnvVarSet()
 	if anyEnvSet {
@@ -339,10 +353,12 @@ func maybeOfferInit(cmd *cobra.Command) error {
 	yes, _ := cmd.Flags().GetBool("yes")
 	interactive := term.IsTerminal(int(os.Stdin.Fd()))
 
+	var sc *bufio.Scanner
+
 	confirmed := false
 	if !yes && interactive && !exists && !anyEnvSet {
-		confirmed = cliconfig.Confirm(bufio.NewScanner(cmd.InOrStdin()), cmd.OutOrStdout(),
-			"No config file found. Write a starter one at "+path+" now?")
+		sc = bufio.NewScanner(cmd.InOrStdin())
+		confirmed = cliconfig.Confirm(sc, cmd.OutOrStdout(), "No config file found. Set one up now?")
 	}
 
 	if !cliconfig.ShouldWriteStarter(exists, anyEnvSet, yes, interactive, confirmed) {
@@ -357,7 +373,16 @@ func maybeOfferInit(cmd *cobra.Command) error {
 		return nil
 	}
 
-	if err := writeStarterConfig(cmd, path); err != nil {
+	// yes writes the same blank template a non-interactive init would;
+	// the confirmed-interactively path (sc is non-nil whenever confirmed
+	// can be true) runs the full interactive flow instead, sharing the
+	// exact scanner Confirm itself just read from - see Confirm's doc
+	// comment for why a fresh one over the same reader would lose input.
+	if yes {
+		if err := writeStarterConfig(cmd, path); err != nil {
+			return err
+		}
+	} else if err := runInteractiveInit(cmd, path, sc, term.ReadPassword); err != nil {
 		return err
 	}
 

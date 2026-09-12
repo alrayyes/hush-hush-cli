@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"os"
 	"path/filepath"
@@ -123,13 +124,12 @@ func TestRunInteractiveInitWritesEveryPlainFieldAndLeavesSkippedCredentialsBlank
 
 	root := newRootCmd()
 	input := strings.NewReader("https://example.com\ncaller-id\nage1recipient\n")
-	root.SetIn(input)
 	var out bytes.Buffer
 	root.SetOut(&out)
 
 	readPassword := func(int) ([]byte, error) { return []byte(""), nil }
 
-	require.NoError(t, runInteractiveInit(root, path, readPassword))
+	require.NoError(t, runInteractiveInit(root, path, bufio.NewScanner(input), readPassword))
 
 	content, err := os.ReadFile(path) //nolint:gosec // path is built from t.TempDir(), not user input
 	require.NoError(t, err)
@@ -165,12 +165,11 @@ func TestRunInteractiveInitKeyringChoiceStoresInTheKeyring(t *testing.T) {
 	// server, token-persistence(keyring), caller, recipients - identity
 	// left blank, so it never reaches a persistence prompt.
 	input := strings.NewReader("\n1\n\n\n")
-	root.SetIn(input)
 	root.SetOut(new(bytes.Buffer))
 
 	readPassword := func(int) ([]byte, error) { return []byte("s3cret-token"), nil }
 
-	require.NoError(t, runInteractiveInit(root, path, readPassword))
+	require.NoError(t, runInteractiveInit(root, path, bufio.NewScanner(input), readPassword))
 
 	content, err := os.ReadFile(path) //nolint:gosec // path is built from t.TempDir(), not user input
 	require.NoError(t, err)
@@ -194,7 +193,6 @@ func TestRunInteractiveInitCommandChoiceWritesTheGivenCommand(t *testing.T) {
 	// server, caller, recipients blank; identity-persistence(command) plus
 	// the command itself.
 	input := strings.NewReader("\n\n\n2\npass show hush-hush/identity-key\n")
-	root.SetIn(input)
 	root.SetOut(new(bytes.Buffer))
 
 	call := 0
@@ -207,7 +205,7 @@ func TestRunInteractiveInitCommandChoiceWritesTheGivenCommand(t *testing.T) {
 		return []byte("priv-key-value"), nil // identity
 	}
 
-	require.NoError(t, runInteractiveInit(root, path, readPassword))
+	require.NoError(t, runInteractiveInit(root, path, bufio.NewScanner(input), readPassword))
 
 	content, err := os.ReadFile(path) //nolint:gosec // path is built from t.TempDir(), not user input
 	require.NoError(t, err)
@@ -226,12 +224,11 @@ func TestRunInteractiveInitLiteralChoiceWritesTheValueInTheClear(t *testing.T) {
 	root := newRootCmd()
 	// server, token-persistence(literal), caller, recipients; identity blank.
 	input := strings.NewReader("\n3\n\n\n")
-	root.SetIn(input)
 	root.SetOut(new(bytes.Buffer))
 
 	readPassword := func(int) ([]byte, error) { return []byte("a-literal-token"), nil }
 
-	require.NoError(t, runInteractiveInit(root, path, readPassword))
+	require.NoError(t, runInteractiveInit(root, path, bufio.NewScanner(input), readPassword))
 
 	content, err := os.ReadFile(path) //nolint:gosec // path is built from t.TempDir(), not user input
 	require.NoError(t, err)
