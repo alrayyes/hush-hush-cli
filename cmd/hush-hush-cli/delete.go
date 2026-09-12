@@ -13,7 +13,7 @@ func newDeleteCmd() *cobra.Command {
 		Short: "Permanently remove an object",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config()
+			cfg, err := config(true)
 			if err != nil {
 				return err
 			}

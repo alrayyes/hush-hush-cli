@@ -34,7 +34,7 @@ func newUpdateCmd() *cobra.Command {
 				return fmt.Errorf("read value from stdin: %w", err)
 			}
 
-			cfg, err := config()
+			cfg, err := config(true)
 			if err != nil {
 				return err
 			}

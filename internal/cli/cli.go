@@ -22,6 +22,11 @@ type Config struct {
 	// Caller is this CLI's self-presented identity for the audit log
 	// (api/openapi.yaml's X-Caller header) - optional.
 	Caller string
+	// RequireToken is set by inject/update/delete before calling
+	// Validate, and left false by get - Token itself can't say which
+	// commands need it, since an empty string is also what "not
+	// configured" looks like.
+	RequireToken bool
 }
 
 // Validate's own sentinels - fixed conditions, not messages built from
@@ -29,11 +34,13 @@ type Config struct {
 var (
 	errServerRequired    = errors.New("server: required")
 	errServerNotAbsolute = errors.New("not an absolute URL")
+	errTokenRequired     = errors.New("no token configured (--token, HUSH_HUSH_TOKEN, or run `hush-hush-cli init`)")
 )
 
-// Validate catches a bad Server value at startup rather than at the first
-// request - an empty or malformed base URL otherwise only surfaces as a
-// generic connection error from deep inside net/http.
+// Validate catches a bad Server value, and a missing Token where
+// RequireToken is set, at startup rather than at the first request - an
+// empty or malformed base URL, or an empty token, otherwise only surface
+// as a generic connection or 401 error from deep inside net/http.
 func (c Config) Validate() error {
 	if c.Server == "" {
 		return errServerRequired
@@ -46,6 +53,10 @@ func (c Config) Validate() error {
 
 	if u.Scheme == "" || u.Host == "" {
 		return fmt.Errorf("server %q: %w", c.Server, errServerNotAbsolute)
+	}
+
+	if c.RequireToken && c.Token == "" {
+		return errTokenRequired
 	}
 
 	return nil

@@ -38,22 +38,25 @@ func Exists(configPath string) bool {
 	return err == nil
 }
 
-// Confirm asks a yes/no question on out, reading the answer from in, and
+// Confirm asks a yes/no question on out, reading the answer from sc, and
 // defaults to yes on a bare Enter (or EOF) - cli.md's "offers to run init
 // right there" is meant to be the path of least resistance, not another
-// gate.
-func Confirm(in io.Reader, out io.Writer, question string) bool {
+// gate. sc is a *bufio.Scanner rather than a bare io.Reader so a caller
+// that goes on to prompt for more input afterward (maybeOfferInit chaining
+// into PromptConfig) can share one scanner across every read: a fresh
+// bufio.Scanner wrapping the same underlying reader can silently swallow
+// whatever the previous one had already buffered past the first line.
+func Confirm(sc *bufio.Scanner, out io.Writer, question string) bool {
 	// A failed prompt write doesn't change the answer - Confirm reports a
 	// yes/no, not an I/O outcome - so it's ignored rather than plumbed
 	// through a signature every caller would then have to handle.
 	_, _ = fmt.Fprintf(out, "%s [Y/n] ", question)
 
-	scanner := bufio.NewScanner(in)
-	if !scanner.Scan() {
+	if !sc.Scan() {
 		return true
 	}
 
-	switch strings.ToLower(strings.TrimSpace(scanner.Text())) {
+	switch strings.ToLower(strings.TrimSpace(sc.Text())) {
 	case "", "y", "yes":
 		return true
 	default:

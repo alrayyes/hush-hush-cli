@@ -8,6 +8,7 @@ import (
 	"github.com/alrayyes/hush-hush-cli/internal/seal"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,6 +38,39 @@ func TestUpdateRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 
 	require.NoError(t, root.Execute())
 
+	obj, err := s.GetObject(t.Context(), "mattermost_deploy_webhook")
+	require.NoError(t, err)
+	require.NotEqual(t, []byte("new-value"), obj.Value)
+}
+
+// TestUpdateFailsFastWithNoTokenConfigured mirrors
+// TestInjectFailsFastWithNoTokenConfigured for the update command.
+func TestUpdateFailsFastWithNoTokenConfigured(t *testing.T) {
+	srv, s, _ := testserver.New(t)
+
+	identity, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
+
+	sealed, err := seal.Seal([]byte("old-value"), []string{identity.Recipient().String()})
+	require.NoError(t, err)
+	require.NoError(t, s.CreateObject(t.Context(), "mattermost_deploy_webhook", sealed, nil, ""))
+
+	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
+	t.Setenv("HUSH_HUSH_RECIPIENTS", identity.Recipient().String())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	viper.Reset()
+
+	root := newRootCmd()
+	root.SetArgs([]string{"update", "mattermost_deploy_webhook"})
+	root.SetIn(bytes.NewReader([]byte("new-value")))
+
+	err = root.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--token")
+	assert.Contains(t, err.Error(), "HUSH_HUSH_TOKEN")
+	assert.Contains(t, err.Error(), "init")
+
+	// Unchanged - the request never reached the server.
 	obj, err := s.GetObject(t.Context(), "mattermost_deploy_webhook")
 	require.NoError(t, err)
 	require.NotEqual(t, []byte("new-value"), obj.Value)
