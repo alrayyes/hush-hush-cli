@@ -17,7 +17,7 @@
 ## 2. Interactive prompting
 
 - [x] 2.1 Write a failing test for a new `cliconfig.PromptValue(in
-  io.Reader, out io.Writer, label, current string) (string, error)`:
+io.Reader, out io.Writer, label, current string) (string, error)`:
       bare Enter returns `current`, other input returns the trimmed typed
       value. Verify: `go test ./internal/cliconfig/...` fails, then
       implement and it passes.
@@ -27,24 +27,24 @@
       existing test approach in `cliconfig_test.go` for `Confirm`). Verify:
       test fails, then implement and it passes.
 - [x] 2.3 Write a failing test for a new `cliconfig.PromptPersistence(in
-  io.Reader, out io.Writer, field string) (choice
-  cliconfig.PersistChoice, extra string, err error)` covering all four
+io.Reader, out io.Writer, field string) (choice
+cliconfig.PersistChoice, extra string, err error)` covering all four
       choices (keyring / command / literal / skip) by simulated input.
       Verify: test fails, then implement and it passes.
 - [x] 2.4 Write a failing test for a new `cliconfig.PromptConfig(in
-  io.Reader, out io.Writer, existing cliconfig.Values) (cliconfig.Values,
-  error)` that walks server, token, caller, recipients, identity in
+io.Reader, out io.Writer, existing cliconfig.Values) (cliconfig.Values,
+error)` that walks server, token, caller, recipients, identity in
       order, using 2.1-2.3, and returns the assembled values plus each
       credential field's chosen persistence. Verify: test fails, then
       implement and it passes.
 
 ## 3. Keyring-backed persistence
 
-- [ ] 3.1 Add `github.com/zalando/go-keyring` to `go.mod` at a pinned exact
+- [x] 3.1 Add `github.com/zalando/go-keyring` to `go.mod` at a pinned exact
       version and run `go mod tidy` to update `go.sum`. Verify: `go build
-  ./...` succeeds.
-- [ ] 3.2 Write a failing test for a new hidden `hush-hush-cli config
-  keyring-get <field>` command that reads a value previously written
+./...` succeeds.
+- [x] 3.2 Write a failing test for a new hidden `hush-hush-cli config
+keyring-get <field>` command that reads a value previously written
       with `keyring.Set("hush-hush-cli", field, ...)` and prints it to
       stdout (skip/guard the test where no keyring backend is available in
       the CI environment, matching how other environment-dependent tests in
@@ -79,7 +79,7 @@
 - [ ] 4.2 Write/extend a test asserting `init --yes` and `init` with a
       non-interactive reader both still produce byte-identical output to
       today's `starterConfig` template. Verify: `go test
-  ./cmd/hush-hush-cli/...` passes, confirming no regression.
+./cmd/hush-hush-cli/...` passes, confirming no regression.
 - [ ] 4.3 Verify `--force` behavior is unchanged (existing
       `errConfigAlreadyExists` test in `init_test.go`/`config_test.go`
       still passes as-is) and that `init --force` on an existing config re-
@@ -139,7 +139,7 @@
 ## 9. Full verification
 
 - [ ] 9.1 Run `go test ./...` and `go test -tags=integration
-  ./integration/...` and confirm both pass.
+./integration/...` and confirm both pass.
 - [ ] 9.2 Run the repo's lint/format hooks (`lefthook run pre-commit` or
       the equivalent `golangci-lint run` / `prettier`/`markdownlint`
       invocations this repo uses) and confirm they pass on the changed

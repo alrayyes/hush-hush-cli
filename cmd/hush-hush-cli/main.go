@@ -61,11 +61,16 @@ func newRootCmd() *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			// man generates pages by walking the command tree, not by
 			// connecting to a server - the same reason init is exempt.
-			if cmd.Name() == "init" || cmd.Name() == "man" {
+			// config/keyring-get is what a keyring-persisted _command
+			// shells out to - it must never itself trigger the nudge, or
+			// a token_command pointing at it would recurse into prompting
+			// for setup every time something resolves the token.
+			switch cmd.Name() {
+			case "init", "man", "config", "keyring-get":
 				return nil
+			default:
+				return maybeOfferInit(cmd)
 			}
-
-			return maybeOfferInit(cmd)
 		},
 	}
 
@@ -95,6 +100,7 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newGetCmd())
 	root.AddCommand(newUpdateCmd())
 	root.AddCommand(newDeleteCmd())
+	root.AddCommand(newConfigCmd())
 	root.AddCommand(newManCmd(root))
 
 	return root
