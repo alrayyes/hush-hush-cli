@@ -9,8 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
-	"strings"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/alrayyes/hush-hush-cli/internal/cliconfig"
@@ -108,19 +106,15 @@ func newRootCmd() *cobra.Command {
 // file as plaintext. The command wins over a literal --token/token if both
 // are set: whoever configured the command form did it on purpose.
 func config() (cli.Config, error) {
-	cfg := cli.Config{
-		Server: viper.GetString("server"),
-		Token:  viper.GetString("token"),
-		Caller: viper.GetString("caller"),
+	token, err := cliconfig.ResolveSecret(viper.GetString("token"), viper.GetString("token_command"))
+	if err != nil {
+		return cli.Config{}, fmt.Errorf("token_command: %w", err)
 	}
 
-	if tokenCmd := viper.GetString("token_command"); tokenCmd != "" {
-		token, err := runSecretCommand(tokenCmd)
-		if err != nil {
-			return cli.Config{}, fmt.Errorf("token_command: %w", err)
-		}
-
-		cfg.Token = token
+	cfg := cli.Config{
+		Server: viper.GetString("server"),
+		Token:  token,
+		Caller: viper.GetString("caller"),
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -128,19 +122,6 @@ func config() (cli.Config, error) {
 	}
 
 	return cfg, nil
-}
-
-// runSecretCommand runs cmdStr through the shell (so a pipeline like `pass
-// show <path>` works unmodified) and returns its trimmed stdout - exactly
-// one trailing newline, not every trailing space, so a secret that
-// genuinely ends in whitespace survives.
-func runSecretCommand(cmdStr string) (string, error) {
-	out, err := exec.Command("sh", "-c", cmdStr).Output() //nolint:gosec // cmdStr is operator-supplied config, not external input
-	if err != nil {
-		return "", fmt.Errorf("run: %w", err)
-	}
-
-	return strings.TrimSuffix(string(out), "\n"), nil
 }
 
 func configFilePath() (string, error) {

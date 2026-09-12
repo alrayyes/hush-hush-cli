@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cliconfig"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -110,4 +111,35 @@ func TestShouldWriteStarterFollowsTheConfirmationInteractively(t *testing.T) {
 
 	require.True(t, cliconfig.ShouldWriteStarter(false, false, false, true, true))
 	require.False(t, cliconfig.ShouldWriteStarter(false, false, false, true, false))
+}
+
+func TestResolveSecretReturnsTheLiteralWhenNoCommandIsSet(t *testing.T) {
+	t.Parallel()
+
+	out, err := cliconfig.ResolveSecret("literal-value", "")
+	require.NoError(t, err)
+	assert.Equal(t, "literal-value", out)
+}
+
+func TestResolveSecretRunsTheCommandThroughTheShellWhenSet(t *testing.T) {
+	t.Parallel()
+
+	out, err := cliconfig.ResolveSecret("ignored-literal", "echo hi | tr a-z A-Z")
+	require.NoError(t, err)
+	assert.Equal(t, "HI", out)
+}
+
+func TestResolveSecretTrimsExactlyOneTrailingNewlineFromTheCommand(t *testing.T) {
+	t.Parallel()
+
+	out, err := cliconfig.ResolveSecret("", `printf 'secret\n\n'`)
+	require.NoError(t, err)
+	assert.Equal(t, "secret\n", out)
+}
+
+func TestResolveSecretFailsLoudlyOnANonZeroCommandExit(t *testing.T) {
+	t.Parallel()
+
+	_, err := cliconfig.ResolveSecret("", "exit 1")
+	require.Error(t, err)
 }
