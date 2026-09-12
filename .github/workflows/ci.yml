@@ -269,6 +269,8 @@ jobs:
         run: bun audit
       - name: prettier --check
         run: bun run format:check
+      - name: sort-package-json --check
+        run: bunx sort-package-json --check package.json
       - name: markdownlint
         run: bun run lint:md
 
