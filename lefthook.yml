@@ -46,6 +46,13 @@ pre-commit:
       run: bunx prettier --write {staged_files}
       stage_fixed: true
 
+    # Keeps package.json itself canonical the way Prettier does for
+    # everything else (rules/javascript.md).
+    - name: sort-package-json
+      glob: "package.json"
+      run: bunx sort-package-json {staged_files}
+      stage_fixed: true
+
     - name: markdownlint
       glob: "*.md"
       run: bunx markdownlint-cli2 {staged_files}
@@ -199,6 +206,9 @@ pre-push:
 
     - name: prettier
       run: bun run format:check
+
+    - name: sort-package-json
+      run: bunx sort-package-json --check package.json
 
     - name: markdownlint
       run: bun run lint:md
