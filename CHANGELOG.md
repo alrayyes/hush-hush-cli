@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.2](https://github.com/alrayyes/hush-hush-cli/compare/v1.5.1...v1.5.2) (2026-09-12)
+
+
+### Bug Fixes
+
+* **packaging:** bump AUR PKGBUILD to v1.5.1 ([#79](https://github.com/alrayyes/hush-hush-cli/issues/79)) ([aa43908](https://github.com/alrayyes/hush-hush-cli/commit/aa43908ad0ed1d1c0acd21b695ac201d97acae7f))
+
 ## [1.5.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.5.0...v1.5.1) (2026-09-12)
 
 
