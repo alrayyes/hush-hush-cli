@@ -51,7 +51,7 @@ keyring-get <field>` command that reads a value previously written
       this repo are skipped - check `integration/` for the existing
       pattern). Verify: test fails, then implement `newConfigCmd`/
       `newKeyringGetCmd` (both `Hidden: true`) and it passes.
-- [ ] 3.3 Wire `PersistChoiceKeyring` in `PromptConfig`'s caller: on that
+- [x] 3.3 Wire `PersistChoiceKeyring` in `PromptConfig`'s caller: on that
       choice, call `keyring.Set` directly (in-process) and have the
       config-rendering step (task 4.2) write
       `<field>_command: "hush-hush-cli config keyring-get <field>"`.
@@ -64,7 +64,7 @@ keyring-get <field>` command that reads a value previously written
 
 ## 4. `init` becomes interactive
 
-- [ ] 4.1 Write a failing test in `cmd/hush-hush-cli` (extend
+- [x] 4.1 Write a failing test in `cmd/hush-hush-cli` (extend
       `init_test.go`) asserting that `init` with a simulated TTY-like
       reader (matching however `init_test.go` already fakes interactivity,
       if it does - otherwise extend the command to accept an injectable
@@ -76,11 +76,11 @@ keyring-get <field>` command that reads a value previously written
       `init`'s `RunE` and rendering the result to YAML (replacing the fixed
       `writeStarterConfig` call for the interactive path only), and the
       test passes.
-- [ ] 4.2 Write/extend a test asserting `init --yes` and `init` with a
+- [x] 4.2 Write/extend a test asserting `init --yes` and `init` with a
       non-interactive reader both still produce byte-identical output to
       today's `starterConfig` template. Verify: `go test
 ./cmd/hush-hush-cli/...` passes, confirming no regression.
-- [ ] 4.3 Verify `--force` behavior is unchanged (existing
+- [x] 4.3 Verify `--force` behavior is unchanged (existing
       `errConfigAlreadyExists` test in `init_test.go`/`config_test.go`
       still passes as-is) and that `init --force` on an existing config re-
       runs the same interactive-or-template flow as 4.1/4.2. Verify: add a

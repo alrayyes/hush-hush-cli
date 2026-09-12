@@ -10,11 +10,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/alrayyes/hush-hush-cli/internal/cliconfig"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/zalando/go-keyring"
 	"golang.org/x/term"
 )
 
@@ -159,6 +162,11 @@ func newInitCmd() *cobra.Command {
 				return fmt.Errorf("%s: %w", path, errConfigAlreadyExists)
 			}
 
+			yes, _ := cmd.Flags().GetBool("yes")
+			if !yes && term.IsTerminal(int(os.Stdin.Fd())) {
+				return runInteractiveInit(cmd, path, term.ReadPassword)
+			}
+
 			return writeStarterConfig(cmd, path)
 		},
 	}
@@ -178,6 +186,9 @@ token: ""
 caller: ""
 recipients: ""
 identity: ""
+# identity_command runs a command and uses its trimmed stdout as the
+# identity instead - it wins over the literal value above if both are set.
+# identity_command: "pass show hush-hush/identity-key"
 `
 
 func writeStarterConfig(cmd *cobra.Command, path string) error {
@@ -190,6 +201,112 @@ func writeStarterConfig(cmd *cobra.Command, path string) error {
 	}
 
 	return nil
+}
+
+// runInteractiveInit is the value-by-value flow behind init's own RunE and
+// (task 6) the pre-command nudge: prompt for every connection setting via
+// cliconfig.PromptConfig, apply each credential field's chosen persistence,
+// and write the result. readPassword is threaded through as a parameter
+// rather than hardcoded to term.ReadPassword so a test can fake a TTY that
+// doesn't exist in CI - production always passes term.ReadPassword itself.
+func runInteractiveInit(cmd *cobra.Command, path string, readPassword cliconfig.PasswordReader) error {
+	current := cliconfig.Values{
+		Server:     viper.GetString("server"),
+		Caller:     viper.GetString("caller"),
+		Recipients: viper.GetString("recipients"),
+	}
+
+	result, err := cliconfig.PromptConfig(cmd.InOrStdin(), cmd.OutOrStdout(), int(os.Stdin.Fd()), readPassword, current)
+	if err != nil {
+		return fmt.Errorf("prompt for config: %w", err)
+	}
+
+	token, err := persistCredential(result.Token, "token")
+	if err != nil {
+		return err
+	}
+
+	identity, err := persistCredential(result.Identity, "identity")
+	if err != nil {
+		return err
+	}
+
+	content := renderConfig(result.Server, token, result.Caller, result.Recipients, identity)
+
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		return fmt.Errorf("write config file: %w", err)
+	}
+
+	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", path); err != nil {
+		return fmt.Errorf("write init confirmation: %w", err)
+	}
+
+	return nil
+}
+
+// renderedSecret is a credential field's config-file representation after
+// its persistence choice has been applied: at most one of Literal/Command
+// is non-empty (PersistSkip leaves both empty, matching an unanswered
+// field).
+type renderedSecret struct {
+	Literal string
+	Command string
+}
+
+// persistCredential turns one prompted credential answer into its
+// config-file representation, storing the value in the OS keyring first
+// when that's the chosen persistence.
+func persistCredential(answer cliconfig.CredentialAnswer, field string) (renderedSecret, error) {
+	switch answer.Choice {
+	case cliconfig.PersistKeyring:
+		if err := keyring.Set(keyringService, field, answer.Value); err != nil {
+			return renderedSecret{}, fmt.Errorf("store %s in keyring: %w", field, err)
+		}
+
+		return renderedSecret{Command: "hush-hush-cli config keyring-get " + field}, nil
+	case cliconfig.PersistCommand:
+		return renderedSecret{Command: answer.Extra}, nil
+	case cliconfig.PersistLiteral:
+		return renderedSecret{Literal: answer.Value}, nil
+	default: // cliconfig.PersistSkip
+		return renderedSecret{}, nil
+	}
+}
+
+// renderConfig builds the YAML an interactive init writes. Every value is
+// double-quoted via strconv.Quote regardless of content - simpler and
+// safer than deciding case by case which values need it, at the cost of
+// looking less like starterConfig's own hand-written, selectively-quoted
+// style; that constant is untouched and still what --yes/no-TTY writes.
+func renderConfig(server string, token renderedSecret, caller, recipients string, identity renderedSecret) string {
+	var b strings.Builder
+
+	b.WriteString("# hush-hush-cli config file. Flags and HUSH_HUSH_* environment variables\n")
+	b.WriteString("# both override these - see README.md#configuration.\n")
+	fmt.Fprintf(&b, "server: %s\n", strconv.Quote(server))
+	fmt.Fprintf(&b, "token: %s\n", strconv.Quote(token.Literal))
+	b.WriteString("# token_command runs a command and uses its trimmed stdout as the token\n")
+	b.WriteString("# instead - it wins over the literal value above if both are set.\n")
+
+	if token.Command != "" {
+		fmt.Fprintf(&b, "token_command: %s\n", strconv.Quote(token.Command))
+	} else {
+		b.WriteString("# token_command: \"pass show hush-hush/write-token\"\n")
+	}
+
+	fmt.Fprintf(&b, "caller: %s\n", strconv.Quote(caller))
+	fmt.Fprintf(&b, "recipients: %s\n", strconv.Quote(recipients))
+	fmt.Fprintf(&b, "identity: %s\n", strconv.Quote(identity.Literal))
+	b.WriteString("# identity_command runs a command and uses its trimmed stdout as the\n")
+	b.WriteString("# identity instead - it wins over the literal value above if both are set.\n")
+
+	if identity.Command != "" {
+		fmt.Fprintf(&b, "identity_command: %s\n", strconv.Quote(identity.Command))
+	} else {
+		b.WriteString("# identity_command: \"pass show hush-hush/identity-key\"\n")
+	}
+
+	return b.String()
 }
 
 // maybeOfferInit is rules/cli.md's "a run with no config file and no
