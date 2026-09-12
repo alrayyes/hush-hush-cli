@@ -76,3 +76,96 @@ jobs:
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: dist/*.tar.gz
+
+  # AUR_SSH_KEY exists to publish a package, not to touch this repo's own
+  # git history - provisioned per the global CLAUDE.md's "added only once
+  # a repo actually ships a PKGBUILD" convention back when PKGBUILD itself
+  # was added. This pushes straight to the AUR, unconditionally, the same
+  # way goreleaser's own job above publishes straight to GHCR; the
+  # PKGBUILD bump this repo tracks lands through the ordinary pull request
+  # below instead, same as every other change here (hush-hush-cli#71).
+  # Release-triggered rather than a flake-lock-update.yml-style scheduled
+  # job: a scheduled run could wait up to a week to notice a new release,
+  # where this reacts the moment goreleaser's own job finishes.
+  publish-aur:
+    needs: [release-please, goreleaser]
+    if: needs.release-please.outputs.release_created
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+    steps:
+      # git/openssh for the AUR push, github-cli for the pull request
+      # below - none of them ship in archlinux:base-devel by default.
+      - run: pacman -Sy --noconfirm git openssh github-cli
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG_NAME }}
+
+      # This job runs as root inside `container:` - actions/checkout's own
+      # dubious-ownership workaround doesn't reach the real $HOME later
+      # steps (and scripts/publish-aur.sh's own git commands) inherit
+      # (tooling.md). makepkg (called by the script, to regenerate
+      # .SRCINFO) also refuses outright to run as root at all, hence the
+      # builder user below and `su builder` on every later step - same
+      # shape as washy-washy-cli's own publish-aur job.
+      - name: Create a non-root builder
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      # /home/builder explicitly, not ~ - this step runs as root, but the
+      # Publish step below runs as builder via `su`, which uses builder's
+      # own $HOME. Writing to root's ~/.ssh here would leave builder with
+      # no key at all.
+      - name: Configure the AUR deploy key
+        run: |
+          install -d -m 700 -o builder -g builder /home/builder/.ssh
+          echo "$AUR_SSH_KEY" > /home/builder/.ssh/aur-ci
+          ssh-keyscan aur.archlinux.org >> /home/builder/.ssh/known_hosts 2>/dev/null
+          {
+            echo "Host aur.archlinux.org"
+            echo "  IdentityFile ~/.ssh/aur-ci"
+            echo "  User aur"
+          } >> /home/builder/.ssh/config
+          chmod 600 /home/builder/.ssh/aur-ci
+          chown builder:builder /home/builder/.ssh/aur-ci /home/builder/.ssh/known_hosts /home/builder/.ssh/config
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+
+      - name: Publish to the AUR
+        run: su builder -c "VERSION=${TAG_NAME#v} bash scripts/publish-aur.sh"
+
+      # The AUR push above is the real publish; this is only so the copy
+      # this repo tracks doesn't drift from what's now live there.
+      # RELEASE_TOKEN, not GITHUB_TOKEN - GitHub doesn't run pull_request
+      # workflows off a plain GITHUB_TOKEN-authored branch either, the
+      # same gap release-auto-merge.yml's own comment already covers for
+      # the push side.
+      - name: Open a pull request with the same bump
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          # tooling.md: a job that runs `git commit` itself needs this, so
+          # lefthook doesn't fire against a commit nothing interactively
+          # made in a container that carries none of its tooling.
+          LEFTHOOK: 0
+        run: |
+          git diff --quiet -- PKGBUILD && exit 0
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "aur/$TAG_NAME"
+          git add PKGBUILD
+          git commit -m "fix(packaging): bump AUR PKGBUILD to $TAG_NAME"
+          git push origin "aur/$TAG_NAME"
+          gh pr create \
+            --title "fix(packaging): bump AUR PKGBUILD to $TAG_NAME" \
+            --body "Recomputed checksums against the real $TAG_NAME release assets and pushed the same bump to the AUR (scripts/publish-aur.sh)." \
+            --label dependencies \
+            --base main
