@@ -69,30 +69,43 @@ listing.
 Settings are read in this order, each layer overriding the one before it:
 **flags > environment variables > config file > defaults**. None of them
 are required - environment variables alone are enough for a CI job or a
-container - but `init` writes a starter file the first time it matters:
+container - but `init` sets up a config file the first time it matters:
 
 ```sh
 hush-hush-cli init      # writes ~/.config/hush-hush-cli/config.yaml
 ```
 
-(`$XDG_CONFIG_HOME` instead of `~/.config` if it's set.) Run the command
-with nothing configured yet - no config file, no relevant environment
-variable - on an interactive terminal, and it offers to write that starter
-file itself before continuing; `--yes` skips the prompt and writes it
-unconditionally, for a script that wants the file without a person to
-answer for it. `--force` on `init` itself overwrites an existing file,
-which the prompt never does.
+(`$XDG_CONFIG_HOME` instead of `~/.config` if it's set.) On a terminal,
+`init` prompts for each setting in turn - server, token, caller,
+recipients, identity - showing the current value or default so a bare
+Enter accepts it. For `token` and `identity`, whatever you type is never
+written to the file as-is by default: you're offered a choice of storing
+it in the OS keyring, a command that retrieves it (`pass show ...` and
+similar), the literal value, or not persisting it at all. `--yes`, or
+running `init` with no terminal attached (a script), skips every prompt
+and writes an empty starter file instead - nothing to answer, nothing
+written that wasn't already there. `--force` overwrites an existing file;
+without it, `init` refuses rather than touching one that's already there.
 
-| Flag              | Environment variable      | config key      | Meaning                                                                                  |
-| ----------------- | ------------------------- | --------------- | ---------------------------------------------------------------------------------------- |
-| `--server`        | `HUSH_HUSH_SERVER`        | `server`        | Server base URL. Default `http://localhost:8080`.                                        |
-| `--token`         | `HUSH_HUSH_TOKEN`         | `token`         | Bearer token, for `inject`/`update`/`delete`.                                            |
-| `--token-command` | `HUSH_HUSH_TOKEN_COMMAND` | `token_command` | Command whose trimmed stdout is the token instead - wins over `--token` if both are set. |
-| `--caller`        | `HUSH_HUSH_CALLER`        | `caller`        | Self-presented identity recorded in the audit log. Optional.                             |
-| `--recipients`    | `HUSH_HUSH_RECIPIENTS`    | `recipients`    | Comma-separated age recipients, for `inject`/`update`.                                   |
-| `--identity`      | `HUSH_HUSH_IDENTITY`      | `identity`      | Comma-separated age private keys, for `get`.                                             |
-| `--used-by`       | -                         | -               | Consumers of the secret (repeatable or comma-separated), `inject` only.                  |
-| `--description`   | -                         | -               | Free-text label, fixed at creation, `inject` only.                                       |
+Run any other command with no config file and no relevant environment
+variable set, on a terminal, and it offers to run through that same setup
+before continuing - no need to remember to run `init` first. Every other
+command reads configuration only; none of them prompt, and a value still
+missing once flags/environment/file/defaults are all checked fails
+immediately, naming the flag, the environment variable, and `init` as the
+way to fix it.
+
+| Flag                 | Environment variable         | config key         | Meaning                                                                                        |
+| -------------------- | ---------------------------- | ------------------ | ---------------------------------------------------------------------------------------------- |
+| `--server`           | `HUSH_HUSH_SERVER`           | `server`           | Server base URL. Default `http://localhost:8080`.                                              |
+| `--token`            | `HUSH_HUSH_TOKEN`            | `token`            | Bearer token, for `inject`/`update`/`delete`.                                                  |
+| `--token-command`    | `HUSH_HUSH_TOKEN_COMMAND`    | `token_command`    | Command whose trimmed stdout is the token instead - wins over `--token` if both are set.       |
+| `--caller`           | `HUSH_HUSH_CALLER`           | `caller`           | Self-presented identity recorded in the audit log. Optional.                                   |
+| `--recipients`       | `HUSH_HUSH_RECIPIENTS`       | `recipients`       | Comma-separated age recipients, for `inject`/`update`.                                         |
+| `--identity`         | `HUSH_HUSH_IDENTITY`         | `identity`         | Comma-separated age private keys, for `get`.                                                   |
+| `--identity-command` | `HUSH_HUSH_IDENTITY_COMMAND` | `identity_command` | Command whose trimmed stdout is the identity instead - wins over `--identity` if both are set. |
+| `--used-by`          | -                            | -                  | Consumers of the secret (repeatable or comma-separated), `inject` only.                        |
+| `--description`      | -                            | -                  | Free-text label, fixed at creation, `inject` only.                                             |
 
 ## Contributing
 

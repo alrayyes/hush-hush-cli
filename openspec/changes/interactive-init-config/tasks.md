@@ -130,7 +130,7 @@ keyring-get <field>` command that reads a value previously written
 
 ## 8. Documentation
 
-- [ ] 8.1 Update `README.md`'s Configuration section: describe interactive
+- [x] 8.1 Update `README.md`'s Configuration section: describe interactive
       `init`, the credential persistence choices, and add the
       `identity_command` row to the flag/env/config table. Verify: the
       documented commands and table match the implemented behavior exactly
