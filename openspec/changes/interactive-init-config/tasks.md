@@ -97,7 +97,7 @@ keyring-get <field>` command that reads a value previously written
       wire `identity_command` as a new persistent-ish flag/viper binding in
       `get.go` (matching how `identity` itself is already bound) and the
       test passes.
-- [ ] 5.2 Add `identity_command` to the `starterConfig` template's comment
+- [x] 5.2 Add `identity_command` to the `starterConfig` template's comment
       block, mirroring how `token_command` is documented there.
 
 ## 6. Pre-command nudge uses the same interactive flow
@@ -138,9 +138,9 @@ keyring-get <field>` command that reads a value previously written
 
 ## 9. Full verification
 
-- [ ] 9.1 Run `go test ./...` and `go test -tags=integration
+- [x] 9.1 Run `go test ./...` and `go test -tags=integration
 ./integration/...` and confirm both pass.
-- [ ] 9.2 Run the repo's lint/format hooks (`lefthook run pre-commit` or
+- [x] 9.2 Run the repo's lint/format hooks (`lefthook run pre-commit` or
       the equivalent `golangci-lint run` / `prettier`/`markdownlint`
       invocations this repo uses) and confirm they pass on the changed
       files, including the updated `README.md`.

@@ -13,6 +13,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// errNoTTY is the fake PasswordReader failure TestPromptSecretPropagatesAReadFailure
+// injects - a wrapped static error rather than a fresh errors.New at the
+// call site (err113).
+var errNoTTY = errors.New("no tty")
+
 // scan is a small test helper: most of the Prompt* API takes a
 // *bufio.Scanner (rather than a bare io.Reader) precisely so a caller can
 // share one across several sequential prompts - see Confirm's own doc
@@ -223,7 +228,7 @@ func TestPromptSecretTrimsSurroundingWhitespace(t *testing.T) {
 func TestPromptSecretPropagatesAReadFailure(t *testing.T) {
 	t.Parallel()
 
-	read := func(int) ([]byte, error) { return nil, errors.New("no tty") }
+	read := func(int) ([]byte, error) { return nil, errNoTTY }
 
 	_, err := cliconfig.PromptSecret(new(strings.Builder), "Token", 0, read)
 	require.Error(t, err)

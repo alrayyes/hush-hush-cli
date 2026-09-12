@@ -359,36 +359,13 @@ func maybeOfferInit(cmd *cobra.Command) error {
 	yes, _ := cmd.Flags().GetBool("yes")
 	interactive := term.IsTerminal(int(os.Stdin.Fd()))
 
-	var sc *bufio.Scanner
-
-	confirmed := false
-	if !yes && interactive && !exists && !anyEnvSet {
-		sc = bufio.NewScanner(cmd.InOrStdin())
-		confirmed = cliconfig.Confirm(sc, cmd.OutOrStdout(), "No config file found. Set one up now?")
-	}
+	sc, confirmed := confirmInitNudge(cmd, exists, anyEnvSet, yes, interactive)
 
 	if !cliconfig.ShouldWriteStarter(exists, anyEnvSet, yes, interactive, confirmed) {
-		if !exists && !anyEnvSet && !interactive {
-			if _, err := fmt.Fprintf(cmd.ErrOrStderr(),
-				"no config file and no HUSH_HUSH_* environment variables set - running on defaults (`hush-hush-cli init` writes a starter config)\n",
-			); err != nil {
-				return fmt.Errorf("write config nudge: %w", err)
-			}
-		}
-
-		return nil
+		return printUnconfiguredNudge(cmd, exists, anyEnvSet, interactive)
 	}
 
-	// yes writes the same blank template a non-interactive init would;
-	// the confirmed-interactively path (sc is non-nil whenever confirmed
-	// can be true) runs the full interactive flow instead, sharing the
-	// exact scanner Confirm itself just read from - see Confirm's doc
-	// comment for why a fresh one over the same reader would lose input.
-	if yes {
-		if err := writeStarterConfig(cmd, path); err != nil {
-			return err
-		}
-	} else if err := runInteractiveInit(cmd, path, sc, term.ReadPassword); err != nil {
+	if err := writeConfig(cmd, path, yes, sc); err != nil {
 		return err
 	}
 
@@ -397,6 +374,51 @@ func maybeOfferInit(cmd *cobra.Command) error {
 	}
 
 	return nil
+}
+
+// confirmInitNudge asks "set one up now?" only when every gating
+// condition for offering it holds, and returns the scanner it read the
+// answer from alongside that answer: a caller that goes on to run the
+// interactive flow on a yes needs that exact scanner, not a fresh one
+// over the same reader - see Confirm's doc comment for why.
+func confirmInitNudge(cmd *cobra.Command, exists, anyEnvSet, yes, interactive bool) (*bufio.Scanner, bool) {
+	if yes || !interactive || exists || anyEnvSet {
+		return nil, false
+	}
+
+	sc := bufio.NewScanner(cmd.InOrStdin())
+	confirmed := cliconfig.Confirm(sc, cmd.OutOrStdout(), "No config file found. Set one up now?")
+
+	return sc, confirmed
+}
+
+// printUnconfiguredNudge is the stderr fallback for the one case
+// ShouldWriteStarter leaves nothing written for: fully non-interactive
+// and entirely unconfigured, where there was never a prompt to answer.
+func printUnconfiguredNudge(cmd *cobra.Command, exists, anyEnvSet, interactive bool) error {
+	if exists || anyEnvSet || interactive {
+		return nil
+	}
+
+	if _, err := fmt.Fprintf(cmd.ErrOrStderr(),
+		"no config file and no HUSH_HUSH_* environment variables set - running on defaults (`hush-hush-cli init` writes a starter config)\n",
+	); err != nil {
+		return fmt.Errorf("write config nudge: %w", err)
+	}
+
+	return nil
+}
+
+// writeConfig is what ShouldWriteStarter having said yes actually does:
+// --yes writes the same blank template a non-interactive init would; the
+// confirmed-interactively path (sc is non-nil whenever that's how
+// ShouldWriteStarter came to true) runs the full interactive flow.
+func writeConfig(cmd *cobra.Command, path string, yes bool, sc *bufio.Scanner) error {
+	if yes {
+		return writeStarterConfig(cmd, path)
+	}
+
+	return runInteractiveInit(cmd, path, sc, term.ReadPassword)
 }
 
 func anyConfigEnvVarSet() bool {
