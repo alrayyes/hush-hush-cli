@@ -115,16 +115,22 @@ func newRootCmd() *cobra.Command {
 // age-encrypted file, or a keyring CLI instead of sitting in the config
 // file as plaintext. The command wins over a literal --token/token if both
 // are set: whoever configured the command form did it on purpose.
-func config() (cli.Config, error) {
+//
+// requireToken is set by inject/update/delete and left false by get: a
+// missing token then fails Validate() here, before any request reaches
+// the server, rather than surfacing as a bare 401 from deep inside the
+// SDK.
+func config(requireToken bool) (cli.Config, error) {
 	token, err := cliconfig.ResolveSecret(viper.GetString("token"), viper.GetString("token_command"))
 	if err != nil {
 		return cli.Config{}, fmt.Errorf("token_command: %w", err)
 	}
 
 	cfg := cli.Config{
-		Server: viper.GetString("server"),
-		Token:  token,
-		Caller: viper.GetString("caller"),
+		Server:       viper.GetString("server"),
+		Token:        token,
+		Caller:       viper.GetString("caller"),
+		RequireToken: requireToken,
 	}
 
 	if err := cfg.Validate(); err != nil {

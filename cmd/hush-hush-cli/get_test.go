@@ -8,6 +8,7 @@ import (
 	"github.com/alrayyes/hush-hush-cli/internal/seal"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -71,6 +72,20 @@ func TestGetIdentityCommandWinsOverALiteralIdentity(t *testing.T) {
 
 	require.NoError(t, root.Execute())
 	require.Equal(t, "plaintext-value", out.String())
+}
+
+func TestGetFailsFastWithNoIdentityConfigured(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	viper.Reset()
+
+	root := newRootCmd()
+	root.SetArgs([]string{"get", "mattermost_deploy_webhook"})
+
+	err := root.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--identity")
+	assert.Contains(t, err.Error(), "HUSH_HUSH_IDENTITY")
+	assert.Contains(t, err.Error(), "init")
 }
 
 func TestGetReportsAnIdentityCommandFailure(t *testing.T) {

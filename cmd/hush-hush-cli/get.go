@@ -13,7 +13,7 @@ import (
 
 // errNoIdentity is a sentinel: a fixed condition (no decrypting key was
 // configured at all), not a message built from per-call detail.
-var errNoIdentity = errors.New("no identity configured (--identity or HUSH_HUSH_IDENTITY)")
+var errNoIdentity = errors.New("no identity configured (--identity, HUSH_HUSH_IDENTITY, or run `hush-hush-cli init`)")
 
 // newGetCmd writes the decrypted value to stdout, and nothing else - no
 // assembled file, no consumer-side file-shape logic (the cli spec's
@@ -33,7 +33,7 @@ func newGetCmd() *cobra.Command {
 				return errNoIdentity
 			}
 
-			cfg, err := config()
+			cfg, err := config(false)
 			if err != nil {
 				return err
 			}

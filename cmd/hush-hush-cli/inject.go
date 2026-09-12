@@ -14,7 +14,7 @@ import (
 // errNoRecipients is a sentinel rather than a plain fmt.Errorf: it's a
 // fixed condition (recipients weren't configured at all), not a message
 // built from per-call detail.
-var errNoRecipients = errors.New("no recipients configured (--recipients or HUSH_HUSH_RECIPIENTS)")
+var errNoRecipients = errors.New("no recipients configured (--recipients, HUSH_HUSH_RECIPIENTS, or run `hush-hush-cli init`)")
 
 // newInjectCmd reads the plaintext value from stdin rather than a flag -
 // a flag value ends up in shell history and process listings, exactly
@@ -45,7 +45,7 @@ func newInjectCmd() *cobra.Command {
 				return fmt.Errorf("read value from stdin: %w", err)
 			}
 
-			cfg, err := config()
+			cfg, err := config(true)
 			if err != nil {
 				return err
 			}

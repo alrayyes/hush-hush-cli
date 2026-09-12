@@ -115,7 +115,7 @@ keyring-get <field>` command that reads a value previously written
 
 ## 7. Token validation and clearer missing-value errors
 
-- [ ] 7.1 Write failing tests for `inject`, `update`, `delete` each
+- [x] 7.1 Write failing tests for `inject`, `update`, `delete` each
       returning a new `errNoToken`-style sentinel (naming `--token`,
       `HUSH_HUSH_TOKEN`, and `hush-hush-cli init`) when no token resolves
       from any source, and making no request to the test server
@@ -124,7 +124,7 @@ keyring-get <field>` command that reads a value previously written
       `true` in `inject`/`update`/`delete` before calling `Validate()`,
       check it there, and the tests pass. `get` must be unaffected -
       confirm its existing "no token required" behavior still passes.
-- [ ] 7.2 Update `errNoRecipients` (`inject.go`, `update.go`) and
+- [x] 7.2 Update `errNoRecipients` (`inject.go`, `update.go`) and
       `errNoIdentity` (`get.go`) messages to also name `hush-hush-cli init`.
       Update/extend the existing tests asserting these error messages.
 
