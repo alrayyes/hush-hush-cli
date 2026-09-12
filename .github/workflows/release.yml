@@ -148,6 +148,18 @@ jobs:
       # workflows off a plain GITHUB_TOKEN-authored branch either, the
       # same gap release-auto-merge.yml's own comment already covers for
       # the push side.
+      #
+      # chore(packaging), not fix(packaging) despite dependencies.md's
+      # "ecosystems that ship in the released artifact get fix:" - this
+      # commit doesn't change what ships; goreleaser's own job already
+      # published the real artifact before this step ever runs, and the
+      # AUR push above already made the real fix live. A fix: here would
+      # be release-please-visible and always carry a real diff (pkgver
+      # always changes to match the new tag), so every merge would queue
+      # another release, which triggers another publish-aur run, which
+      # opens another fix: bump PR - an unbounded release loop, confirmed
+      # live: v1.5.1's bump PR (hush-hush-cli#79) queued v1.5.2 before
+      # this was caught and its auto-merge disabled by hand.
       - name: Open a pull request with the same bump
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
@@ -162,10 +174,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "aur/$TAG_NAME"
           git add PKGBUILD
-          git commit -m "fix(packaging): bump AUR PKGBUILD to $TAG_NAME"
+          git commit -m "chore(packaging): bump AUR PKGBUILD to $TAG_NAME"
           git push origin "aur/$TAG_NAME"
           gh pr create \
-            --title "fix(packaging): bump AUR PKGBUILD to $TAG_NAME" \
+            --title "chore(packaging): bump AUR PKGBUILD to $TAG_NAME" \
             --body "Recomputed checksums against the real $TAG_NAME release assets and pushed the same bump to the AUR (scripts/publish-aur.sh)." \
             --label dependencies \
             --base main
