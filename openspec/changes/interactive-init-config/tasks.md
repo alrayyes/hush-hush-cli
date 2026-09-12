@@ -89,7 +89,7 @@ keyring-get <field>` command that reads a value previously written
 
 ## 5. `identity_command`
 
-- [ ] 5.1 Write a failing test in `cmd/hush-hush-cli` (`get_test.go`)
+- [x] 5.1 Write a failing test in `cmd/hush-hush-cli` (`get_test.go`)
       asserting `get` resolves `identity` via `cliconfig.ResolveSecret` when
       `identity_command`/`HUSH_HUSH_IDENTITY_COMMAND` is set, command
       winning over a literal `identity`/`HUSH_HUSH_IDENTITY` the same way

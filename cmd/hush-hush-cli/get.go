@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
+	"github.com/alrayyes/hush-hush-cli/internal/cliconfig"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -23,7 +24,11 @@ func newGetCmd() *cobra.Command {
 		Short: "Fetch and decrypt one value to stdout",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			identities := viper.GetString("identity")
+			identities, err := cliconfig.ResolveSecret(viper.GetString("identity"), viper.GetString("identity_command"))
+			if err != nil {
+				return fmt.Errorf("identity_command: %w", err)
+			}
+
 			if identities == "" {
 				return errNoIdentity
 			}
@@ -48,7 +53,9 @@ func newGetCmd() *cobra.Command {
 	}
 
 	cmd.Flags().String("identity", "", "comma-separated age private keys")
+	cmd.Flags().String("identity-command", "", "command whose trimmed stdout is the identity instead (wins over --identity if both are set)")
 	_ = viper.BindPFlag("identity", cmd.Flags().Lookup("identity"))
+	_ = viper.BindPFlag("identity_command", cmd.Flags().Lookup("identity-command"))
 
 	return cmd
 }
