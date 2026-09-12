@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.4.7...v1.5.0) (2026-09-12)
+
+
+### Features
+
+* **cli:** prompt for connection config interactively during init ([#74](https://github.com/alrayyes/hush-hush-cli/issues/74)) ([c7853cf](https://github.com/alrayyes/hush-hush-cli/commit/c7853cf3b088bc5319d85c5648277e90c58e53df))
+
 ## [1.4.7](https://github.com/alrayyes/hush-hush-cli/compare/v1.4.6...v1.4.7) (2026-09-11)
 
 
