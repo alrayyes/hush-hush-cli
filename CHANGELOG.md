@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.5.0...v1.5.1) (2026-09-12)
+
+
+### Bug Fixes
+
+* **packaging:** stop AUR PKGBUILD from drifting off the latest release ([#77](https://github.com/alrayyes/hush-hush-cli/issues/77)) ([f47b7be](https://github.com/alrayyes/hush-hush-cli/commit/f47b7bebdb1eb2b502b68fa5b39f352c152ee11c))
+
 ## [1.5.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.4.7...v1.5.0) (2026-09-12)
 
 
