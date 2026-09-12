@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -217,7 +218,7 @@ func maybeOfferInit(cmd *cobra.Command) error {
 
 	confirmed := false
 	if !yes && interactive && !exists && !anyEnvSet {
-		confirmed = cliconfig.Confirm(cmd.InOrStdin(), cmd.OutOrStdout(),
+		confirmed = cliconfig.Confirm(bufio.NewScanner(cmd.InOrStdin()), cmd.OutOrStdout(),
 			"No config file found. Write a starter one at "+path+" now?")
 	}
 
