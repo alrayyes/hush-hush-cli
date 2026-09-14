@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.3](https://github.com/alrayyes/hush-hush-cli/compare/v1.5.2...v1.5.3) (2026-09-14)
+
+
+### Bug Fixes
+
+* **deps:** bump the go-dependencies group with 2 updates ([#86](https://github.com/alrayyes/hush-hush-cli/issues/86)) ([5251386](https://github.com/alrayyes/hush-hush-cli/commit/5251386f7be91ae200c61d523f9c5eda35ececce))
+
 ## [1.5.2](https://github.com/alrayyes/hush-hush-cli/compare/v1.5.1...v1.5.2) (2026-09-12)
 
 
