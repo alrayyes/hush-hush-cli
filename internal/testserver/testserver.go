@@ -3,7 +3,7 @@
 // contract (api/openapi.yaml's /objects endpoints), not hush-hush's own
 // internal/api implementation, which stays in that repo. It exists so
 // internal/cli and cmd/hush-hush-cli's tests can exercise a real
-// create/get/update/delete round trip - including auth, 404, and 409
+// create/get/update/delete/list round trip - including auth, 404, and 409
 // semantics against live state - without a second repo's server in the
 // loop (openspec/changes/split-cli-into-own-repo/design.md: a Prism
 // spec-mock can't reproduce that state, so this fake carries it itself).
@@ -17,6 +17,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -108,6 +109,28 @@ func (s *Store) DeleteObject(_ context.Context, id string) error {
 	return nil
 }
 
+// ListObjects returns every stored object's id, used_by, and description -
+// never the value - sorted by id, optionally narrowed to objects whose
+// used_by includes usedByFilter ("" means no filter). Matches hush-hush's
+// own GET /objects (hush-hush#188/#189).
+func (s *Store) ListObjects(_ context.Context, usedByFilter string) ([]ObjectMetadata, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	result := make([]ObjectMetadata, 0, len(s.objects))
+	for id, obj := range s.objects {
+		if usedByFilter != "" && !slices.Contains(obj.UsedBy, usedByFilter) {
+			continue
+		}
+
+		result = append(result, ObjectMetadata{ID: id, UsedBy: obj.UsedBy, Description: obj.Description})
+	}
+
+	slices.SortFunc(result, func(a, b ObjectMetadata) int { return strings.Compare(a.ID, b.ID) })
+
+	return result, nil
+}
+
 // CreateWriteToken issues a fresh write token valid for ttl. The first
 // return value mirrors hush-hush's own store.CreateWriteToken (an issued
 // token's id); this fake has no separate use for it.
@@ -162,7 +185,9 @@ func New(t *testing.T) (srv *httptest.Server, s *Store, token string) {
 	return srv, s, token
 }
 
-type objectMetadata struct {
+// ObjectMetadata is a stored object's id, used_by, and description, with no
+// value - the shape create/update/list all return over the wire.
+type ObjectMetadata struct {
 	ID          string   `json:"id"`
 	UsedBy      []string `json:"used_by,omitempty"`
 	Description string   `json:"description,omitempty"`
@@ -183,13 +208,14 @@ type errorBody struct {
 	Error string `json:"error"`
 }
 
-// newMux wires the same four /objects endpoints internal/client actually
+// newMux wires the same five /objects endpoints internal/client actually
 // calls (api/openapi.yaml) - not GET /objects/{id}/used-by, GET
 // /audit-log, or GET /healthz, none of which internal/client's Client
 // exposes a method for.
 func newMux(s *Store) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /objects", requireWriteToken(s, handleCreateObject(s)))
+	mux.HandleFunc("GET /objects", requireWriteToken(s, handleListObjects(s)))
 	mux.HandleFunc("GET /objects/{id}", handleGetObject(s))
 	mux.HandleFunc("PUT /objects/{id}", requireWriteToken(s, handleUpdateObject(s)))
 	mux.HandleFunc("DELETE /objects/{id}", requireWriteToken(s, handleDeleteObject(s)))
@@ -233,7 +259,7 @@ func handleCreateObject(s *Store) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, objectMetadata{ID: req.ID, UsedBy: req.UsedBy, Description: req.Description})
+		writeJSON(w, http.StatusCreated, ObjectMetadata{ID: req.ID, UsedBy: req.UsedBy, Description: req.Description})
 	}
 }
 
@@ -284,7 +310,24 @@ func handleUpdateObject(s *Store) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, objectMetadata{ID: id, UsedBy: obj.UsedBy, Description: obj.Description})
+		writeJSON(w, http.StatusOK, ObjectMetadata{ID: id, UsedBy: obj.UsedBy, Description: obj.Description})
+	}
+}
+
+// handleListObjects is gated by the same write token as create/update/
+// delete, unlike handleGetObject - matching hush-hush's own design:
+// enumerating every object is a capability none of the other, id-scoped
+// reads grant on their own.
+func handleListObjects(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		objects, err := s.ListObjects(r.Context(), r.URL.Query().Get("used_by"))
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal error")
+
+			return
+		}
+
+		writeJSON(w, http.StatusOK, objects)
 	}
 }
 

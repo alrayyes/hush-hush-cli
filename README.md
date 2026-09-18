@@ -6,7 +6,8 @@
 
 Client for the [hush-hush](https://github.com/alrayyes/hush-hush) secrets
 object store — the writer's and every consumer's interface to it: inject a
-secret, fetch and decrypt one, rotate a value, delete an object.
+secret, fetch and decrypt one, list what's stored, rotate a value, delete
+an object.
 
 ## Requirements
 
@@ -52,6 +53,15 @@ header first:
 
 ```sh
 hush-hush-cli get mattermost_deploy_webhook --identity "$(tail -1 consumer.key)"
+```
+
+List what's stored - each object's `id`, `used_by`, and `description`,
+never the value itself, which is why this needs a token the same as
+`inject`/`update`/`delete` do, unlike `get`:
+
+```sh
+hush-hush-cli list
+hush-hush-cli list --json | jq '.[].id'
 ```
 
 Rotate the value, then remove the object once nothing needs it any more:
@@ -107,6 +117,7 @@ way to fix it.
 | `--identity`         | `HUSH_HUSH_IDENTITY`         | `identity`         | Comma-separated age private keys, for `get`.                                                   |
 | `--identity-command` | `HUSH_HUSH_IDENTITY_COMMAND` | `identity_command` | Command whose trimmed stdout is the identity instead - wins over `--identity` if both are set. |
 | `--used-by`          | -                            | -                  | Consumers of the secret (repeatable or comma-separated), `inject` only.                        |
+| `--json`             | -                            | -                  | Print the raw JSON array instead of a table, `list` only.                                      |
 | `--description`      | -                            | -                  | Free-text label, fixed at creation, `inject` only.                                             |
 
 ## Contributing
