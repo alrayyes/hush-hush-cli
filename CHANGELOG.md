@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.5.4...v1.6.0) (2026-09-18)
+
+
+### Features
+
+* add a list command to enumerate stored secrets ([#97](https://github.com/alrayyes/hush-hush-cli/issues/97)) ([5b97809](https://github.com/alrayyes/hush-hush-cli/commit/5b97809e110d8d321fe6619ea68f2205505d2616))
+
 ## [1.5.4](https://github.com/alrayyes/hush-hush-cli/compare/v1.5.3...v1.5.4) (2026-09-14)
 
 
