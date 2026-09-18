@@ -26,12 +26,14 @@ var (
 // call and can't be a fixed sentinel on their own.
 var ErrUnexpectedStatus = errors.New("unexpected status")
 
-// ObjectMetadata is what a successful create or update returns. Matches
-// components.schemas.ObjectMetadata in api/openapi.yaml.
+// ObjectMetadata is what a successful create, update, or list returns.
+// Matches components.schemas.ObjectMetadata in api/openapi.yaml. JSON tags
+// exist for List's --json output, the first place this type is ever
+// marshaled.
 type ObjectMetadata struct {
-	ID          string
-	UsedBy      []string
-	Description string
+	ID          string   `json:"id"`
+	UsedBy      []string `json:"used_by,omitempty"`
+	Description string   `json:"description,omitempty"`
 }
 
 // Client is a hush-hush API client. Token is the write-path bearer token;
@@ -101,6 +103,23 @@ func (c *Client) Delete(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+// List returns every stored object's metadata, sorted by id - never the
+// value. Requires a credential, unlike Get: enumerating every object is a
+// capability none of the other, id-scoped reads grant on their own.
+func (c *Client) List(ctx context.Context) ([]ObjectMetadata, error) {
+	metas, err := c.sdk.ListObjects(ctx, "")
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	result := make([]ObjectMetadata, len(metas))
+	for i, m := range metas {
+		result[i] = toObjectMetadata(&m)
+	}
+
+	return result, nil
 }
 
 func toObjectMetadata(m *hushhush.ObjectMetadata) ObjectMetadata {
