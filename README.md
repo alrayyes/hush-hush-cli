@@ -33,7 +33,9 @@ age-keygen -o consumer.key
 ```
 
 Inject a secret, sealed to one or more recipients (a write token comes from
-`hush-hush token issue` on the server):
+`hush-hush token issue`, run against the server itself - see
+[hush-hush's README](https://github.com/alrayyes/hush-hush#start-the-server)
+for how, including inside a container):
 
 ```sh
 export HUSH_HUSH_SERVER=http://localhost:8080
