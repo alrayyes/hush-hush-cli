@@ -76,6 +76,23 @@ hush-hush-cli delete mattermost_deploy_webhook
 flag or argument, so it never ends up in shell history or a process
 listing.
 
+Query the audit trail - who touched an object, when, and how. Filters
+combine with AND; `--since`/`--until` take RFC3339 timestamps:
+
+```sh
+hush-hush-cli audit-log --object mattermost_deploy_webhook --since 2026-09-01T00:00:00Z
+hush-hush-cli audit-log --actor tok_abc123 --format json | jq '.[].action'
+```
+
+No credential is required - reading the audit trail needs no write token,
+unlike `list`. `--actor` restricts to entries authenticated by a specific
+verified actor (a token id, or the admin account's own actor id);
+`--caller` restricts to entries recorded with a given self-presented
+`--caller` value instead, which - unlike `--actor` - is never verified.
+`--limit N` caps how many entries print, regardless of how many pages it
+takes to fetch them; with no `--limit`, every matching entry prints. There
+is no `--follow` - this is a bounded query, run it again to see what's new.
+
 ## Configuration
 
 Settings are read in this order, each layer overriding the one before it:

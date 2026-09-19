@@ -156,13 +156,26 @@
 
 ## 4. Docs
 
-- [ ] 4.1 Replace README's "query it directly" audit-log note with a
+- [x] 4.1 Replace README's "query it directly" audit-log note with a
       section documenting the `audit-log` command and its flags, and
       verify the documented flag list matches `--help`'s actual output.
-- [ ] 4.2 Add the command to `INSTALL.md` or any generated man page
+      README had no such note by the time this was implemented (checked:
+      no "curl"/"audit" mention in it at all) - proposal.md's Why
+      described the state before this repo's split from `hush-hush`
+      (openspec/changes/split-cli-into-own-repo/), not this repo's
+      current README. Added a "Usage" section example instead, covering
+      `--object`/`--since`, `--actor`/`--format json`, and a short note on
+      `--actor` vs `--caller`, `--limit`, and no `--follow`.
+- [x] 4.2 Add the command to `INSTALL.md` or any generated man page
       (`cmd/hush-hush-cli/man.go`) covering per-command help, if that
       generation doesn't already pick it up automatically - verify by
       running whatever regenerates it and checking `audit-log` appears.
+      Confirmed automatic: `go run ./cmd/hush-hush-cli man /tmp/man-out`
+      produced `hush-hush-cli-audit-log.1` with no code change -
+      `doc.GenManTree` walks `root`'s command tree, and `main.go`'s new
+      `root.AddCommand(newAuditLogCmd())` is already part of it.
+      `INSTALL.md` only references "a man page" generically, nothing
+      per-command to update there.
 
 ## 5. Close out
 
