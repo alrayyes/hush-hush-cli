@@ -39,7 +39,7 @@
       requires `github.com/alrayyes/hush-hush-go/v2 v2.0.3`;
       `internal/client/client.go`'s import updated to the `/v2` path
       (the only file with a real import, per a repo-wide grep). `go build
-  ./...` and `go test ./...` both pass unchanged.
+./...` and `go test ./...` both pass unchanged.
 
 ## 1. internal/client
 
@@ -90,43 +90,69 @@
 
 ## 2. internal/cli
 
-- [ ] 2.1 Add `cli.AuditLog(ctx, cfg, filter)` following the shape of
+- [x] 2.1 Add `cli.AuditLog(ctx, cfg, filter)` following the shape of
       `cli.Get`, returning the matching entries (or an error), and verify
       a unit test covers it calling through to `internal/client` with the
-      filters it was given.
-- [ ] 2.2 Add table formatting (`text/tabwriter`, per design.md) with
+      filters it was given. Done in `internal/cli/audit_log.go` (reuses
+      `client.AuditLogFilter`/`AuditLogEntry` directly at this layer too,
+      the same way `cli.List` already returns `[]client.ObjectMetadata`
+      rather than a redundant third type) and `audit_log_test.go`.
+- [x] 2.2 Add table formatting (`text/tabwriter`, per design.md) with
       columns for timestamp (human-readable, local time), action, object
       ID, caller (`-` for nil, per design.md's second Risk), and IP, and
       verify a unit test checks the rendered output for a fixed sample
-      entry set, including a nil-caller row.
-- [ ] 2.3 Add JSON formatting (`json.NewEncoder`, per design.md) and
+      entry set, including a nil-caller row. **Relocated to
+      `cmd/hush-hush-cli` (task 3.1), not `internal/cli`**: design.md's own
+      Decision says this uses `json.NewEncoder(cmd.OutOrStdout())` - a
+      `*cobra.Command`, which `internal/cli` never imports
+      (`cli.go`'s package doc: cobra-independent). Matches `list.go`'s
+      existing `writeListTable`/`writeListJSON` split exactly; this
+      section's header grouped it under `internal/cli` by mistake when
+      tasks.md was first written, before any of this existed to check
+      against.
+- [x] 2.3 Add JSON formatting (`json.NewEncoder`, per design.md) and
       verify a unit test checks the output round-trips through
       `encoding/json` back to the same entry set, including each entry's
-      `id` field passed through unmodified.
+      `id` field passed through unmodified. Same relocation as 2.2 above -
+      done in `cmd/hush-hush-cli/audit_log.go`.
 
 ## 3. cmd/hush-hush-cli
 
-- [ ] 3.1 Add `audit_log.go` with the `audit-log` command: `--object`,
-      `--token`, `--caller`, `--since`, `--until`, `--format`, `--limit`
+- [x] 3.1 Add `audit_log.go` with the `audit-log` command: `--object`,
+      `--actor`, `--caller`, `--since`, `--until`, `--format`, `--limit`
       flags, cobra `RunE` resolving config and calling `cli.AuditLog`,
       per the shape of `get.go`. Verify `hush-hush-cli audit-log --help`
       lists all seven flags with the descriptions from
-      `specs/audit-log/spec.md`.
-- [ ] 3.2 Parse `--since`/`--until` as RFC3339 (design.md) and verify a
+      `specs/audit-log/spec.md`. **`--actor`, not the `--token` this task
+      originally said** - design.md's new flag-naming Risk: `--token`
+      collides with the root command's own persistent `--token` (the
+      write-path bearer credential) in a way that silently breaks when
+      the flag is given before the subcommand name, confirmed live with a
+      throwaway cobra reproduction before writing this file. Done in
+      `cmd/hush-hush-cli/audit_log.go`; `--help` manually checked and
+      `TestAuditLogHelpListsEverySevenFlag` checks it mechanically.
+      Table/JSON formatting (2.2/2.3 above) live here too.
+- [x] 3.2 Parse `--since`/`--until` as RFC3339 (design.md) and verify a
       test covers a rejected non-RFC3339 value failing before any
-      request is made.
-- [ ] 3.3 Reject a `--format` value other than `table`/`json` before any
+      request is made. Done: `TestAuditLogRejectsAMalformedSinceBeforeAnyRequest`
+      points `--server` at an unreachable address so a request attempt
+      would fail differently, proving the RFC3339 parse error - not a
+      connection error - is what actually surfaces.
+- [x] 3.3 Reject a `--format` value other than `table`/`json` before any
       request is made, and verify a test covers it (spec's "Unknown
-      format value rejected" scenario).
-- [ ] 3.4 Pass `--limit` through to `cli.AuditLog` (unset means "fetch
+      format value rejected" scenario). Done:
+      `TestAuditLogRejectsAnUnknownFormatBeforeAnyRequest`, same
+      unreachable-server technique.
+- [x] 3.4 Pass `--limit` through to `cli.AuditLog` (unset means "fetch
       everything", per design.md's revised paging decision) and verify a
       test covers a limit below and at/above the matching count (spec's
       two limit scenarios) — the actual paging and truncation live in
       `internal/client` (task 1.3); this layer only wires the flag
-      through.
-- [ ] 3.5 Verify a test covers zero filters returning everything the
+      through. Done: `TestAuditLogLimitBelowTheMatchingCountPrintsOnlyThatMany`
+      and `TestAuditLogLimitAtOrAboveTheMatchingCountPrintsEveryEntry`.
+- [x] 3.5 Verify a test covers zero filters returning everything the
       fake server has, subject only to `--limit` (spec's "No filters
-      returns everything" scenario).
+      returns everything" scenario). Done: `TestAuditLogNoFiltersReturnsEverything`.
 
 ## 4. Docs
 

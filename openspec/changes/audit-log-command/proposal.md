@@ -14,14 +14,16 @@ web UI. Tracked here as alrayyes/hush-hush-cli#100.
 
 ## What Changes
 
-- New `hush-hush-cli audit-log` command with `--object`, `--token`,
+- New `hush-hush-cli audit-log` command with `--object`, `--actor`,
   `--caller`, `--since`, `--until`, `--format table|json`, and `--limit`
   flags. Filters combine with AND, mirroring the server's `object_id`/
   `caller`/`from`/`to` query params (already supported by
   `hush-hush-go`'s `QueryAuditLog`/`AuditLogFilter`) plus the new
-  actor/token filter the server is adding. No `--follow`/tail mode — this
-  is a bounded query, not a live stream, matching `gh`'s own `audit-log`
-  command shape (the server-side design doc's own cited precedent).
+  actor/token filter the server is adding. `--actor`, not the originally
+  planned `--token` — see design.md's flag-naming Risk, added during
+  implementation. No `--follow`/tail mode — this is a bounded query, not
+  a live stream, matching `gh`'s own `audit-log` command shape (the
+  server-side design doc's own cited precedent).
 - Default output is a human-readable table with resolved (not raw
   epoch/RFC3339) timestamps; `--format json` prints the entries as JSON.
 - `--limit N` maps to the server's own `limit` query parameter (capped at
