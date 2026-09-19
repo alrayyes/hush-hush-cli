@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.6.0...v1.7.0) (2026-09-19)
+
+
+### Features
+
+* **audit-log:** add the audit-log command ([#103](https://github.com/alrayyes/hush-hush-cli/issues/103)) ([983fb77](https://github.com/alrayyes/hush-hush-cli/commit/983fb7770058283afcb68c5919ddfdf6e1d08184))
+
 ## [1.6.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.5.4...v1.6.0) (2026-09-18)
 
 
