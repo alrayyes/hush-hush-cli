@@ -179,8 +179,26 @@
 
 ## 5. Close out
 
-- [ ] 5.1 Run `go test ./...` and confirm it passes with the new tests
-      included.
+- [x] 5.0 Not in the original plan: added
+      `TestContainerAuditLogReturnsRecordedEntries` to
+      `integration/container_test.go` - every other endpoint
+      `internal/testserver`'s fake implements has a real-server fidelity
+      check there (`rules/go-test.md`: "The container/integration layer
+      uses testcontainers-go"), and this fake's own filtering/pagination
+      logic (task 1.1) was written against `api/openapi.yaml` read
+      directly, not against a live server, same risk design.md's paging
+      Risk already flagged for the SDK. First run against a stale locally
+      cached `ghcr.io/alrayyes/hush-hush:latest` (pulled the day before,
+      predating alrayyes/hush-hush#214/#215) failed with `id` missing
+      from the response entirely - alarming until `docker pull` refreshed
+      the tag and it passed; not a real server bug, but worth recording
+      since Docker doesn't refresh a `:latest` tag on its own and this
+      cost real time to chase down.
+- [x] 5.1 Run `go test ./...` and confirm it passes with the new tests
+      included. Also ran with `-race` (clean) and
+      `go test -tags=integration ./integration/...` against the real,
+      freshly pulled `ghcr.io/alrayyes/hush-hush:latest` (all pass, see
+      5.0).
 - [ ] 5.2 Open the pull request referencing `Closes #100`
       (alrayyes/hush-hush-cli#100), linking alrayyes/hush-hush#214,
       alrayyes/hush-hush#215, and alrayyes/hush-hush-go#74 (plus whatever
