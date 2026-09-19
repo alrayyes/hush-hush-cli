@@ -147,6 +147,38 @@ func TestContainerInjectGetUpdateDeleteRoundTrip(t *testing.T) {
 	require.ErrorIs(t, err, client.ErrNotFound)
 }
 
+// TestContainerListReturnsInjectedObjects proves List's real-server round
+// trip - internal/testserver's fake is what the rest of this repo's tests
+// exercise, this is the check on the fake's own fidelity for the endpoint
+// hush-hush#188/#189 added.
+func TestContainerListReturnsInjectedObjects(t *testing.T) {
+	identity, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
+
+	writeCfg := cli.Config{Server: containerServer, Token: containerToken}
+
+	require.NoError(t, cli.Inject(t.Context(), writeCfg, "hush_hush_cli_integration_test_list", []byte("v"),
+		[]string{identity.Recipient().String()}, []string{"homelab/vps-docker"}, "list integration test"))
+	t.Cleanup(func() {
+		_ = cli.Delete(t.Context(), writeCfg, "hush_hush_cli_integration_test_list")
+	})
+
+	objects, err := cli.List(t.Context(), writeCfg)
+	require.NoError(t, err)
+
+	var found bool
+	for _, obj := range objects {
+		if obj.ID != "hush_hush_cli_integration_test_list" {
+			continue
+		}
+
+		found = true
+		require.Equal(t, []string{"homelab/vps-docker"}, obj.UsedBy)
+		require.Equal(t, "list integration test", obj.Description)
+	}
+	require.True(t, found, "injected object not present in list")
+}
+
 // TestContainerRejectsBadToken proves the real server's 401 semantics map
 // through internal/client the same way internal/testserver's fake already
 // does - the fake's fidelity is exactly the thing this package exists to
