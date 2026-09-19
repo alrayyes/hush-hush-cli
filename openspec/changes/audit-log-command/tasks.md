@@ -2,28 +2,48 @@
 
 ## 0. Unblock
 
-- [ ] 0.1 Confirm alrayyes/hush-hush#214 has merged to `hush-hush`'s main
-      and its `api/openapi.yaml` carries the actor/token filter; confirm
-      alrayyes/hush-hush-go#74 has shipped a released `hush-hush-go`
-      version exposing it on `AuditLogFilter`. Do not start section 1
-      before both are true.
-- [ ] 0.2 Re-read the merged `hush-hush` spec's actual actor/token
-      parameter name/type and `hush-hush-go`#74's resulting
-      `AuditLogFilter` field, and update this file's remaining tasks (and
-      `specs/audit-log/spec.md` if the flag mapping changed) if either
-      differs from this change's assumption of a single `--token` value
-      mapping to a single filter field (design.md's first Risk).
+- [ ] 0.1 Confirm alrayyes/hush-hush#214 (actor/token filter, merged
+      2026-09-19) and alrayyes/hush-hush#215 (cursor pagination, merged
+      2026-09-19) are both reflected in `hush-hush-go`'s SDK — a released
+      version exposing `AuditLogFilter.Actor` (or equivalent) plus
+      `After`/`Limit`, and `id` on `AuditLogEntry`. hush-hush-go#74 tracks
+      the actor/token half; confirm whatever regen picks up #215's
+      pagination has also shipped, filing or linking that tracking issue
+      here if none exists yet. Do not start section 1 before all of this
+      is true.
+- [ ] 0.2 Re-read the merged `hush-hush` spec's actual actor/token and
+      pagination parameter names/types and the resulting `AuditLogFilter`/
+      `AuditLogEntry` fields in the shipped `hush-hush-go` version, and
+      update this file's remaining tasks (and `specs/audit-log/spec.md` if
+      the flag mapping changed) if any differ from this change's
+      assumptions: a single `--token` value mapping to a single filter
+      field (design.md's first Risk), and `after`/`limit` mapping onto
+      `AuditLogFilter` the way design.md's paging decision assumes
+      (design.md's new pagination Risk).
 - [ ] 0.3 Bump this repo's `go.mod` to the released `hush-hush-go` version
       from 0.2, and verify `go build ./...` succeeds.
 
 ## 1. internal/client
 
-- [ ] 1.1 Add an `AuditLogFilter`-equivalent type and `QueryAuditLog`
+- [ ] 1.1 Extend `internal/testserver`'s `/audit-log` fake to accept
+      `after`/`limit` query params and stamp each fake entry with a
+      strictly increasing `id`, matching `api/openapi.yaml`'s shape, so
+      the pagination tests below don't need the real server.
+- [ ] 1.2 Add an `AuditLogFilter`-equivalent type and `QueryAuditLog`
       method to `internal/client` wrapping the SDK's own (per this
       repo's CLAUDE.md: talk to hush-hush-go, not raw HTTP), and verify a
       unit test against `internal/testserver`'s fake covers object,
-      caller, since, until and token filters combining with AND.
-- [ ] 1.2 Verify a unit test covers the server error path (unknown
+      caller, actor/token, since and until filters combining with AND.
+- [ ] 1.3 Implement the paging loop from design.md's revised `--limit`
+      decision: request the first page with the server's `limit` set
+      from the requested count (capped at 500); if more is needed — the
+      requested count exceeds 500, or no limit was requested at all —
+      keep requesting with `after` set to the previous page's last
+      entry's `id` until satisfied or a short page comes back. Verify
+      unit tests cover a multi-page fetch (more matching entries than one
+      page holds) returning every entry in order, and a single-page
+      fetch issuing exactly one request.
+- [ ] 1.4 Verify a unit test covers the server error path (unknown
       filter value) mapping to `internal/client`'s existing sentinel/
       `ErrUnexpectedStatus` error shape, not a raw HTTP error.
 
@@ -40,7 +60,8 @@
       entry set, including a nil-caller row.
 - [ ] 2.3 Add JSON formatting (`json.NewEncoder`, per design.md) and
       verify a unit test checks the output round-trips through
-      `encoding/json` back to the same entry set.
+      `encoding/json` back to the same entry set, including each entry's
+      `id` field passed through unmodified.
 
 ## 3. cmd/hush-hush-cli
 
@@ -56,10 +77,12 @@
 - [ ] 3.3 Reject a `--format` value other than `table`/`json` before any
       request is made, and verify a test covers it (spec's "Unknown
       format value rejected" scenario).
-- [ ] 3.4 Implement client-side `--limit` truncation on the returned
-      entry slice (design.md - server has no limit param) and verify a
+- [ ] 3.4 Pass `--limit` through to `cli.AuditLog` (unset means "fetch
+      everything", per design.md's revised paging decision) and verify a
       test covers a limit below and at/above the matching count (spec's
-      two limit scenarios).
+      two limit scenarios) — the actual paging and truncation live in
+      `internal/client` (task 1.3); this layer only wires the flag
+      through.
 - [ ] 3.5 Verify a test covers zero filters returning everything the
       fake server has, subject only to `--limit` (spec's "No filters
       returns everything" scenario).
@@ -79,8 +102,9 @@
 - [ ] 5.1 Run `go test ./...` and confirm it passes with the new tests
       included.
 - [ ] 5.2 Open the pull request referencing `Closes #100`
-      (alrayyes/hush-hush-cli#100), linking alrayyes/hush-hush#214 and
-      alrayyes/hush-hush-go#74 as the unblocking work, per
+      (alrayyes/hush-hush-cli#100), linking alrayyes/hush-hush#214,
+      alrayyes/hush-hush#215, and alrayyes/hush-hush-go#74 (plus whatever
+      issue tracks #215's SDK regen) as the unblocking work, per
       `skills/pull-request/`.
 - [ ] 5.3 Archive this OpenSpec change (`openspec-archive-change`) once
       the pull request has merged.

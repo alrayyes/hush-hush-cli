@@ -24,10 +24,14 @@ web UI. Tracked here as alrayyes/hush-hush-cli#100.
   command shape (the server-side design doc's own cited precedent).
 - Default output is a human-readable table with resolved (not raw
   epoch/RFC3339) timestamps; `--format json` prints the entries as JSON.
-- `--limit N` truncates the printed/returned set to at most N entries
-  client-side (the server's `/audit-log` has no pagination parameters —
-  `QueryAuditLog` always returns the full matching result set in one
-  call).
+- `--limit N` maps to the server's own `limit` query parameter (capped at
+  500 per page, default 50) instead of truncating a client-fetched,
+  unpaginated response — the server gained real cursor pagination in
+  alrayyes/hush-hush#215 (merged 2026-09-19), after this proposal's first
+  draft assumed `/audit-log` had none. With no `--limit`, or one above a
+  single page, `internal/client`'s wrapper pages forward via `after` (the
+  previous page's last entry's own new `id` field) until satisfied or a
+  short page signals nothing is left — see design.md's revised decision.
 
 ## Capabilities
 
@@ -57,7 +61,10 @@ resolution, not commands; this doesn't change how config is loaded.
   2. alrayyes/hush-hush-go#74 (regenerating this repo's SDK dependency
      once #214's spec lands) — `hush-hush-go` doesn't expose an
      actor/token filter today; only `ObjectID`/`Caller`/`From`/`To` exist
-     on `AuditLogFilter`.
+     on `AuditLogFilter`. The same regen (or a follow-up one — no tracking
+     issue exists yet as of this update) also needs to pick up
+     alrayyes/hush-hush#215's cursor pagination (`after`/`limit` on the
+     request, `id` on `AuditLogEntry`), merged after #74 was filed.
 
   The `--object`/`--caller`/`--since`/`--until` subset of this command
   could technically be built against `hush-hush-go`'s SDK as it stands
