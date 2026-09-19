@@ -199,10 +199,17 @@
       `go test -tags=integration ./integration/...` against the real,
       freshly pulled `ghcr.io/alrayyes/hush-hush:latest` (all pass, see
       5.0).
-- [ ] 5.2 Open the pull request referencing `Closes #100`
+- [x] 5.2 Open the pull request referencing `Closes #100`
       (alrayyes/hush-hush-cli#100), linking alrayyes/hush-hush#214,
       alrayyes/hush-hush#215, and alrayyes/hush-hush-go#74 (plus whatever
       issue tracks #215's SDK regen) as the unblocking work, per
-      `skills/pull-request/`.
-- [ ] 5.3 Archive this OpenSpec change (`openspec-archive-change`) once
-      the pull request has merged.
+      `skills/pull-request/`. Done: #103, merged by alrayyes as
+      commit 983fb77. One more fix needed after opening it: CI's
+      `nix-flake` job failed on a `vendorHash` mismatch in `flake.nix` -
+      the hash pins the exact `go.mod`/`go.sum` dependency set, which the
+      `hush-hush-go` v2.0.3 bump (task 0.3) changed. Updated to the value
+      the failed build's own error reported
+      (`rules/packaging.md`: "resolved by actually building, not
+      guessed"), pushed as a follow-up commit, all checks green after.
+- [x] 5.3 Archive this OpenSpec change (`openspec-archive-change`) once
+      the pull request has merged. Doing this now.
