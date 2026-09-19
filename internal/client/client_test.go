@@ -9,8 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func ptr[T any](v T) *T { return &v }
-
 func TestQueryAuditLogFiltersCombineWithAND(t *testing.T) {
 	t.Parallel()
 
@@ -20,39 +18,39 @@ func TestQueryAuditLogFiltersCombineWithAND(t *testing.T) {
 
 	// Matches every filter below.
 	store.RecordAuditEntry(testserver.AuditLogEntry{
-		ObjectID: "secret-1", Action: "read", Caller: ptr("ci-runner"),
-		ActorID: ptr("tok_abc"), IP: "10.0.0.1", Timestamp: base.Add(time.Hour),
+		ObjectID: "secret-1", Action: "read", Caller: new("ci-runner"),
+		ActorID: new("tok_abc"), IP: "10.0.0.1", Timestamp: base.Add(time.Hour),
 	})
 	// Wrong object.
 	store.RecordAuditEntry(testserver.AuditLogEntry{
-		ObjectID: "secret-2", Action: "read", Caller: ptr("ci-runner"),
-		ActorID: ptr("tok_abc"), IP: "10.0.0.1", Timestamp: base.Add(time.Hour),
+		ObjectID: "secret-2", Action: "read", Caller: new("ci-runner"),
+		ActorID: new("tok_abc"), IP: "10.0.0.1", Timestamp: base.Add(time.Hour),
 	})
 	// Wrong caller.
 	store.RecordAuditEntry(testserver.AuditLogEntry{
-		ObjectID: "secret-1", Action: "read", Caller: ptr("other-caller"),
-		ActorID: ptr("tok_abc"), IP: "10.0.0.1", Timestamp: base.Add(time.Hour),
+		ObjectID: "secret-1", Action: "read", Caller: new("other-caller"),
+		ActorID: new("tok_abc"), IP: "10.0.0.1", Timestamp: base.Add(time.Hour),
 	})
 	// Wrong actor.
 	store.RecordAuditEntry(testserver.AuditLogEntry{
-		ObjectID: "secret-1", Action: "read", Caller: ptr("ci-runner"),
-		ActorID: ptr("tok_xyz"), IP: "10.0.0.1", Timestamp: base.Add(time.Hour),
+		ObjectID: "secret-1", Action: "read", Caller: new("ci-runner"),
+		ActorID: new("tok_xyz"), IP: "10.0.0.1", Timestamp: base.Add(time.Hour),
 	})
 	// Outside the since/until window.
 	store.RecordAuditEntry(testserver.AuditLogEntry{
-		ObjectID: "secret-1", Action: "read", Caller: ptr("ci-runner"),
-		ActorID: ptr("tok_abc"), IP: "10.0.0.1", Timestamp: base.Add(-time.Hour),
+		ObjectID: "secret-1", Action: "read", Caller: new("ci-runner"),
+		ActorID: new("tok_abc"), IP: "10.0.0.1", Timestamp: base.Add(-time.Hour),
 	})
 
 	cl, err := client.New(srv.URL, "")
 	require.NoError(t, err)
 
 	entries, err := cl.QueryAuditLog(t.Context(), client.AuditLogFilter{
-		ObjectID: ptr("secret-1"),
-		Caller:   ptr("ci-runner"),
-		Token:    ptr("tok_abc"),
-		Since:    ptr(base),
-		Until:    ptr(base.Add(2 * time.Hour)),
+		ObjectID: new("secret-1"),
+		Caller:   new("ci-runner"),
+		Token:    new("tok_abc"),
+		Since:    new(base),
+		Until:    new(base.Add(2 * time.Hour)),
 	})
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
@@ -120,7 +118,7 @@ func TestQueryAuditLogRespectsLimitAcrossPages(t *testing.T) {
 	cl, err := client.New(srv.URL, "")
 	require.NoError(t, err)
 
-	entries, err := cl.QueryAuditLog(t.Context(), client.AuditLogFilter{Limit: ptr(600)})
+	entries, err := cl.QueryAuditLog(t.Context(), client.AuditLogFilter{Limit: new(600)})
 	require.NoError(t, err)
 	require.Len(t, entries, 600)
 }
@@ -133,6 +131,6 @@ func TestQueryAuditLogUnexpectedStatusMapsToSentinel(t *testing.T) {
 	cl, err := client.New(srv.URL, "")
 	require.NoError(t, err)
 
-	_, err = cl.QueryAuditLog(t.Context(), client.AuditLogFilter{ObjectID: ptr("Not_Valid!")})
+	_, err = cl.QueryAuditLog(t.Context(), client.AuditLogFilter{ObjectID: new("Not_Valid!")})
 	require.ErrorIs(t, err, client.ErrUnexpectedStatus)
 }

@@ -195,7 +195,7 @@ func (c *Client) QueryAuditLog(ctx context.Context, filter AuditLogFilter) ([]Au
 			}
 		}
 
-		if int32(len(page)) < pageLimit {
+		if len(page) < int(pageLimit) {
 			return result, nil
 		}
 

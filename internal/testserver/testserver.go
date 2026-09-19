@@ -213,37 +213,47 @@ func (s *Store) QueryAuditLog(_ context.Context, filter AuditLogFilter) ([]Audit
 
 	result := make([]AuditLogEntry, 0, limit)
 	for _, e := range s.auditLog {
-		if filter.ObjectID != nil && e.ObjectID != *filter.ObjectID {
-			continue
-		}
-
-		if filter.Caller != nil && (e.Caller == nil || *e.Caller != *filter.Caller) {
-			continue
-		}
-
-		if filter.Actor != nil && (e.ActorID == nil || *e.ActorID != *filter.Actor) {
-			continue
-		}
-
-		if filter.From != nil && e.Timestamp.Before(*filter.From) {
-			continue
-		}
-
-		if filter.To != nil && e.Timestamp.After(*filter.To) {
-			continue
-		}
-
-		if filter.After != nil && e.ID <= *filter.After {
+		if !auditLogEntryMatches(e, filter) {
 			continue
 		}
 
 		result = append(result, e)
-		if int32(len(result)) >= limit {
+		if len(result) >= int(limit) {
 			break
 		}
 	}
 
 	return result, nil
+}
+
+// auditLogEntryMatches reports whether e satisfies every filter field
+// that's set - filters combine with AND (api/openapi.yaml).
+func auditLogEntryMatches(e AuditLogEntry, filter AuditLogFilter) bool {
+	if filter.ObjectID != nil && e.ObjectID != *filter.ObjectID {
+		return false
+	}
+
+	if filter.Caller != nil && (e.Caller == nil || *e.Caller != *filter.Caller) {
+		return false
+	}
+
+	if filter.Actor != nil && (e.ActorID == nil || *e.ActorID != *filter.Actor) {
+		return false
+	}
+
+	if filter.From != nil && e.Timestamp.Before(*filter.From) {
+		return false
+	}
+
+	if filter.To != nil && e.Timestamp.After(*filter.To) {
+		return false
+	}
+
+	if filter.After != nil && e.ID <= *filter.After {
+		return false
+	}
+
+	return true
 }
 
 // CreateWriteToken issues a fresh write token valid for ttl. The first

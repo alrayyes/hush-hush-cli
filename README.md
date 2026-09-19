@@ -86,7 +86,7 @@ hush-hush-cli audit-log --actor tok_abc123 --format json | jq '.[].action'
 
 No credential is required - reading the audit trail needs no write token,
 unlike `list`. `--actor` restricts to entries authenticated by a specific
-verified actor (a token id, or the admin account's own actor id);
+verified actor (a token ID, or the admin account's own actor ID);
 `--caller` restricts to entries recorded with a given self-presented
 `--caller` value instead, which - unlike `--actor` - is never verified.
 `--limit N` caps how many entries print, regardless of how many pages it
