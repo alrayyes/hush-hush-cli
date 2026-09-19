@@ -15,8 +15,8 @@ github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA
 github.com/RaveNoX/go-jsoncommentstrip v1.0.0/go.mod h1:78ihd09MekBnJnxpICcwzCMzGrKSKYe4AqU6PDYYpjk=
 github.com/adrg/xdg v0.5.3 h1:xRnxJXne7+oWDatRhR1JLnvuccuIeCoBu2rtuLqQB78=
 github.com/adrg/xdg v0.5.3/go.mod h1:nlTsY+NNiCBGCK2tpm09vRqfVzrc2fLmXGpBLF0zlTQ=
-github.com/alrayyes/hush-hush-go v1.3.0 h1:Zj5Na1yTjN+NGS6slNcMKFcdXkfl/ZHx8aVkdPq+2Qc=
-github.com/alrayyes/hush-hush-go v1.3.0/go.mod h1:UY7SG5MqNoG/LLfWliEZao+A1RxJ/rdl7A1NORmRCZs=
+github.com/alrayyes/hush-hush-go/v2 v2.0.3 h1:tXXWaSuLxF9TB2jpXsy+K7Fiq7zFXzShZTPel+sDCac=
+github.com/alrayyes/hush-hush-go/v2 v2.0.3/go.mod h1:bb0WXnjSBacYjYpt/pa0fJJvT/Zg1EWDxVhGDPyA740=
 github.com/apapsch/go-jsonmerge/v2 v2.0.0 h1:axGnT1gRIfimI7gJifB699GoE/oq+F2MU7Dml6nw9rQ=
 github.com/apapsch/go-jsonmerge/v2 v2.0.0/go.mod h1:lvDnEdqiQrp0O42VQGgmlKpxL1AP2+08jFMw88y4klk=
 github.com/bitfield/gotestdox v0.2.2 h1:x6RcPAbBbErKLnapz1QeAlf3ospg8efBsedU93CDsnE=

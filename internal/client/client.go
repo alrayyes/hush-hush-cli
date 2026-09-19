@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"net/http"
 
-	hushhush "github.com/alrayyes/hush-hush-go"
+	hushhush "github.com/alrayyes/hush-hush-go/v2"
 )
 
 // Sentinel errors mapped from the server's documented status codes -

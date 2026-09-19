@@ -2,7 +2,7 @@
 
 ## 0. Unblock
 
-- [ ] 0.1 Confirm alrayyes/hush-hush#214 (actor/token filter, merged
+- [x] 0.1 Confirm alrayyes/hush-hush#214 (actor/token filter, merged
       2026-09-19) and alrayyes/hush-hush#215 (cursor pagination, merged
       2026-09-19) are both reflected in `hush-hush-go`'s SDK — a released
       version exposing `AuditLogFilter.Actor` (or equivalent) plus
@@ -10,8 +10,10 @@
       the actor/token half; confirm whatever regen picks up #215's
       pagination has also shipped, filing or linking that tracking issue
       here if none exists yet. Do not start section 1 before all of this
-      is true.
-- [ ] 0.2 Re-read the merged `hush-hush` spec's actual actor/token and
+      is true. Confirmed: `hush-hush-go#74` closed by PR #91 (merged
+      2026-09-19), released as `hush-hush-go` v2.0.3 (via the
+      `release-please` PR alrayyes/hush-hush-go#92).
+- [x] 0.2 Re-read the merged `hush-hush` spec's actual actor/token and
       pagination parameter names/types and the resulting `AuditLogFilter`/
       `AuditLogEntry` fields in the shipped `hush-hush-go` version, and
       update this file's remaining tasks (and `specs/audit-log/spec.md` if
@@ -19,9 +21,25 @@
       assumptions: a single `--token` value mapping to a single filter
       field (design.md's first Risk), and `after`/`limit` mapping onto
       `AuditLogFilter` the way design.md's paging decision assumes
-      (design.md's new pagination Risk).
-- [ ] 0.3 Bump this repo's `go.mod` to the released `hush-hush-go` version
-      from 0.2, and verify `go build ./...` succeeds.
+      (design.md's new pagination Risk). Confirmed against `auditlog.go` and
+      `internal/genclient/client.gen.go` in `hush-hush-go` v2.0.3:
+      `AuditLogFilter{ObjectID, Caller, Actor, From, To, After, Limit}`
+      matches design.md's assumed shape exactly — `--token` maps 1:1 onto
+      `Actor *string`, `--since`/`--until` onto `From`/`To *time.Time`,
+      paging onto `After *int64`/`Limit *int32`. `AuditLogEntry` gained
+      `Id int64`, `ActorId *string`, `ActorType *AuditLogEntryActorType`
+      alongside the existing `Action`, `Caller`, `Ip`, `ObjectId`,
+      `Timestamp` — no task or spec update needed. One thing design.md
+      didn't anticipate: `hush-hush-go` cut a v2 in the same release run
+      (alrayyes/hush-hush-go#88, semantic import versioning), so the
+      module and import path are now `github.com/alrayyes/hush-hush-go/v2`,
+      not a same-path minor bump. Handled in 0.3 below.
+- [x] 0.3 Bump this repo's `go.mod` to the released `hush-hush-go` version
+      from 0.2, and verify `go build ./...` succeeds. Done: `go.mod` now
+      requires `github.com/alrayyes/hush-hush-go/v2 v2.0.3`;
+      `internal/client/client.go`'s import updated to the `/v2` path
+      (the only file with a real import, per a repo-wide grep). `go build
+    ./...` and `go test ./...` both pass unchanged.
 
 ## 1. internal/client
 
