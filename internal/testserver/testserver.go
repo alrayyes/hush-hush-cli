@@ -15,9 +15,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -32,6 +36,13 @@ var ErrNotFound = errors.New("object not found")
 // stored.
 var ErrAlreadyExists = errors.New("object already exists")
 
+// ErrInvalidFilter is returned by Store.QueryAuditLog for a filter value
+// the real server would reject with a 400 - matching object_id's own
+// pattern (api/openapi.yaml's ObjectId schema).
+var ErrInvalidFilter = errors.New("invalid filter")
+
+var objectIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
+
 // Object is a stored object's current state.
 type Object struct {
 	Value       []byte
@@ -42,9 +53,11 @@ type Object struct {
 // Store is an in-memory object store plus write-token issuance, backing a
 // Server started by New. Safe for concurrent use.
 type Store struct {
-	mu      sync.Mutex
-	objects map[string]Object
-	tokens  map[string]time.Time
+	mu       sync.Mutex
+	objects  map[string]Object
+	tokens   map[string]time.Time
+	auditLog []AuditLogEntry
+	auditSeq int64
 }
 
 func newStore() *Store {
@@ -131,6 +144,108 @@ func (s *Store) ListObjects(_ context.Context, usedByFilter string) ([]ObjectMet
 	return result, nil
 }
 
+// AuditLogEntry mirrors hush-hush's GET /audit-log response shape
+// (api/openapi.yaml's AuditLogEntry schema), oldest-first.
+type AuditLogEntry struct {
+	ID        int64     `json:"id"`
+	ObjectID  string    `json:"object_id"`
+	Action    string    `json:"action"`
+	Timestamp time.Time `json:"timestamp"`
+	Caller    *string   `json:"caller,omitempty"`
+	IP        string    `json:"ip"`
+	ActorType *string   `json:"actor_type,omitempty"`
+	ActorID   *string   `json:"actor_id,omitempty"`
+}
+
+// AuditLogFilter narrows Store.QueryAuditLog - mirrors GET /audit-log's own
+// query parameters (api/openapi.yaml). Filters combine with AND.
+type AuditLogFilter struct {
+	ObjectID *string
+	Caller   *string
+	Actor    *string
+	From     *time.Time
+	To       *time.Time
+	After    *int64
+	Limit    *int32
+}
+
+// RecordAuditEntry appends entry to the audit log, assigning it the next
+// strictly increasing id and, if Timestamp is zero, the current time.
+// Tests seed entries this way rather than through create/get/update/delete
+// themselves, so a filter/pagination test controls exactly what exists
+// without needing a matching object round trip for every row.
+func (s *Store) RecordAuditEntry(entry AuditLogEntry) AuditLogEntry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.auditSeq++
+	entry.ID = s.auditSeq
+
+	if entry.Timestamp.IsZero() {
+		entry.Timestamp = time.Now()
+	}
+
+	s.auditLog = append(s.auditLog, entry)
+
+	return entry
+}
+
+// QueryAuditLog returns entries matching filter, oldest first, one page at
+// a time - default page size 50, capped at 500, matching
+// api/openapi.yaml's own defaults. Returns ErrInvalidFilter for an
+// ObjectID that doesn't match the real server's id pattern.
+func (s *Store) QueryAuditLog(_ context.Context, filter AuditLogFilter) ([]AuditLogEntry, error) {
+	if filter.ObjectID != nil && !objectIDPattern.MatchString(*filter.ObjectID) {
+		return nil, fmt.Errorf("%w: object_id %q", ErrInvalidFilter, *filter.ObjectID)
+	}
+
+	limit := int32(50)
+	if filter.Limit != nil {
+		limit = *filter.Limit
+	}
+
+	if limit < 1 || limit > 500 {
+		return nil, fmt.Errorf("%w: limit %d out of range [1, 500]", ErrInvalidFilter, limit)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	result := make([]AuditLogEntry, 0, limit)
+	for _, e := range s.auditLog {
+		if filter.ObjectID != nil && e.ObjectID != *filter.ObjectID {
+			continue
+		}
+
+		if filter.Caller != nil && (e.Caller == nil || *e.Caller != *filter.Caller) {
+			continue
+		}
+
+		if filter.Actor != nil && (e.ActorID == nil || *e.ActorID != *filter.Actor) {
+			continue
+		}
+
+		if filter.From != nil && e.Timestamp.Before(*filter.From) {
+			continue
+		}
+
+		if filter.To != nil && e.Timestamp.After(*filter.To) {
+			continue
+		}
+
+		if filter.After != nil && e.ID <= *filter.After {
+			continue
+		}
+
+		result = append(result, e)
+		if int32(len(result)) >= limit {
+			break
+		}
+	}
+
+	return result, nil
+}
+
 // CreateWriteToken issues a fresh write token valid for ttl. The first
 // return value mirrors hush-hush's own store.CreateWriteToken (an issued
 // token's id); this fake has no separate use for it.
@@ -208,10 +323,10 @@ type errorBody struct {
 	Error string `json:"error"`
 }
 
-// newMux wires the same five /objects endpoints internal/client actually
-// calls (api/openapi.yaml) - not GET /objects/{id}/used-by, GET
-// /audit-log, or GET /healthz, none of which internal/client's Client
-// exposes a method for.
+// newMux wires the six /objects and /audit-log endpoints internal/client
+// actually calls (api/openapi.yaml) - not GET /objects/{id}/used-by or GET
+// /healthz, neither of which internal/client's Client exposes a method
+// for.
 func newMux(s *Store) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /objects", requireWriteToken(s, handleCreateObject(s)))
@@ -219,6 +334,7 @@ func newMux(s *Store) *http.ServeMux {
 	mux.HandleFunc("GET /objects/{id}", handleGetObject(s))
 	mux.HandleFunc("PUT /objects/{id}", requireWriteToken(s, handleUpdateObject(s)))
 	mux.HandleFunc("DELETE /objects/{id}", requireWriteToken(s, handleDeleteObject(s)))
+	mux.HandleFunc("GET /audit-log", handleQueryAuditLog(s))
 
 	return mux
 }
@@ -341,6 +457,83 @@ func handleDeleteObject(s *Store) http.HandlerFunc {
 
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+// handleQueryAuditLog is unauthenticated, matching hush-hush-go's own
+// QueryAuditLog doc comment ("No credential is required").
+func handleQueryAuditLog(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		filter, err := parseAuditLogFilter(r.URL.Query())
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+
+			return
+		}
+
+		entries, err := s.QueryAuditLog(r.Context(), filter)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+
+			return
+		}
+
+		writeJSON(w, http.StatusOK, entries)
+	}
+}
+
+func parseAuditLogFilter(q url.Values) (AuditLogFilter, error) {
+	var filter AuditLogFilter
+
+	if v := q.Get("object_id"); v != "" {
+		filter.ObjectID = &v
+	}
+
+	if v := q.Get("caller"); v != "" {
+		filter.Caller = &v
+	}
+
+	if v := q.Get("actor"); v != "" {
+		filter.Actor = &v
+	}
+
+	if v := q.Get("from"); v != "" {
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			return filter, fmt.Errorf("from: %w", err)
+		}
+
+		filter.From = &t
+	}
+
+	if v := q.Get("to"); v != "" {
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			return filter, fmt.Errorf("to: %w", err)
+		}
+
+		filter.To = &t
+	}
+
+	if v := q.Get("after"); v != "" {
+		after, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return filter, fmt.Errorf("after: %w", err)
+		}
+
+		filter.After = &after
+	}
+
+	if v := q.Get("limit"); v != "" {
+		limit, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			return filter, fmt.Errorf("limit: %w", err)
+		}
+
+		limit32 := int32(limit)
+		filter.Limit = &limit32
+	}
+
+	return filter, nil
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

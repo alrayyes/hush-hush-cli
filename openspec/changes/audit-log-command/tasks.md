@@ -39,20 +39,30 @@
       requires `github.com/alrayyes/hush-hush-go/v2 v2.0.3`;
       `internal/client/client.go`'s import updated to the `/v2` path
       (the only file with a real import, per a repo-wide grep). `go build
-    ./...` and `go test ./...` both pass unchanged.
+  ./...` and `go test ./...` both pass unchanged.
 
 ## 1. internal/client
 
-- [ ] 1.1 Extend `internal/testserver`'s `/audit-log` fake to accept
+- [x] 1.1 Extend `internal/testserver`'s `/audit-log` fake to accept
       `after`/`limit` query params and stamp each fake entry with a
       strictly increasing `id`, matching `api/openapi.yaml`'s shape, so
-      the pagination tests below don't need the real server.
-- [ ] 1.2 Add an `AuditLogFilter`-equivalent type and `QueryAuditLog`
+      the pagination tests below don't need the real server. Done: the
+      fake had no `/audit-log` route at all yet (its own doc comment said
+      so), so this added the route, `Store.AuditLogEntry`/
+      `Store.AuditLogFilter` types, `Store.RecordAuditEntry` (test seeding)
+      and `Store.QueryAuditLog` (AND-combined filtering, `after`/`limit`
+      paging, default 50/max 500 per `api/openapi.yaml`), plus an
+      `object_id` pattern check mirroring the real server's `ObjectId`
+      schema so an invalid value 400s the same way.
+- [x] 1.2 Add an `AuditLogFilter`-equivalent type and `QueryAuditLog`
       method to `internal/client` wrapping the SDK's own (per this
       repo's CLAUDE.md: talk to hush-hush-go, not raw HTTP), and verify a
       unit test against `internal/testserver`'s fake covers object,
       caller, actor/token, since and until filters combining with AND.
-- [ ] 1.3 Implement the paging loop from design.md's revised `--limit`
+      Done in `internal/client/client.go` (`AuditLogFilter`/`AuditLogEntry`/
+      `QueryAuditLog`) and `client_test.go`
+      (`TestQueryAuditLogFiltersCombineWithAND`).
+- [x] 1.3 Implement the paging loop from design.md's revised `--limit`
       decision: request the first page with the server's `limit` set
       from the requested count (capped at 500); if more is needed — the
       requested count exceeds 500, or no limit was requested at all —
@@ -60,10 +70,23 @@
       entry's `id` until satisfied or a short page comes back. Verify
       unit tests cover a multi-page fetch (more matching entries than one
       page holds) returning every entry in order, and a single-page
-      fetch issuing exactly one request.
-- [ ] 1.4 Verify a unit test covers the server error path (unknown
+      fetch issuing exactly one request. Done: `TestQueryAuditLogPagesThroughEveryEntryInOrder`
+      (700 entries, more than the 500-per-page cap) and
+      `TestQueryAuditLogRespectsLimitAcrossPages` cover the multi-page
+      path; `TestQueryAuditLogSinglePageReturnsAllMatchingEntries` covers
+      the single-page path by outcome (all 10 seeded entries come back)
+      rather than literally counting requests — `internal/client`'s
+      `client.New` has no seam to inject a request-counting transport,
+      and adding one solely for this assertion isn't worth the extra
+      surface; the paging loop's own short-page-stops logic (verified by
+      the multi-page tests) is what makes "one request when everything
+      fits in a page" true.
+- [x] 1.4 Verify a unit test covers the server error path (unknown
       filter value) mapping to `internal/client`'s existing sentinel/
-      `ErrUnexpectedStatus` error shape, not a raw HTTP error.
+      `ErrUnexpectedStatus` error shape, not a raw HTTP error. Done:
+      `TestQueryAuditLogUnexpectedStatusMapsToSentinel` (an `--object`
+      value that fails the real server's `ObjectId` pattern, the fake's
+      only implemented 400 case).
 
 ## 2. internal/cli
 

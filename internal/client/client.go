@@ -9,9 +9,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	hushhush "github.com/alrayyes/hush-hush-go/v2"
 )
+
+// auditLogPageMax is the server's own page-size cap (api/openapi.yaml's
+// GET /audit-log limit parameter, max 500).
+const auditLogPageMax = 500
 
 // Sentinel errors mapped from the server's documented status codes -
 // callers match on these rather than inspecting a status code themselves.
@@ -120,6 +125,102 @@ func (c *Client) List(ctx context.Context) ([]ObjectMetadata, error) {
 	}
 
 	return result, nil
+}
+
+// AuditLogEntry is one row of hush-hush's audit trail. JSON tags match
+// api/openapi.yaml's AuditLogEntry shape exactly, since audit-log's
+// --format json output encodes this type directly (design.md).
+type AuditLogEntry struct {
+	ID        int64     `json:"id"`
+	Action    string    `json:"action"`
+	ObjectID  string    `json:"object_id"`
+	Timestamp time.Time `json:"timestamp"`
+	Caller    *string   `json:"caller,omitempty"`
+	IP        string    `json:"ip"`
+	ActorType *string   `json:"actor_type,omitempty"`
+	ActorID   *string   `json:"actor_id,omitempty"`
+}
+
+// AuditLogFilter narrows QueryAuditLog; filters combine with AND. Token
+// maps onto the server's verified actor filter (a token id, or the admin
+// account's own actor id) - named for the CLI's own --token flag rather
+// than the SDK's "actor" vocabulary. Limit caps how many entries in total
+// QueryAuditLog returns across every page it requests, not a single
+// page's size; nil means fetch everything the server has.
+type AuditLogFilter struct {
+	ObjectID *string
+	Caller   *string
+	Token    *string
+	Since    *time.Time
+	Until    *time.Time
+	Limit    *int
+}
+
+// QueryAuditLog returns every entry matching filter, oldest first. It
+// pages through the server's own limit/after cursor rather than
+// truncating one unpaginated response (design.md's paging decision): the
+// first request's limit comes from filter.Limit capped at 500, and
+// further pages are requested with after set to the previous page's last
+// entry's id until filter.Limit entries have been collected or a short
+// page (fewer than requested) signals nothing is left.
+func (c *Client) QueryAuditLog(ctx context.Context, filter AuditLogFilter) ([]AuditLogEntry, error) {
+	pageLimit := int32(auditLogPageMax)
+	if filter.Limit != nil && *filter.Limit > 0 && *filter.Limit < auditLogPageMax {
+		pageLimit = int32(*filter.Limit)
+	}
+
+	var (
+		result []AuditLogEntry
+		after  *int64
+	)
+
+	for {
+		page, err := c.sdk.QueryAuditLog(ctx, hushhush.AuditLogFilter{
+			ObjectID: filter.ObjectID,
+			Caller:   filter.Caller,
+			Actor:    filter.Token,
+			From:     filter.Since,
+			To:       filter.Until,
+			After:    after,
+			Limit:    &pageLimit,
+		})
+		if err != nil {
+			return nil, mapError(err)
+		}
+
+		for _, e := range page {
+			result = append(result, toAuditLogEntry(e))
+			if filter.Limit != nil && len(result) >= *filter.Limit {
+				return result, nil
+			}
+		}
+
+		if int32(len(page)) < pageLimit {
+			return result, nil
+		}
+
+		last := page[len(page)-1].Id
+		after = &last
+	}
+}
+
+func toAuditLogEntry(e hushhush.AuditLogEntry) AuditLogEntry {
+	entry := AuditLogEntry{
+		ID:        e.Id,
+		Action:    string(e.Action),
+		ObjectID:  e.ObjectId,
+		Timestamp: e.Timestamp,
+		Caller:    e.Caller,
+		IP:        e.Ip,
+		ActorID:   e.ActorId,
+	}
+
+	if e.ActorType != nil {
+		actorType := string(*e.ActorType)
+		entry.ActorType = &actorType
+	}
+
+	return entry
 }
 
 func toObjectMetadata(m *hushhush.ObjectMetadata) ObjectMetadata {
