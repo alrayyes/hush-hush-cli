@@ -179,6 +179,54 @@ func TestContainerListReturnsInjectedObjects(t *testing.T) {
 	require.True(t, found, "injected object not present in list")
 }
 
+// TestContainerAuditLogReturnsRecordedEntries proves internal/testserver's
+// hand-written /audit-log fake matches the real server's actual response
+// shape and object_id filtering - the fake's own logic (the ObjectId
+// pattern check, exact-match filtering, from/to bounds) was written
+// against api/openapi.yaml read directly, not against the real server, so
+// this is what actually proves it agrees.
+func TestContainerAuditLogReturnsRecordedEntries(t *testing.T) {
+	identity, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
+
+	writeCfg := cli.Config{Server: containerServer, Token: containerToken}
+	readCfg := cli.Config{Server: containerServer}
+
+	const objectID = "hush_hush_cli_integration_test_audit_log"
+
+	require.NoError(t, cli.Inject(t.Context(), writeCfg, objectID, []byte("v"),
+		[]string{identity.Recipient().String()}, nil, "audit log integration test"))
+	t.Cleanup(func() {
+		_ = cli.Delete(t.Context(), writeCfg, objectID)
+	})
+
+	_, err = cli.Get(t.Context(), readCfg, objectID, []string{identity.String()})
+	require.NoError(t, err)
+
+	oid := objectID
+	entries, err := cli.AuditLog(t.Context(), readCfg, client.AuditLogFilter{ObjectID: &oid})
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(entries), 2, "expected at least the create and read to be recorded")
+
+	var sawCreate, sawRead bool
+
+	for _, e := range entries {
+		require.Equal(t, objectID, e.ObjectID)
+		require.NotZero(t, e.ID)
+		require.NotEmpty(t, e.IP)
+
+		switch e.Action {
+		case "create":
+			sawCreate = true
+		case "read":
+			sawRead = true
+		}
+	}
+
+	require.True(t, sawCreate, "expected a create entry")
+	require.True(t, sawRead, "expected a read entry")
+}
+
 // TestContainerRejectsBadToken proves the real server's 401 semantics map
 // through internal/client the same way internal/testserver's fake already
 // does - the fake's fidelity is exactly the thing this package exists to

@@ -58,8 +58,10 @@ Timestamp time.Time}`, oldest-first, matching the server's shape before
 
 - **Ship the full command in one piece, not the unblocked subset first.**
   `--object`/`--caller`/`--since`/`--until` could be built today against
-  `hush-hush-go` as it stands; `--token` cannot. Considered shipping the
-  first four now and adding `--token` in a follow-up once #214/#74 land.
+  `hush-hush-go` as it stands; `--actor` (the actor/token filter, named
+  `--token` when this bullet was first written) cannot. Considered
+  shipping the first four now and adding it in a follow-up once #214/#74
+  land.
   Rejected: that would ship a command whose flag surface visibly changes
   shape twice for one feature, and the "AND-combined filters" requirement
   (spec's first requirement) reads as one behavior, not two — testing it
@@ -103,11 +105,27 @@ Timestamp time.Time}`, oldest-first, matching the server's shape before
 ## Risks / Trade-offs
 
 - [Risk] The server's actual actor/token filter parameter name or
-  semantics (once #214 ships) may not match the `--token` flag's assumed
-  1:1 mapping to a single filter value → [Mitigation] `tasks.md` includes
-  a task to re-check the merged `hush-hush` spec and `hush-hush-go`#74's
-  actual `AuditLogFilter` field name/type before wiring `--token` through,
-  rather than assuming the sketch in this design is final.
+  semantics (once #214 ships) may not match this flag's assumed 1:1
+  mapping to a single filter value → [Mitigation] `tasks.md` includes a
+  task to re-check the merged `hush-hush` spec and `hush-hush-go`#74's
+  actual `AuditLogFilter` field name/type before wiring it through, rather
+  than assuming the sketch in this design is final. Confirmed in task 0.2:
+  it maps 1:1 onto `AuditLogFilter.Actor *string`.
+- [Risk] The originally planned `--token` flag name collides with this
+  CLI's existing root-level persistent `--token` flag (the write-path
+  bearer credential, bound via viper in `cmd/hush-hush-cli/main.go`) →
+  confirmed live during task 3.1 with a throwaway cobra reproduction: a
+  local flag named `token` on a subcommand does shadow the persistent one
+  correctly when `--token` is given _after_ the subcommand
+  (`audit-log --token x` resolves to the local flag, as wanted), but a
+  `--token` given _before_ the subcommand name
+  (`hush-hush-cli --token x audit-log`) still resolves to the persistent
+  bearer-token flag instead, with no way to reach the local one from that
+  position — a real, silent footgun, not just a naming clash.
+  [Mitigation] Renamed the filter flag to `--actor` (proposal.md,
+  spec.md, tasks.md task 3.1) — matches the server's own `actor` query
+  parameter name and hush-hush-go's `AuditLogFilter.Actor` field exactly,
+  so nothing downstream of the flag itself needed renaming.
 - [Risk] `AuditLogEntry.Caller` is `*string` (nil when the request had no
   `X-Caller` header) — a naive table print could show an empty column
   inconsistently → [Mitigation] `tasks.md` includes rendering a fixed

@@ -56,6 +56,64 @@ func TestListObjectsFiltersByUsedBy(t *testing.T) {
 	require.JSONEq(t, `[{"id":"matched","used_by":["homelab/vps-docker"]}]`, getObjects(t, srv.URL, token, "homelab/vps-docker"))
 }
 
+func TestQueryAuditLogRequiresNoToken(t *testing.T) {
+	t.Parallel()
+
+	srv, _, _ := testserver.New(t)
+
+	resp, err := http.Get(srv.URL + "/audit-log") //nolint:noctx // test-only, no deadline needed
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func TestQueryAuditLogEmptyLogReturnsEmptyArray(t *testing.T) {
+	t.Parallel()
+
+	srv, _, _ := testserver.New(t)
+
+	require.JSONEq(t, "[]", getAuditLog(t, srv.URL, ""))
+}
+
+func TestQueryAuditLogRejectsAnInvalidObjectID(t *testing.T) {
+	t.Parallel()
+
+	srv, _, _ := testserver.New(t)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL+"/audit-log?object_id=Not_Valid!", nil)
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+}
+
+func getAuditLog(t *testing.T, baseURL, query string) string {
+	t.Helper()
+
+	url := baseURL + "/audit-log"
+	if query != "" {
+		url += "?" + query
+	}
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	return string(body)
+}
+
 func getObjects(t *testing.T, baseURL, token, usedBy string) string {
 	t.Helper()
 

@@ -10,10 +10,15 @@ against the server's `GET /audit-log` endpoint directly.
 
 ### Requirement: Filters combine with AND
 
-The `audit-log` command SHALL accept `--object`, `--token`, `--caller`,
+The `audit-log` command SHALL accept `--object`, `--actor`, `--caller`,
 `--since`, and `--until` flags, sending every flag that is set to the
 server as a single request whose filters combine with AND, and SHALL
-return only entries matching every filter given.
+return only entries matching every filter given. `--actor` restricts to
+entries authenticated by a specific verified actor - a token id, or the
+admin account's own actor id - matching the server's own `actor` query
+parameter; it is named `--actor`, not `--token`, to avoid colliding with
+this CLI's existing global `--token` flag (the write-path bearer
+credential), which means something entirely different.
 
 #### Scenario: Single filter
 
@@ -101,6 +106,6 @@ raw HTTP response dump.
 #### Scenario: Server rejects an unknown filter value
 
 - **WHEN** the server returns an error status for the given filters (for
-  example, an unrecognized `--token` ID)
+  example, a malformed `--object` value)
 - **THEN** the command exits non-zero and prints the server's error
   message on stderr

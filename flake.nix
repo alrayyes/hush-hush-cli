@@ -26,7 +26,7 @@
 
           # Resolved by actually building, not guessed - there's no way to
           # compute it without one (rules/packaging.md).
-          vendorHash = "sha256-f6dD3fSp1U2lt3qJRz4CeqYUS5GjVDDNl9SxJR+TEEU=";
+          vendorHash = "sha256-tZ4/fn4SE5DY24KsK7pVawdQ7V05I+Ux+DPpIyup9kQ=";
 
           subPackages = [ "cmd/hush-hush-cli" ];
 
