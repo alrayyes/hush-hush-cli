@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.7.1...v1.8.0) (2026-09-20)
+
+
+### Features
+
+* **status:** add the status command ([#111](https://github.com/alrayyes/hush-hush-cli/issues/111)) ([ef92f34](https://github.com/alrayyes/hush-hush-cli/commit/ef92f3460e1284b4067c6035c8da4d742c569634))
+
 ## [1.7.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.7.0...v1.7.1) (2026-09-20)
 
 
