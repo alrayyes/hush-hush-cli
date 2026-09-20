@@ -91,6 +91,53 @@ func TestQueryAuditLogRejectsAnInvalidObjectID(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
+func TestAuthStatusDefaultsToBootstrapped(t *testing.T) {
+	t.Parallel()
+
+	srv, _, _ := testserver.New(t)
+
+	resp, err := http.Get(srv.URL + "/auth/status") //nolint:noctx // test-only, no deadline needed
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"bootstrapped":true}`, string(body))
+}
+
+func TestAuthStatusReflectsSetBootstrapped(t *testing.T) {
+	t.Parallel()
+
+	srv, store, _ := testserver.New(t)
+	store.SetBootstrapped(false)
+
+	resp, err := http.Get(srv.URL + "/auth/status") //nolint:noctx // test-only, no deadline needed
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"bootstrapped":false}`, string(body))
+}
+
+func TestAuthStatusRequiresNoToken(t *testing.T) {
+	t.Parallel()
+
+	srv, _, _ := testserver.New(t)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL+"/auth/status", nil)
+	require.NoError(t, err)
+	// Deliberately no Authorization header - unlike list/inject/update/delete.
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
 func getAuditLog(t *testing.T, baseURL, query string) string {
 	t.Helper()
 

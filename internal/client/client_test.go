@@ -9,6 +9,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestAuthStatusReturnsTheServersBootstrappedValue(t *testing.T) {
+	t.Parallel()
+
+	srv, store, _ := testserver.New(t)
+	store.SetBootstrapped(false)
+
+	cl, err := client.New(srv.URL, "") // no token - unauthenticated by design
+	require.NoError(t, err)
+
+	status, err := cl.AuthStatus(t.Context())
+	require.NoError(t, err)
+	require.False(t, status.Bootstrapped)
+}
+
 func TestQueryAuditLogFiltersCombineWithAND(t *testing.T) {
 	t.Parallel()
 
