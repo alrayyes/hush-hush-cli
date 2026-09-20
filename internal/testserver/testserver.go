@@ -53,15 +53,36 @@ type Object struct {
 // Store is an in-memory object store plus write-token issuance, backing a
 // Server started by New. Safe for concurrent use.
 type Store struct {
-	mu       sync.Mutex
-	objects  map[string]Object
-	tokens   map[string]time.Time
-	auditLog []AuditLogEntry
-	auditSeq int64
+	mu           sync.Mutex
+	objects      map[string]Object
+	tokens       map[string]time.Time
+	auditLog     []AuditLogEntry
+	auditSeq     int64
+	bootstrapped bool
 }
 
+// newStore defaults bootstrapped to true - the shape every other test in
+// this package already assumes (a normal, already-set-up server); a test
+// exercising the unbootstrapped case calls SetBootstrapped(false) itself.
 func newStore() *Store {
-	return &Store{objects: make(map[string]Object), tokens: make(map[string]time.Time)}
+	return &Store{objects: make(map[string]Object), tokens: make(map[string]time.Time), bootstrapped: true}
+}
+
+// SetBootstrapped overrides the value GET /auth/status reports.
+func (s *Store) SetBootstrapped(bootstrapped bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.bootstrapped = bootstrapped
+}
+
+// AuthStatus reports whether an admin account has been created yet -
+// matches hush-hush's own GET /auth/status (hush-hush-go#100).
+func (s *Store) AuthStatus(_ context.Context) AuthStatus {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return AuthStatus{Bootstrapped: s.bootstrapped}
 }
 
 // CreateObject stores value under id, or ErrAlreadyExists if id is taken.
@@ -310,6 +331,12 @@ func New(t *testing.T) (srv *httptest.Server, s *Store, token string) {
 	return srv, s, token
 }
 
+// AuthStatus mirrors hush-hush's GET /auth/status response shape
+// (api/openapi.yaml's AuthStatus schema).
+type AuthStatus struct {
+	Bootstrapped bool `json:"bootstrapped"`
+}
+
 // ObjectMetadata is a stored object's id, used_by, and description, with no
 // value - the shape create/update/list all return over the wire.
 type ObjectMetadata struct {
@@ -333,10 +360,10 @@ type errorBody struct {
 	Error string `json:"error"`
 }
 
-// newMux wires the six /objects and /audit-log endpoints internal/client
-// actually calls (api/openapi.yaml) - not GET /objects/{id}/used-by or GET
-// /healthz, neither of which internal/client's Client exposes a method
-// for.
+// newMux wires the /objects, /audit-log, and /auth/status endpoints
+// internal/client actually calls (api/openapi.yaml) - not GET
+// /objects/{id}/used-by or GET /healthz, neither of which internal/client's
+// Client exposes a method for.
 func newMux(s *Store) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /objects", requireWriteToken(s, handleCreateObject(s)))
@@ -345,8 +372,17 @@ func newMux(s *Store) *http.ServeMux {
 	mux.HandleFunc("PUT /objects/{id}", requireWriteToken(s, handleUpdateObject(s)))
 	mux.HandleFunc("DELETE /objects/{id}", requireWriteToken(s, handleDeleteObject(s)))
 	mux.HandleFunc("GET /audit-log", handleQueryAuditLog(s))
+	mux.HandleFunc("GET /auth/status", handleAuthStatus(s))
 
 	return mux
+}
+
+// handleAuthStatus is unauthenticated, matching hush-hush-go's own
+// AuthStatus doc comment ("no credential is required to call it").
+func handleAuthStatus(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, s.AuthStatus(r.Context()))
+	}
 }
 
 // requireWriteToken matches hush-hush's own handler: an unknown,

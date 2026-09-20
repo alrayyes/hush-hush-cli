@@ -127,6 +127,24 @@ func (c *Client) List(ctx context.Context) ([]ObjectMetadata, error) {
 	return result, nil
 }
 
+// AuthStatus reports whether hush-hush has an admin account bootstrapped
+// yet. Matches hushhush.AuthStatus.
+type AuthStatus struct {
+	Bootstrapped bool `json:"bootstrapped"`
+}
+
+// AuthStatus asks whether the target server has an admin account
+// bootstrapped yet - unauthenticated, matching the SDK's own AuthStatus
+// doc comment: no credential is required to call it.
+func (c *Client) AuthStatus(ctx context.Context) (AuthStatus, error) {
+	status, err := c.sdk.AuthStatus(ctx)
+	if err != nil {
+		return AuthStatus{}, mapError(err)
+	}
+
+	return AuthStatus{Bootstrapped: status.Bootstrapped}, nil
+}
+
 // AuditLogEntry is one row of hush-hush's audit trail. JSON tags match
 // api/openapi.yaml's AuditLogEntry shape exactly, since audit-log's
 // --format json output encodes this type directly (design.md).
