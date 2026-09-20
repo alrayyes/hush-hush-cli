@@ -94,9 +94,9 @@ takes to fetch them; with no `--limit`, every matching entry prints. There
 is no `--follow` - this is a bounded query, run it again to see what's new.
 
 Check whether the target server has an admin account bootstrapped yet -
-useful for telling an unbootstrapped server apart from one that's just
-unreachable. No credential is required, and an unbootstrapped server is a
-normal, exit-0 result:
+useful for telling a server with no admin account yet apart from one
+that's just unreachable. No credential is required, and a server with no
+admin account is a normal, exit-0 result:
 
 ```sh
 hush-hush-cli status
