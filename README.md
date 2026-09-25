@@ -66,7 +66,7 @@ hush-hush-cli list --json | jq '.[].id'
 
 Check what a single object is recorded as being used by - no credential
 required, unlike `list`, since this only ever discloses what a caller
-already knows the id of:
+already knows the `id` of:
 
 ```sh
 hush-hush-cli used-by mattermost_deploy_webhook
