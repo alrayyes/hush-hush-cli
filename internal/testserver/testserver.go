@@ -361,9 +361,8 @@ type errorBody struct {
 }
 
 // newMux wires the /objects, /audit-log, and /auth/status endpoints
-// internal/client actually calls (api/openapi.yaml) - not GET
-// /objects/{id}/used-by or GET /healthz, neither of which internal/client's
-// Client exposes a method for.
+// internal/client actually calls (api/openapi.yaml) - not GET /healthz,
+// which internal/client's Client exposes no method for.
 func newMux(s *Store) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /objects", requireWriteToken(s, handleCreateObject(s)))
@@ -371,6 +370,7 @@ func newMux(s *Store) *http.ServeMux {
 	mux.HandleFunc("GET /objects/{id}", handleGetObject(s))
 	mux.HandleFunc("PUT /objects/{id}", requireWriteToken(s, handleUpdateObject(s)))
 	mux.HandleFunc("DELETE /objects/{id}", requireWriteToken(s, handleDeleteObject(s)))
+	mux.HandleFunc("GET /objects/{id}/used-by", handleGetObjectUsedBy(s))
 	mux.HandleFunc("GET /audit-log", handleQueryAuditLog(s))
 	mux.HandleFunc("GET /auth/status", handleAuthStatus(s))
 
@@ -439,6 +439,26 @@ func handleGetObject(s *Store) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(obj.Value)
+	}
+}
+
+// usedByResponse matches api/openapi.yaml's UsedBy schema.
+type usedByResponse struct {
+	UsedBy []string `json:"used_by"`
+}
+
+// handleGetObjectUsedBy is unauthenticated, matching handleGetObject: an
+// object's own recorded consumers need no more than its id to fetch.
+func handleGetObjectUsedBy(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		obj, err := s.GetObject(r.Context(), r.PathValue("id"))
+		if err != nil {
+			writeError(w, http.StatusNotFound, "unknown object")
+
+			return
+		}
+
+		writeJSON(w, http.StatusOK, usedByResponse{UsedBy: obj.UsedBy})
 	}
 }
 
