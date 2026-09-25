@@ -127,6 +127,17 @@ func (c *Client) List(ctx context.Context) ([]ObjectMetadata, error) {
 	return result, nil
 }
 
+// UsedBy returns id's recorded consumers - unauthenticated, matching Get's
+// auth boundary rather than List's, which needs a credential.
+func (c *Client) UsedBy(ctx context.Context, id string) ([]string, error) {
+	usedBy, err := c.sdk.GetObjectUsedBy(ctx, id)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return usedBy.UsedBy, nil
+}
+
 // AuthStatus reports whether hush-hush has an admin account bootstrapped
 // yet. Matches hushhush.AuthStatus.
 type AuthStatus struct {
