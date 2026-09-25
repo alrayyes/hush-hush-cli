@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.8.1...v1.9.0) (2026-09-25)
+
+
+### Features
+
+* **used-by:** add a used-by command wrapping GET /objects/{id}/used-by ([#120](https://github.com/alrayyes/hush-hush-cli/issues/120)) ([e5c87ee](https://github.com/alrayyes/hush-hush-cli/commit/e5c87ee6bd81b4035c93377f4f510c849d5ca8f3))
+
 ## [1.8.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.8.0...v1.8.1) (2026-09-21)
 
 
