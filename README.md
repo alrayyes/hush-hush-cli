@@ -43,7 +43,7 @@ export HUSH_HUSH_SERVER=http://localhost:8080
 export HUSH_HUSH_TOKEN=9f8e7d6c...
 
 echo -n "hunter2" | hush-hush-cli inject mattermost_deploy_webhook \
-  --recipients age1... --used-by homelab/vps-docker \
+  --recipients age1... --used-by homelab/example-app \
   --description "prod deploy webhook"
 ```
 
