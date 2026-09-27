@@ -9,6 +9,47 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestConsumerPublicKeyReturnsTheRegisteredKey(t *testing.T) {
+	t.Parallel()
+
+	srv, store, token := testserver.New(t)
+	require.NoError(t, store.AddConsumer(t.Context(), "homelab/vps-docker"))
+	_, err := store.UpdateConsumer(t.Context(), "homelab/vps-docker", nil, new("age1abc"))
+	require.NoError(t, err)
+
+	cl, err := client.New(srv.URL, token)
+	require.NoError(t, err)
+
+	key, err := cl.ConsumerPublicKey(t.Context(), "homelab/vps-docker")
+	require.NoError(t, err)
+	require.Equal(t, "age1abc", key)
+}
+
+func TestConsumerPublicKeyWithNoRegisteredKeyFails(t *testing.T) {
+	t.Parallel()
+
+	srv, store, token := testserver.New(t)
+	require.NoError(t, store.AddConsumer(t.Context(), "homelab/vps-docker"))
+
+	cl, err := client.New(srv.URL, token)
+	require.NoError(t, err)
+
+	_, err = cl.ConsumerPublicKey(t.Context(), "homelab/vps-docker")
+	require.ErrorIs(t, err, client.ErrConsumerNoPublicKey)
+}
+
+func TestConsumerPublicKeyForAnUnknownConsumerFails(t *testing.T) {
+	t.Parallel()
+
+	srv, _, token := testserver.New(t)
+
+	cl, err := client.New(srv.URL, token)
+	require.NoError(t, err)
+
+	_, err = cl.ConsumerPublicKey(t.Context(), "unknown")
+	require.ErrorIs(t, err, client.ErrConsumerNoPublicKey)
+}
+
 func TestAuthStatusReturnsTheServersBootstrappedValue(t *testing.T) {
 	t.Parallel()
 

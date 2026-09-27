@@ -168,7 +168,7 @@ func TestContainerListReturnsInjectedObjects(t *testing.T) {
 
 	var found bool
 	for _, obj := range objects {
-		if obj.ID != "hush_hush_cli_integration_test_list" {
+		if obj.Slug != "hush_hush_cli_integration_test_list" {
 			continue
 		}
 

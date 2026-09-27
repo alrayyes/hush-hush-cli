@@ -41,6 +41,14 @@ var ErrAlreadyExists = errors.New("object already exists")
 // pattern (api/openapi.yaml's ObjectId schema).
 var ErrInvalidFilter = errors.New("invalid filter")
 
+// ErrConsumerAlreadyExists is returned by Store.AddConsumer for a name
+// already in the consumer directory.
+var ErrConsumerAlreadyExists = errors.New("consumer already exists")
+
+// ErrConsumerNotFound is returned by Store.UpdateConsumer, when renaming an
+// unknown name, and by Store.DeleteConsumer for an unknown consumer.
+var ErrConsumerNotFound = errors.New("consumer not found")
+
 var objectIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
 
 // Object is a stored object's current state.
@@ -59,13 +67,23 @@ type Store struct {
 	auditLog     []AuditLogEntry
 	auditSeq     int64
 	bootstrapped bool
+	// consumers holds the consumer directory: name -> registered age public
+	// key, nil if none registered. Presence as a key is what makes a name
+	// a directory entry, whether it got there via AddConsumer or via
+	// appearing in some object's used_by list at creation.
+	consumers map[string]*string
 }
 
 // newStore defaults bootstrapped to true - the shape every other test in
 // this package already assumes (a normal, already-set-up server); a test
 // exercising the unbootstrapped case calls SetBootstrapped(false) itself.
 func newStore() *Store {
-	return &Store{objects: make(map[string]Object), tokens: make(map[string]time.Time), bootstrapped: true}
+	return &Store{
+		objects:      make(map[string]Object),
+		tokens:       make(map[string]time.Time),
+		bootstrapped: true,
+		consumers:    make(map[string]*string),
+	}
 }
 
 // SetBootstrapped overrides the value GET /auth/status reports.
@@ -86,6 +104,10 @@ func (s *Store) AuthStatus(_ context.Context) AuthStatus {
 }
 
 // CreateObject stores value under id, or ErrAlreadyExists if id is taken.
+// Every name in usedBy that's new to the consumer directory joins it with
+// no registered key, matching ConsumerEntry's own doc comment: a directory
+// entry is "a distinct consumer name recorded in some object's used_by
+// list", not only one added explicitly via AddConsumer.
 func (s *Store) CreateObject(_ context.Context, id string, value []byte, usedBy []string, description string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -95,6 +117,12 @@ func (s *Store) CreateObject(_ context.Context, id string, value []byte, usedBy 
 	}
 
 	s.objects[id] = Object{Value: value, UsedBy: usedBy, Description: description}
+
+	for _, name := range usedBy {
+		if _, ok := s.consumers[name]; !ok {
+			s.consumers[name] = nil
+		}
+	}
 
 	return nil
 }
@@ -143,10 +171,239 @@ func (s *Store) DeleteObject(_ context.Context, id string) error {
 	return nil
 }
 
-// ListObjects returns every stored object's id, used_by, and description -
-// never the value - sorted by id, optionally narrowed to objects whose
-// used_by includes usedByFilter ("" means no filter). Matches hush-hush's
-// own GET /objects (hush-hush#188/#189).
+// ConsumerEntry is one directory entry, mirroring hush-hush-go's own type
+// of the same name (GET /consumers's paginated response shape, and
+// AddConsumer/UpdateConsumer's own response).
+type ConsumerEntry struct {
+	Name        string  `json:"name"`
+	PublicKey   *string `json:"public_key,omitempty"`
+	SecretCount int32   `json:"secret_count"`
+}
+
+// ConsumersPage is GET /consumers's paginated response shape, returned
+// whenever the request's filter has any field set.
+type ConsumersPage struct {
+	Consumers []ConsumerEntry `json:"consumers"`
+	Total     int32           `json:"total"`
+}
+
+// ConsumerFilter narrows Store.ListConsumers, mirroring GET /consumers's
+// own query parameters.
+type ConsumerFilter struct {
+	Q        *string
+	Page     *int32
+	PageSize *int32
+}
+
+// ConsumersResult is Store.ListConsumers's return value - exactly one
+// field set, matching GET /consumers's own union response shape: Names for
+// an empty filter, Page for a filter with any field set.
+type ConsumersResult struct {
+	Names []string
+	Page  *ConsumersPage
+}
+
+// AddConsumer adds name to the directory with no public key registered, or
+// ErrConsumerAlreadyExists if it's already there.
+func (s *Store) AddConsumer(_ context.Context, name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.consumers[name]; ok {
+		return ErrConsumerAlreadyExists
+	}
+
+	s.consumers[name] = nil
+
+	return nil
+}
+
+// UpdateConsumer renames name to newName (if non-nil) and/or registers
+// publicKey on the resulting name (if non-nil), applied in that order -
+// matching hush-hush-go's own UpdateConsumer doc comment. Renaming an
+// unknown name is ErrConsumerNotFound; registering a key alone on an
+// unknown name upserts a directory entry for it instead. A rename whose
+// target already has its own recorded objects merges under it, and a
+// target's own key wins the merge if it already had one.
+func (s *Store) UpdateConsumer(_ context.Context, name string, newName, publicKey *string) (ConsumerEntry, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	key, ok := s.consumers[name]
+	if !ok {
+		if newName != nil {
+			return ConsumerEntry{}, ErrConsumerNotFound
+		}
+
+		s.consumers[name] = publicKey
+
+		return s.consumerEntryLocked(name), nil
+	}
+
+	target := name
+
+	if newName != nil {
+		target = *newName
+
+		if targetKey, targetOK := s.consumers[target]; targetOK && targetKey != nil {
+			key = targetKey
+		}
+
+		delete(s.consumers, name)
+		s.consumers[target] = key
+
+		for id, obj := range s.objects {
+			obj.UsedBy = renameUsedBy(obj.UsedBy, name, target)
+			s.objects[id] = obj
+		}
+	}
+
+	if publicKey != nil {
+		s.consumers[target] = publicKey
+	}
+
+	return s.consumerEntryLocked(target), nil
+}
+
+// DeleteConsumer strips name from every object's used_by list and removes
+// it from the directory, or ErrConsumerNotFound if it's not in the
+// directory at all.
+func (s *Store) DeleteConsumer(_ context.Context, name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.consumers[name]; !ok {
+		return ErrConsumerNotFound
+	}
+
+	delete(s.consumers, name)
+
+	for id, obj := range s.objects {
+		obj.UsedBy = removeUsedBy(obj.UsedBy, name)
+		s.objects[id] = obj
+	}
+
+	return nil
+}
+
+// ListConsumers returns the consumer directory, matching GET /consumers's
+// own union response shape: an empty filter returns the plain, sorted name
+// list; any filter field set switches to the paginated ConsumersPage shape
+// (name substring match, 1-based page, page size capped at 100).
+func (s *Store) ListConsumers(_ context.Context, filter ConsumerFilter) ConsumersResult {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	names := make([]string, 0, len(s.consumers))
+	for name := range s.consumers {
+		names = append(names, name)
+	}
+
+	slices.Sort(names)
+
+	if filter.Q == nil && filter.Page == nil && filter.PageSize == nil {
+		return ConsumersResult{Names: names}
+	}
+
+	matched := names
+	if filter.Q != nil {
+		q := strings.ToLower(*filter.Q)
+		filtered := make([]string, 0, len(names))
+
+		for _, name := range names {
+			if strings.Contains(strings.ToLower(name), q) {
+				filtered = append(filtered, name)
+			}
+		}
+
+		matched = filtered
+	}
+
+	total := int32(len(matched)) //nolint:gosec // matched is an in-memory test fixture, never near int32 max
+
+	page := int32(1)
+	if filter.Page != nil {
+		page = *filter.Page
+	}
+
+	pageSize := int32(20)
+	if filter.PageSize != nil {
+		pageSize = *filter.PageSize
+	}
+
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	start := min(int((page-1)*pageSize), len(matched))
+	end := min(start+int(pageSize), len(matched))
+
+	entries := make([]ConsumerEntry, 0, end-start)
+	for _, name := range matched[start:end] {
+		entries = append(entries, s.consumerEntryLocked(name))
+	}
+
+	return ConsumersResult{Page: &ConsumersPage{Consumers: entries, Total: total}}
+}
+
+// consumerEntryLocked builds name's directory entry, including its
+// computed secret count - callers must hold s.mu.
+func (s *Store) consumerEntryLocked(name string) ConsumerEntry {
+	entry := ConsumerEntry{Name: name}
+
+	for _, obj := range s.objects {
+		if slices.Contains(obj.UsedBy, name) {
+			entry.SecretCount++
+		}
+	}
+
+	if key := s.consumers[name]; key != nil {
+		entry.PublicKey = key
+	}
+
+	return entry
+}
+
+// renameUsedBy replaces every occurrence of from in usedBy with to,
+// deduplicating - a used_by list already naming both collapses to one.
+func renameUsedBy(usedBy []string, from, to string) []string {
+	seen := make(map[string]bool, len(usedBy))
+	result := make([]string, 0, len(usedBy))
+
+	for _, name := range usedBy {
+		if name == from {
+			name = to
+		}
+
+		if seen[name] {
+			continue
+		}
+
+		seen[name] = true
+
+		result = append(result, name)
+	}
+
+	return result
+}
+
+// removeUsedBy returns usedBy with every occurrence of name stripped.
+func removeUsedBy(usedBy []string, name string) []string {
+	result := make([]string, 0, len(usedBy))
+
+	for _, n := range usedBy {
+		if n != name {
+			result = append(result, n)
+		}
+	}
+
+	return result
+}
+
+// ListObjects returns every stored object's slug, used_by, and
+// description - never the value - sorted by slug, optionally narrowed to
+// objects whose used_by includes usedByFilter ("" means no filter).
+// Matches hush-hush's own GET /objects (hush-hush#188/#189).
 func (s *Store) ListObjects(_ context.Context, usedByFilter string) ([]ObjectMetadata, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -157,10 +414,10 @@ func (s *Store) ListObjects(_ context.Context, usedByFilter string) ([]ObjectMet
 			continue
 		}
 
-		result = append(result, ObjectMetadata{ID: id, UsedBy: obj.UsedBy, Description: obj.Description})
+		result = append(result, ObjectMetadata{Slug: id, UsedBy: obj.UsedBy, Description: obj.Description})
 	}
 
-	slices.SortFunc(result, func(a, b ObjectMetadata) int { return strings.Compare(a.ID, b.ID) })
+	slices.SortFunc(result, func(a, b ObjectMetadata) int { return strings.Compare(a.Slug, b.Slug) })
 
 	return result, nil
 }
@@ -337,16 +594,18 @@ type AuthStatus struct {
 	Bootstrapped bool `json:"bootstrapped"`
 }
 
-// ObjectMetadata is a stored object's id, used_by, and description, with no
-// value - the shape create/update/list all return over the wire.
+// ObjectMetadata is a stored object's slug, used_by, and description, with
+// no value - the shape create/update/list all return over the wire. Slug,
+// not id: the server's own internal id is a separate, opaque value never
+// exposed over this API (alrayyes/Hush-Hush#404).
 type ObjectMetadata struct {
-	ID          string   `json:"id"`
+	Slug        string   `json:"slug"`
 	UsedBy      []string `json:"used_by,omitempty"`
 	Description string   `json:"description,omitempty"`
 }
 
 type createObjectRequest struct {
-	ID          string   `json:"id"`
+	Slug        string   `json:"slug"`
 	Value       []byte   `json:"value"`
 	UsedBy      []string `json:"used_by,omitempty"`
 	Description string   `json:"description,omitempty"`
@@ -373,6 +632,13 @@ func newMux(s *Store) *http.ServeMux {
 	mux.HandleFunc("GET /objects/{id}/used-by", handleGetObjectUsedBy(s))
 	mux.HandleFunc("GET /audit-log", handleQueryAuditLog(s))
 	mux.HandleFunc("GET /auth/status", handleAuthStatus(s))
+	mux.HandleFunc("GET /consumers", requireWriteToken(s, handleListConsumers(s)))
+	mux.HandleFunc("POST /consumers", requireWriteToken(s, handleAddConsumer(s)))
+	// {name...}, not {name}: a consumer name is a repo or host slug and
+	// routinely contains a slash (e.g. "homelab/vps-docker"), which a
+	// single path segment can't capture.
+	mux.HandleFunc("PATCH /consumers/{name...}", requireWriteToken(s, handleUpdateConsumer(s)))
+	mux.HandleFunc("DELETE /consumers/{name...}", requireWriteToken(s, handleDeleteConsumer(s)))
 
 	return mux
 }
@@ -409,19 +675,19 @@ func handleCreateObject(s *Store) http.HandlerFunc {
 			return
 		}
 
-		if req.ID == "" || len(req.Value) == 0 {
-			writeError(w, http.StatusBadRequest, "id and value are required")
+		if req.Slug == "" || len(req.Value) == 0 {
+			writeError(w, http.StatusBadRequest, "slug and value are required")
 
 			return
 		}
 
-		if err := s.CreateObject(r.Context(), req.ID, req.Value, req.UsedBy, req.Description); err != nil {
+		if err := s.CreateObject(r.Context(), req.Slug, req.Value, req.UsedBy, req.Description); err != nil {
 			writeError(w, http.StatusConflict, "object already exists")
 
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, ObjectMetadata{ID: req.ID, UsedBy: req.UsedBy, Description: req.Description})
+		writeJSON(w, http.StatusCreated, ObjectMetadata{Slug: req.Slug, UsedBy: req.UsedBy, Description: req.Description})
 	}
 }
 
@@ -492,7 +758,7 @@ func handleUpdateObject(s *Store) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, ObjectMetadata{ID: id, UsedBy: obj.UsedBy, Description: obj.Description})
+		writeJSON(w, http.StatusOK, ObjectMetadata{Slug: id, UsedBy: obj.UsedBy, Description: obj.Description})
 	}
 }
 
@@ -517,6 +783,122 @@ func handleDeleteObject(s *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := s.DeleteObject(r.Context(), r.PathValue("id")); err != nil {
 			writeError(w, http.StatusNotFound, "unknown object")
+
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handleListConsumers matches GET /consumers's own union response shape:
+// the plain name array for an empty filter, ConsumersPage otherwise.
+func handleListConsumers(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		filter, err := parseConsumerFilter(r.URL.Query())
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+
+			return
+		}
+
+		result := s.ListConsumers(r.Context(), filter)
+		if result.Page != nil {
+			writeJSON(w, http.StatusOK, result.Page)
+
+			return
+		}
+
+		writeJSON(w, http.StatusOK, result.Names)
+	}
+}
+
+func parseConsumerFilter(q url.Values) (ConsumerFilter, error) {
+	var filter ConsumerFilter
+
+	if v := q.Get("q"); v != "" {
+		filter.Q = &v
+	}
+
+	if v := q.Get("page"); v != "" {
+		page, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			return filter, fmt.Errorf("page: %w", err)
+		}
+
+		page32 := int32(page)
+		filter.Page = &page32
+	}
+
+	if v := q.Get("page_size"); v != "" {
+		pageSize, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			return filter, fmt.Errorf("page_size: %w", err)
+		}
+
+		pageSize32 := int32(pageSize)
+		filter.PageSize = &pageSize32
+	}
+
+	return filter, nil
+}
+
+type addConsumerRequest struct {
+	Name string `json:"name"`
+}
+
+func handleAddConsumer(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req addConsumerRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+			writeError(w, http.StatusBadRequest, "name is required")
+
+			return
+		}
+
+		if err := s.AddConsumer(r.Context(), req.Name); err != nil {
+			writeError(w, http.StatusConflict, "consumer already exists")
+
+			return
+		}
+
+		s.mu.Lock()
+		entry := s.consumerEntryLocked(req.Name)
+		s.mu.Unlock()
+
+		writeJSON(w, http.StatusCreated, entry)
+	}
+}
+
+type updateConsumerRequest struct {
+	Name      *string `json:"name,omitempty"`
+	PublicKey *string `json:"public_key,omitempty"`
+}
+
+func handleUpdateConsumer(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req updateConsumerRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "malformed request body")
+
+			return
+		}
+
+		entry, err := s.UpdateConsumer(r.Context(), r.PathValue("name"), req.Name, req.PublicKey)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "unknown consumer")
+
+			return
+		}
+
+		writeJSON(w, http.StatusOK, entry)
+	}
+}
+
+func handleDeleteConsumer(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := s.DeleteConsumer(r.Context(), r.PathValue("name")); err != nil {
+			writeError(w, http.StatusNotFound, "unknown consumer")
 
 			return
 		}

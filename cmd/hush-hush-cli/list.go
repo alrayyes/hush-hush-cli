@@ -65,7 +65,7 @@ func writeListTable(cmd *cobra.Command, objects []client.ObjectMetadata) error {
 	}
 
 	for _, obj := range objects {
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\n", obj.ID, strings.Join(obj.UsedBy, ","), obj.Description); err != nil {
+		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\n", obj.Slug, strings.Join(obj.UsedBy, ","), obj.Description); err != nil {
 			return fmt.Errorf("write list row: %w", err)
 		}
 	}

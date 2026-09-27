@@ -22,8 +22,8 @@ func TestListReturnsEveryObjectSortedByID(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, objects, 2)
 
-	require.Equal(t, "apple", objects[0].ID)
-	require.Equal(t, "zebra", objects[1].ID)
+	require.Equal(t, "apple", objects[0].Slug)
+	require.Equal(t, "zebra", objects[1].Slug)
 	require.Equal(t, []string{"homelab/vps-docker"}, objects[1].UsedBy)
 	require.Equal(t, "z desc", objects[1].Description)
 }
