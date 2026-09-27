@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"testing"
 
 	"filippo.io/age"
@@ -113,5 +114,68 @@ func TestInjectFailsFastWithNoRecipientsConfigured(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--recipients")
 	assert.Contains(t, err.Error(), "HUSH_HUSH_RECIPIENTS")
+	assert.Contains(t, err.Error(), "--used-by")
 	assert.Contains(t, err.Error(), "init")
+}
+
+// TestInjectWithUsedByAndNoRecipientsResolvesTheConsumersRegisteredKey
+// drives the real cobra command end to end: no --recipients flag at all,
+// just --used-by naming a consumer already registered with a public key
+// (issue #125).
+func TestInjectWithUsedByAndNoRecipientsResolvesTheConsumersRegisteredKey(t *testing.T) {
+	srv, s, token := testserver.New(t)
+
+	identity, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
+
+	require.NoError(t, s.AddConsumer(t.Context(), "homelab/vps-docker"))
+	recipient := identity.Recipient().String()
+	_, err = s.UpdateConsumer(t.Context(), "homelab/vps-docker", nil, &recipient)
+	require.NoError(t, err)
+
+	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
+	t.Setenv("HUSH_HUSH_TOKEN", token)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	viper.Reset()
+
+	root := newRootCmd()
+	root.SetArgs([]string{"inject", "mattermost_deploy_webhook", "--used-by", "homelab/vps-docker"})
+	root.SetIn(bytes.NewReader([]byte("plaintext-value")))
+
+	require.NoError(t, root.Execute())
+
+	obj, err := s.GetObject(t.Context(), "mattermost_deploy_webhook")
+	require.NoError(t, err)
+
+	r, err := age.Decrypt(bytes.NewReader(obj.Value), identity)
+	require.NoError(t, err)
+
+	plaintext, err := io.ReadAll(r)
+	require.NoError(t, err)
+	require.Equal(t, []byte("plaintext-value"), plaintext)
+}
+
+// TestInjectWithUsedByAndNoRegisteredKeyFailsNamingTheConsumer is issue
+// #125's own acceptance criteria: a --used-by consumer with no registered
+// key must fail clearly, not seal to fewer recipients than requested.
+func TestInjectWithUsedByAndNoRegisteredKeyFailsNamingTheConsumer(t *testing.T) {
+	srv, s, token := testserver.New(t)
+
+	require.NoError(t, s.AddConsumer(t.Context(), "homelab/vps-docker"))
+
+	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
+	t.Setenv("HUSH_HUSH_TOKEN", token)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	viper.Reset()
+
+	root := newRootCmd()
+	root.SetArgs([]string{"inject", "mattermost_deploy_webhook", "--used-by", "homelab/vps-docker"})
+	root.SetIn(bytes.NewReader([]byte("plaintext-value")))
+
+	err := root.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "homelab/vps-docker")
+
+	_, getErr := s.GetObject(t.Context(), "mattermost_deploy_webhook")
+	require.Error(t, getErr, "never created - resolution must fail before the server is called")
 }

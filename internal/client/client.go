@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	hushhush "github.com/alrayyes/hush-hush-go/v2"
+	hushhush "github.com/alrayyes/hush-hush-go/v4"
 )
 
 // auditLogPageMax is the server's own page-size cap (api/openapi.yaml's
@@ -31,12 +31,18 @@ var (
 // call and can't be a fixed sentinel on their own.
 var ErrUnexpectedStatus = errors.New("unexpected status")
 
+// ErrConsumerNoPublicKey is returned by ConsumerPublicKey for a name not in
+// the consumer directory at all, or in it but with no key registered -
+// either way there's nothing to seal to.
+var ErrConsumerNoPublicKey = errors.New("consumer has no registered public key")
+
 // ObjectMetadata is what a successful create, update, or list returns.
 // Matches components.schemas.ObjectMetadata in api/openapi.yaml. JSON tags
 // exist for List's --json output, the first place this type is ever
-// marshaled.
+// marshaled. Slug, not ID: the server's own internal id is a separate,
+// opaque value this API never exposes (alrayyes/Hush-Hush#404).
 type ObjectMetadata struct {
-	ID          string   `json:"id"`
+	Slug        string   `json:"slug"`
 	UsedBy      []string `json:"used_by,omitempty"`
 	Description string   `json:"description,omitempty"`
 }
@@ -63,7 +69,7 @@ func New(baseURL, token string) (*Client, error) {
 // is ever called - the client itself does no sealing. description is fixed
 // at creation, the same as usedBy.
 func (c *Client) Create(ctx context.Context, id string, value []byte, usedBy []string, description string) (ObjectMetadata, error) {
-	req := hushhush.CreateObjectRequest{Id: id, Value: value}
+	req := hushhush.CreateObjectRequest{Slug: id, Value: value}
 	if len(usedBy) > 0 {
 		req.UsedBy = &usedBy
 	}
@@ -136,6 +142,22 @@ func (c *Client) UsedBy(ctx context.Context, id string) ([]string, error) {
 	}
 
 	return usedBy.UsedBy, nil
+}
+
+// ConsumerPublicKey resolves name's registered age public key from the
+// server's consumer directory - the lookup inject uses to seal to a
+// --used-by consumer with no explicit --recipients override.
+func (c *Client) ConsumerPublicKey(ctx context.Context, name string) (string, error) {
+	key, err := c.sdk.GetConsumerPublicKey(ctx, name)
+	if err != nil {
+		return "", mapError(err)
+	}
+
+	if key == nil {
+		return "", fmt.Errorf("%w: %s", ErrConsumerNoPublicKey, name)
+	}
+
+	return *key, nil
 }
 
 // AuthStatus reports whether hush-hush has an admin account bootstrapped
@@ -253,7 +275,7 @@ func toAuditLogEntry(e hushhush.AuditLogEntry) AuditLogEntry {
 }
 
 func toObjectMetadata(m *hushhush.ObjectMetadata) ObjectMetadata {
-	meta := ObjectMetadata{ID: m.Id}
+	meta := ObjectMetadata{Slug: m.Slug}
 	if m.UsedBy != nil {
 		meta.UsedBy = *m.UsedBy
 	}

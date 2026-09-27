@@ -16,6 +16,11 @@ import (
 // built from per-call detail.
 var errNoRecipients = errors.New("no recipients configured (--recipients, HUSH_HUSH_RECIPIENTS, or run `hush-hush-cli init`)")
 
+// errNoRecipientsOrUsedBy is inject's own version of errNoRecipients:
+// unlike update, inject can still resolve recipients from --used-by's
+// registered consumer keys, so the message names that path too.
+var errNoRecipientsOrUsedBy = errors.New("no recipients configured (--recipients, HUSH_HUSH_RECIPIENTS, --used-by naming a consumer with a registered public key, or run `hush-hush-cli init`)")
+
 // newInjectCmd reads the plaintext value from stdin rather than a flag -
 // a flag value ends up in shell history and process listings, exactly
 // what injecting a secret should avoid.
@@ -36,8 +41,13 @@ func newInjectCmd() *cobra.Command {
 			_ = viper.BindPFlag("recipients", cmd.Flags().Lookup("recipients"))
 
 			recipients := viper.GetString("recipients")
-			if recipients == "" {
-				return errNoRecipients
+			if recipients == "" && len(usedBy) == 0 {
+				return errNoRecipientsOrUsedBy
+			}
+
+			var recipientList []string
+			if recipients != "" {
+				recipientList = strings.Split(recipients, ",")
 			}
 
 			value, err := io.ReadAll(cmd.InOrStdin())
@@ -50,7 +60,7 @@ func newInjectCmd() *cobra.Command {
 				return err
 			}
 
-			return cli.Inject(cmd.Context(), cfg, args[0], value, strings.Split(recipients, ","), usedBy, description)
+			return cli.Inject(cmd.Context(), cfg, args[0], value, recipientList, usedBy, description)
 		},
 	}
 

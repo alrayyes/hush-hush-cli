@@ -80,13 +80,13 @@ func TestListJSONFlagPrintsRawArray(t *testing.T) {
 	require.NoError(t, root.Execute())
 
 	var got []struct {
-		ID          string   `json:"id"`
+		Slug        string   `json:"slug"`
 		UsedBy      []string `json:"used_by"`
 		Description string   `json:"description"`
 	}
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	require.Len(t, got, 1)
-	assert.Equal(t, "mattermost_deploy_webhook", got[0].ID)
+	assert.Equal(t, "mattermost_deploy_webhook", got[0].Slug)
 	assert.Equal(t, []string{"homelab/vps-docker"}, got[0].UsedBy)
 	assert.Equal(t, "deploy hook", got[0].Description)
 }
