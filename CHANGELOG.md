@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.10.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.9.0...v1.10.0) (2026-09-27)
+
+
+### Features
+
+* **inject:** resolve --used-by consumers' registered public keys ([3cd87d7](https://github.com/alrayyes/hush-hush-cli/commit/3cd87d789ceb5ce8ca23047a75e35757f5dec9ef))
+* **inject:** resolve --used-by consumers' registered public keys ([858db49](https://github.com/alrayyes/hush-hush-cli/commit/858db497c8d983b7563c0966e64e07da6e276fa4)), closes [#125](https://github.com/alrayyes/hush-hush-cli/issues/125)
+
+
+### Bug Fixes
+
+* **nix:** update vendorHash after the hush-hush-go v4 bump ([1669566](https://github.com/alrayyes/hush-hush-cli/commit/1669566810bf80bfe3763e9acc4a73b265194776))
+
 ## [1.9.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.8.1...v1.9.0) (2026-09-25)
 
 
