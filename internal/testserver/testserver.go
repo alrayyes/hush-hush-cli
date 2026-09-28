@@ -49,6 +49,15 @@ var ErrConsumerAlreadyExists = errors.New("consumer already exists")
 // unknown name, and by Store.DeleteConsumer for an unknown consumer.
 var ErrConsumerNotFound = errors.New("consumer not found")
 
+// ErrConsumerTokenNotFound is returned by Store.RotateConsumerToken and
+// Store.PurgeConsumerToken for an unknown, already revoked, or already
+// expired token id.
+var ErrConsumerTokenNotFound = errors.New("consumer token not found")
+
+// ErrConsumerTokenActive is returned by Store.PurgeConsumerToken for a
+// token that's neither revoked nor expired yet.
+var ErrConsumerTokenActive = errors.New("consumer token is still active")
+
 var objectIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
 
 // Object is a stored object's current state.
@@ -72,11 +81,71 @@ type Store struct {
 	// a directory entry, whether it got there via AddConsumer or via
 	// appearing in some object's used_by list at creation.
 	consumers map[string]*string
-	// consumerTokens holds every issued consumer read token: token ->
-	// the one consumer name it's bound to (alrayyes/hush-hush#446's
-	// consumerBearerAuth - a consumer token authorizes GetObject only,
-	// only for an object whose used_by includes its bound consumer).
-	consumerTokens map[string]string
+	// consumerTokens holds every issued consumer read token's full state,
+	// keyed by id (alrayyes/hush-hush#446's consumerBearerAuth - a
+	// consumer token authorizes GetObject only, only for an object whose
+	// used_by includes its bound consumer; alrayyes/hush-hush#467 added
+	// minting/listing/rotating/revoking/purging one via a write bearer
+	// token instead of a cookie session).
+	consumerTokens map[string]*consumerToken
+	// consumerTokenValues maps a raw token value to the id that issued
+	// it - the lookup handleGetObject's own auth check uses, and the one
+	// RotateConsumerToken has to keep in sync when a token's value
+	// changes.
+	consumerTokenValues map[string]string
+}
+
+// consumerToken is one issued consumer read token's full state - the
+// metadata every response shape (ConsumerToken, ConsumerTokenWithValue)
+// is built from.
+type consumerToken struct {
+	ID          string
+	Consumer    string
+	Description string
+	CreatedAt   time.Time
+	ExpiresAt   time.Time
+	LastUsedAt  *time.Time
+	Revoked     bool
+	Value       string
+}
+
+// ConsumerToken is one issued consumer read token's metadata - the shape
+// GET /consumer-tokens returns, and CreateConsumerToken/RotateConsumerToken
+// embed alongside the raw value - never a raw value on its own
+// (api/openapi.yaml's ConsumerTokenMetadata).
+type ConsumerToken struct {
+	ID          string     `json:"id"`
+	Consumer    string     `json:"consumer"`
+	Description string     `json:"description"`
+	CreatedAt   time.Time  `json:"created_at"`
+	ExpiresAt   time.Time  `json:"expires_at"`
+	LastUsedAt  *time.Time `json:"last_used_at,omitempty"`
+	Revoked     bool       `json:"revoked"`
+}
+
+// ConsumerTokenWithValue is POST /consumer-tokens and
+// POST /consumer-tokens/{id}/rotate's own response shape - the same
+// metadata as ConsumerToken plus the raw token, shown here once
+// (api/openapi.yaml's ConsumerTokenWithValue).
+type ConsumerTokenWithValue struct {
+	ConsumerToken
+	Value string `json:"value"`
+}
+
+func toConsumerTokenMetadata(t *consumerToken) ConsumerToken {
+	return ConsumerToken{
+		ID:          t.ID,
+		Consumer:    t.Consumer,
+		Description: t.Description,
+		CreatedAt:   t.CreatedAt,
+		ExpiresAt:   t.ExpiresAt,
+		LastUsedAt:  t.LastUsedAt,
+		Revoked:     t.Revoked,
+	}
+}
+
+func toConsumerTokenWithValue(t *consumerToken) ConsumerTokenWithValue {
+	return ConsumerTokenWithValue{ConsumerToken: toConsumerTokenMetadata(t), Value: t.Value}
 }
 
 // newStore defaults bootstrapped to true - the shape every other test in
@@ -84,11 +153,12 @@ type Store struct {
 // exercising the unbootstrapped case calls SetBootstrapped(false) itself.
 func newStore() *Store {
 	return &Store{
-		objects:        make(map[string]Object),
-		tokens:         make(map[string]time.Time),
-		bootstrapped:   true,
-		consumers:      make(map[string]*string),
-		consumerTokens: make(map[string]string),
+		objects:             make(map[string]Object),
+		tokens:              make(map[string]time.Time),
+		bootstrapped:        true,
+		consumers:           make(map[string]*string),
+		consumerTokens:      make(map[string]*consumerToken),
+		consumerTokenValues: make(map[string]string),
 	}
 }
 
@@ -553,17 +623,106 @@ func (s *Store) CreateWriteToken(_ context.Context, name string, ttl time.Durati
 	return "", token, nil
 }
 
-// CreateConsumerToken issues a fresh read token bound to consumer -
-// mirroring CreateWriteToken's shape, but stored separately since a
-// consumer token authorizes GetObject only, never the write-token routes.
+// CreateConsumerToken issues a fresh read token bound to consumer, valid
+// for a year - a thin convenience over IssueConsumerToken for tests that
+// only need a plain token value and don't care about description or ttl.
 func (s *Store) CreateConsumerToken(consumer string) (token string) {
+	return s.IssueConsumerToken(consumer, "", 365*24*time.Hour).Value
+}
+
+// IssueConsumerToken mints a new consumer read token, mirroring
+// hush-hush's POST /consumer-tokens (alrayyes/hush-hush#467).
+func (s *Store) IssueConsumerToken(consumer, description string, ttl time.Duration) ConsumerTokenWithValue {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	token = "consumer-" + consumer + "-" + randomSuffix()
-	s.consumerTokens[token] = consumer
+	now := time.Now()
+	rec := &consumerToken{
+		ID:          randomSuffix(),
+		Consumer:    consumer,
+		Description: description,
+		CreatedAt:   now,
+		ExpiresAt:   now.Add(ttl),
+		Value:       "consumer-" + consumer + "-" + randomSuffix(),
+	}
 
-	return token
+	s.consumerTokens[rec.ID] = rec
+	s.consumerTokenValues[rec.Value] = rec.ID
+
+	return toConsumerTokenWithValue(rec)
+}
+
+// ListConsumerTokens returns every issued consumer token's metadata,
+// sorted by id, mirroring hush-hush's GET /consumer-tokens.
+func (s *Store) ListConsumerTokens() []ConsumerToken {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	result := make([]ConsumerToken, 0, len(s.consumerTokens))
+	for _, rec := range s.consumerTokens {
+		result = append(result, toConsumerTokenMetadata(rec))
+	}
+
+	slices.SortFunc(result, func(a, b ConsumerToken) int { return strings.Compare(a.ID, b.ID) })
+
+	return result
+}
+
+// RotateConsumerToken replaces id's secret and expiry, keeping its
+// consumer and description unchanged - ErrConsumerTokenNotFound for an
+// unknown, already revoked, or already expired id, matching hush-hush-go's
+// own RotateConsumerToken doc comment.
+func (s *Store) RotateConsumerToken(id string, ttl time.Duration) (ConsumerTokenWithValue, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	rec, ok := s.consumerTokens[id]
+	if !ok || rec.Revoked || time.Now().After(rec.ExpiresAt) {
+		return ConsumerTokenWithValue{}, ErrConsumerTokenNotFound
+	}
+
+	delete(s.consumerTokenValues, rec.Value)
+
+	rec.Value = "consumer-" + rec.Consumer + "-" + randomSuffix()
+	rec.ExpiresAt = time.Now().Add(ttl)
+	s.consumerTokenValues[rec.Value] = id
+
+	return toConsumerTokenWithValue(rec), nil
+}
+
+// RevokeConsumerToken invalidates id - revoking an unknown, already
+// revoked, or already expired id isn't an error, matching hush-hush-go's
+// own RevokeConsumerToken doc comment.
+func (s *Store) RevokeConsumerToken(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if rec, ok := s.consumerTokens[id]; ok {
+		rec.Revoked = true
+	}
+}
+
+// PurgeConsumerToken permanently removes id, once it's already revoked or
+// past its expiry - ErrConsumerTokenNotFound for an unknown id,
+// ErrConsumerTokenActive for one still active, matching hush-hush-go's own
+// PurgeConsumerToken doc comment.
+func (s *Store) PurgeConsumerToken(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	rec, ok := s.consumerTokens[id]
+	if !ok {
+		return ErrConsumerTokenNotFound
+	}
+
+	if !rec.Revoked && time.Now().Before(rec.ExpiresAt) {
+		return ErrConsumerTokenActive
+	}
+
+	delete(s.consumerTokens, id)
+	delete(s.consumerTokenValues, rec.Value)
+
+	return nil
 }
 
 // randomSuffix never errors in practice - crypto/rand.Read only fails if
@@ -588,16 +747,25 @@ func (s *Store) validateToken(token string) bool {
 	return ok && time.Now().Before(expiry)
 }
 
-// consumerForToken reports the consumer name token is bound to, and
-// whether it's a known consumer token at all - consumer tokens carry no
-// expiry in this fake, matching CreateConsumerToken not taking a ttl.
-func (s *Store) consumerForToken(token string) (consumer string, ok bool) {
+// consumerForToken reports the consumer name value is bound to, and
+// whether it's currently a valid consumer token at all - false for an
+// unknown, revoked, or expired value, the same as hush-hush's own
+// consumerBearerAuth would reject each of those.
+func (s *Store) consumerForToken(value string) (consumer string, ok bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	consumer, ok = s.consumerTokens[token]
+	id, ok := s.consumerTokenValues[value]
+	if !ok {
+		return "", false
+	}
 
-	return consumer, ok
+	rec := s.consumerTokens[id]
+	if rec.Revoked || time.Now().After(rec.ExpiresAt) {
+		return "", false
+	}
+
+	return rec.Consumer, true
 }
 
 // New starts an httptest.Server backed by a fresh Store and issues a
@@ -670,6 +838,11 @@ func newMux(s *Store) *http.ServeMux {
 	// single path segment can't capture.
 	mux.HandleFunc("PATCH /consumers/{name...}", requireWriteToken(s, handleUpdateConsumer(s)))
 	mux.HandleFunc("DELETE /consumers/{name...}", requireWriteToken(s, handleDeleteConsumer(s)))
+	mux.HandleFunc("POST /consumer-tokens", requireWriteToken(s, handleCreateConsumerToken(s)))
+	mux.HandleFunc("GET /consumer-tokens", requireWriteToken(s, handleListConsumerTokens(s)))
+	mux.HandleFunc("POST /consumer-tokens/{id}/rotate", requireWriteToken(s, handleRotateConsumerToken(s)))
+	mux.HandleFunc("DELETE /consumer-tokens/{id}/purge", requireWriteToken(s, handlePurgeConsumerToken(s)))
+	mux.HandleFunc("DELETE /consumer-tokens/{id}", requireWriteToken(s, handleRevokeConsumerToken(s)))
 
 	return mux
 }
@@ -966,6 +1139,80 @@ func handleDeleteConsumer(s *Store) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+type createConsumerTokenRequest struct {
+	Consumer    string `json:"consumer"`
+	Description string `json:"description"`
+	TTLSeconds  int64  `json:"ttl_seconds"`
+}
+
+func handleCreateConsumerToken(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req createConsumerTokenRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Consumer == "" || req.TTLSeconds <= 0 {
+			writeError(w, http.StatusBadRequest, "consumer and a positive ttl_seconds are required")
+
+			return
+		}
+
+		token := s.IssueConsumerToken(req.Consumer, req.Description, time.Duration(req.TTLSeconds)*time.Second)
+
+		writeJSON(w, http.StatusCreated, token)
+	}
+}
+
+func handleListConsumerTokens(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, s.ListConsumerTokens())
+	}
+}
+
+type rotateConsumerTokenRequest struct {
+	TTLSeconds int64 `json:"ttl_seconds"`
+}
+
+func handleRotateConsumerToken(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req rotateConsumerTokenRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.TTLSeconds <= 0 {
+			writeError(w, http.StatusBadRequest, "a positive ttl_seconds is required")
+
+			return
+		}
+
+		token, err := s.RotateConsumerToken(r.PathValue("id"), time.Duration(req.TTLSeconds)*time.Second)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "unknown, revoked, or expired consumer token")
+
+			return
+		}
+
+		writeJSON(w, http.StatusOK, token)
+	}
+}
+
+func handleRevokeConsumerToken(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.RevokeConsumerToken(r.PathValue("id"))
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func handlePurgeConsumerToken(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch err := s.PurgeConsumerToken(r.PathValue("id")); {
+		case errors.Is(err, ErrConsumerTokenNotFound):
+			writeError(w, http.StatusNotFound, "unknown consumer token")
+		case errors.Is(err, ErrConsumerTokenActive):
+			writeError(w, http.StatusConflict, "consumer token is still active")
+		case err != nil:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		default:
+			w.WriteHeader(http.StatusNoContent)
+		}
 	}
 }
 

@@ -122,6 +122,26 @@ hush-hush-cli status
 hush-hush-cli status --json | jq .bootstrapped
 ```
 
+Mint a consumer read token, scoped to one consumer, for `get`'s
+`--consumer-token`/`HUSH_HUSH_CONSUMER_TOKEN` - a write token is required,
+the same as `inject`/`update`/`delete`, since issuing a credential that
+grants read access is itself a write-path operation:
+
+```sh
+hush-hush-cli token create homelab/vps-docker --ttl 720h --description "ci reader"
+hush-hush-cli token list
+hush-hush-cli token rotate <id> --ttl 720h
+hush-hush-cli token revoke <id>
+hush-hush-cli token purge <id>
+```
+
+`create` and `rotate` print the raw value once - it's never recoverable
+again afterwards, and `list` never includes it. `--ttl` is required on
+both, a Go duration (`720h`, not `30d`). `revoke` invalidates a token
+without deleting its record, so it still shows in `list`; `purge` removes
+an already-revoked or already-expired token's record for good, and
+refuses one that's still active.
+
 ## Configuration
 
 Settings are read in this order, each layer overriding the one before it:
@@ -158,7 +178,7 @@ way to fix it.
 | `--server`                 | `HUSH_HUSH_SERVER`                 | `server`                 | Server base URL. Default `http://localhost:8080`.                                                                                                          |
 | `--token`                  | `HUSH_HUSH_TOKEN`                  | `token`                  | Bearer token, required for `inject`/`update`/`delete`; also authorizes `get`, taking priority over `--consumer-token` when both are set.                   |
 | `--token-command`          | `HUSH_HUSH_TOKEN_COMMAND`          | `token_command`          | Command whose trimmed stdout is the token instead - wins over `--token` if both are set.                                                                   |
-| `--consumer-token`         | `HUSH_HUSH_CONSUMER_TOKEN`         | `consumer_token`         | Read-only, consumer-scoped bearer token, `get` only - used as a fallback when `--token` isn't set. Issued through the `hush-hush` web UI, not this CLI.    |
+| `--consumer-token`         | `HUSH_HUSH_CONSUMER_TOKEN`         | `consumer_token`         | Read-only, consumer-scoped bearer token, `get` only - used as a fallback when `--token` isn't set. Minted with `hush-hush-cli token create`.               |
 | `--consumer-token-command` | `HUSH_HUSH_CONSUMER_TOKEN_COMMAND` | `consumer_token_command` | Command whose trimmed stdout is the consumer token instead - wins over `--consumer-token` if both are set.                                                 |
 | `--caller`                 | `HUSH_HUSH_CALLER`                 | `caller`                 | Self-presented identity recorded in the audit log. Optional.                                                                                               |
 | `--recipients`             | `HUSH_HUSH_RECIPIENTS`             | `recipients`             | Comma-separated age recipients, for `inject`/`update`. Wins over `--used-by` resolution.                                                                   |
