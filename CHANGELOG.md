@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.12.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.11.0...v1.12.0) (2026-09-28)
+
+
+### Features
+
+* **cli:** add consumer read token mint/list/rotate/revoke/purge ([b13726a](https://github.com/alrayyes/hush-hush-cli/commit/b13726ad030c494c908c5b4ed361df54f667b30c))
+* **cli:** add consumer read token mint/list/rotate/revoke/purge ([9733cb4](https://github.com/alrayyes/hush-hush-cli/commit/9733cb47b3d6ebb7b320dde1ac09453195ff2ebf))
+
+
+### Bug Fixes
+
+* **nix:** update vendorHash after the hush-hush-go v4.2.0 bump ([a58b199](https://github.com/alrayyes/hush-hush-cli/commit/a58b199e7c6375c3fc3268d36efd4c2583fe328c))
+
 ## [1.11.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.10.2...v1.11.0) (2026-09-28)
 
 
