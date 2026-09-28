@@ -123,7 +123,10 @@ func TestContainerInjectGetUpdateDeleteRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	writeCfg := cli.Config{Server: containerServer, Token: containerToken}
-	readCfg := cli.Config{Server: containerServer}
+	// GET /objects/{slug} now requires a credential too
+	// (alrayyes/hush-hush#446) - the write token already satisfies that,
+	// same as it does for write operations.
+	readCfg := cli.Config{Server: containerServer, Token: containerToken}
 
 	value := []byte("container-integration-test-value")
 	require.NoError(t, cli.Inject(t.Context(), writeCfg, "hush_hush_cli_integration_test", value,
@@ -190,7 +193,10 @@ func TestContainerAuditLogReturnsRecordedEntries(t *testing.T) {
 	require.NoError(t, err)
 
 	writeCfg := cli.Config{Server: containerServer, Token: containerToken}
-	readCfg := cli.Config{Server: containerServer}
+	// GET /objects/{slug} now requires a credential too
+	// (alrayyes/hush-hush#446) - the write token already satisfies that,
+	// same as it does for write operations.
+	readCfg := cli.Config{Server: containerServer, Token: containerToken}
 
 	const objectID = "hush_hush_cli_integration_test_audit_log"
 
