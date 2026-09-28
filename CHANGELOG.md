@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.2](https://github.com/alrayyes/hush-hush-cli/compare/v1.10.1...v1.10.2) (2026-09-28)
+
+
+### Bug Fixes
+
+* **integration:** send a token on reads against the real server ([055354c](https://github.com/alrayyes/hush-hush-cli/commit/055354c3ad8d1997eca9cc3047776f58baf20108))
+* **integration:** send a token on reads against the real server ([9a290ef](https://github.com/alrayyes/hush-hush-cli/commit/9a290ef91428f9d3c15721da8393ed3a3f743bba)), closes [#135](https://github.com/alrayyes/hush-hush-cli/issues/135)
+
 ## [1.10.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.10.0...v1.10.1) (2026-09-28)
 
 
