@@ -2,14 +2,14 @@
 
 ## 1. External prerequisite
 
-- [ ] 1.1 File an issue on `alrayyes/hush-hush-go` asking for a
-      `WithConsumerToken` SDK option (or equivalent) that sends
-      `Authorization: Bearer <consumerToken>` on `GetObject`, alongside
-      the existing `WithAPIKey`-carried write token — see design.md's
-      "Decisions" section for the exact shape. Link it from
-      `alrayyes/hush-hush-cli#133` and mark #133 blocked-by it. Verify:
-      issue filed, linked both ways.
-- [ ] 1.2 Once that SDK release ships, bump this repo's
+- [x] 1.1 Track the SDK-side prerequisite: `alrayyes/hush-hush-go#180`
+      already asks for consumer-token support (filed independently,
+      found while researching this change — not new). It's unblocked
+      now that `alrayyes/hush-hush#438` closed. Linked both ways:
+      `alrayyes/hush-hush-cli#133` is now blocked-by
+      `alrayyes/hush-hush-go#180`. Verify: `gh issue view 133 --repo
+    alrayyes/hush-hush-cli` shows the blocked-by relationship.
+- [ ] 1.2 Once `hush-hush-go#180` ships a release, bump this repo's
       `go.mod`/`go.sum` to it and run `go build ./...` to confirm the new
       option compiles against what this repo calls. Verify: `go build`
       succeeds with the bumped dependency.

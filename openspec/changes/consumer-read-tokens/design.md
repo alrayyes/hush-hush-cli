@@ -67,9 +67,11 @@ write-token behavior on every other endpoint untouched.
 
 This is a change to `hush-hush-go`, not to this repo, so it's a
 prerequisite this change depends on rather than a task this repo's
-`tasks.md` can carry out itself. Filing that as its own tracked issue on
-`hush-hush-go` (rather than leaving it as an implicit assumption here) is
-part of this change's task list.
+`tasks.md` can carry out itself. `alrayyes/hush-hush-go#180` already
+tracks it — filed independently as the deferred-scope follow-up to
+`hush-hush#438` — and is unblocked now that #438 closed. Linking it
+from `alrayyes/hush-hush-cli#133` (rather than leaving the dependency
+implicit here) is part of this change's task list.
 
 **`consumer_token` / `consumer_token_command` mirrors the existing
 `token` / `token_command` shape exactly**, per the issue body's own
@@ -92,7 +94,7 @@ failing one.
 - **This CLI change is blocked on an external release.** Nothing in
   `hush-hush-cli` can send a consumer token until `hush-hush-go` ships
   `WithConsumerToken` (or equivalent) and this repo bumps its
-  `go.mod` to that version → mitigated by filing the SDK-side issue now
+  `go.mod` to that version → mitigated by linking the SDK-side issue now
   (this change's tasks.md) rather than discovering the gap mid-`apply`,
   and by scoping this change's own tasks so everything except the final
   wiring can proceed (config fields, flag/env parsing, error message,
