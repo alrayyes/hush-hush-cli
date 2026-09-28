@@ -7,8 +7,7 @@
       found while researching this change — not new). It's unblocked
       now that `alrayyes/hush-hush#438` closed. Linked both ways:
       `alrayyes/hush-hush-cli#133` is now blocked-by
-      `alrayyes/hush-hush-go#180`. Verify: `gh issue view 133 --repo
-    alrayyes/hush-hush-cli` shows the blocked-by relationship.
+      `alrayyes/hush-hush-go#180`. Verify: `gh issue view 133 --repo alrayyes/hush-hush-cli` shows the blocked-by relationship.
 - [ ] 1.2 Once `hush-hush-go#180` ships a release, bump this repo's
       `go.mod`/`go.sum` to it and run `go build ./...` to confirm the new
       option compiles against what this repo calls. Verify: `go build`
