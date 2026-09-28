@@ -111,6 +111,7 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newDeleteCmd())
 	root.AddCommand(newUsedByCmd())
 	root.AddCommand(newAuditLogCmd())
+	root.AddCommand(newTokenCmd())
 	root.AddCommand(newStatusCmd())
 	root.AddCommand(newConfigCmd())
 	root.AddCommand(newManCmd(root))
@@ -209,8 +210,8 @@ token: ""
 # instead - it wins over the literal value above if both are set.
 # token_command: "pass show hush-hush/write-token"
 # consumer_token is a read-only, consumer-scoped token - only used by
-# get, and only when token above is empty. Issued through the hush-hush
-# web UI, not this CLI.
+# get, and only when token above is empty. Mint one with
+# "hush-hush-cli token create <consumer> --ttl <duration>".
 consumer_token: ""
 # consumer_token_command works the same as token_command, for consumer_token.
 # consumer_token_command: "pass show hush-hush/consumer-token"
