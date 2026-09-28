@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.11.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.10.2...v1.11.0) (2026-09-28)
+
+
+### Features
+
+* **cli:** add consumer read token support for get ([8e428e7](https://github.com/alrayyes/hush-hush-cli/commit/8e428e7b019123a4d8506d005a092212d10f6bff))
+* **cli:** add consumer read token support for get ([ad56a59](https://github.com/alrayyes/hush-hush-cli/commit/ad56a596bba3b54bd0dca301b965969f4a5da139)), closes [#133](https://github.com/alrayyes/hush-hush-cli/issues/133)
+
+
+### Bug Fixes
+
+* **nix:** update vendorHash after the hush-hush-go v4.1.2 bump ([1d29628](https://github.com/alrayyes/hush-hush-cli/commit/1d2962826ac9d37b2fc615ee3264f369ae1d35a6))
+
 ## [1.10.2](https://github.com/alrayyes/hush-hush-cli/compare/v1.10.1...v1.10.2) (2026-09-28)
 
 
