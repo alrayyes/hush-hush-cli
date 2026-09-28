@@ -16,9 +16,15 @@ import (
 type Config struct {
 	// Server is the hush-hush server's base URL.
 	Server string
-	// Token is the write-path bearer token - needed by inject, update,
-	// and delete, ignored by get.
+	// Token is the write-path bearer token - required by inject, update,
+	// and delete, and also authorizes get (a write token reads anything).
 	Token string
+	// ConsumerToken is a read-only, consumer-scoped bearer token - used by
+	// get only, and only as a fallback when Token is empty (a write token
+	// always takes priority, since it authorizes reads too). Never read by
+	// inject/update/delete/list/audit-log: consumerBearerAuth never
+	// authorizes anything besides GetObject (design.md).
+	ConsumerToken string
 	// Caller is this CLI's self-presented identity for the audit log
 	// (api/openapi.yaml's X-Caller header) - optional.
 	Caller string

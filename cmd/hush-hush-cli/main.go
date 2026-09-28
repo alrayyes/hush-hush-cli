@@ -38,6 +38,7 @@ var errConfigAlreadyExists = errors.New("config file already exists (use --force
 var configEnvVars = []string{
 	"HUSH_HUSH_SERVER", "HUSH_HUSH_TOKEN", "HUSH_HUSH_TOKEN_COMMAND", "HUSH_HUSH_CALLER",
 	"HUSH_HUSH_RECIPIENTS", "HUSH_HUSH_IDENTITY",
+	"HUSH_HUSH_CONSUMER_TOKEN", "HUSH_HUSH_CONSUMER_TOKEN_COMMAND",
 }
 
 func main() {
@@ -80,6 +81,8 @@ func newRootCmd() *cobra.Command {
 	root.PersistentFlags().String("server", "http://localhost:8080", "hush-hush server URL")
 	root.PersistentFlags().String("token", "", "write-path bearer token")
 	root.PersistentFlags().String("token-command", "", "command whose trimmed stdout is the write-path bearer token (wins over --token if both are set)")
+	root.PersistentFlags().String("consumer-token", "", "read-only, consumer-scoped bearer token - used by get only, as a fallback when --token isn't set")
+	root.PersistentFlags().String("consumer-token-command", "", "command whose trimmed stdout is the consumer token instead (wins over --consumer-token if both are set)")
 	root.PersistentFlags().String("caller", "", "self-presented identity recorded in the audit log")
 	root.PersistentFlags().BoolP("yes", "y", false, "write a starter config with no prompt, if none exists")
 
@@ -88,6 +91,8 @@ func newRootCmd() *cobra.Command {
 	}
 
 	_ = viper.BindPFlag("token_command", root.PersistentFlags().Lookup("token-command"))
+	_ = viper.BindPFlag("consumer_token", root.PersistentFlags().Lookup("consumer-token"))
+	_ = viper.BindPFlag("consumer_token_command", root.PersistentFlags().Lookup("consumer-token-command"))
 
 	viper.SetEnvPrefix("hush_hush")
 	viper.AutomaticEnv()
@@ -120,21 +125,31 @@ func newRootCmd() *cobra.Command {
 // file as plaintext. The command wins over a literal --token/token if both
 // are set: whoever configured the command form did it on purpose.
 //
+// consumer_token/consumer_token_command resolve the same way, for get's
+// fallback read-only credential (internal/cli.Get, design.md).
+//
 // requireToken is set by inject/update/delete and left false by get: a
 // missing token then fails Validate() here, before any request reaches
 // the server, rather than surfacing as a bare 401 from deep inside the
-// SDK.
+// SDK. get accepts either token being empty - it falls back to whichever
+// of Token/ConsumerToken is set, or neither, itself.
 func config(requireToken bool) (cli.Config, error) {
 	token, err := cliconfig.ResolveSecret(viper.GetString("token"), viper.GetString("token_command"))
 	if err != nil {
 		return cli.Config{}, fmt.Errorf("token_command: %w", err)
 	}
 
+	consumerToken, err := cliconfig.ResolveSecret(viper.GetString("consumer_token"), viper.GetString("consumer_token_command"))
+	if err != nil {
+		return cli.Config{}, fmt.Errorf("consumer_token_command: %w", err)
+	}
+
 	cfg := cli.Config{
-		Server:       viper.GetString("server"),
-		Token:        token,
-		Caller:       viper.GetString("caller"),
-		RequireToken: requireToken,
+		Server:        viper.GetString("server"),
+		Token:         token,
+		ConsumerToken: consumerToken,
+		Caller:        viper.GetString("caller"),
+		RequireToken:  requireToken,
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -193,6 +208,12 @@ token: ""
 # token_command runs a command and uses its trimmed stdout as the token
 # instead - it wins over the literal value above if both are set.
 # token_command: "pass show hush-hush/write-token"
+# consumer_token is a read-only, consumer-scoped token - only used by
+# get, and only when token above is empty. Issued through the hush-hush
+# web UI, not this CLI.
+consumer_token: ""
+# consumer_token_command works the same as token_command, for consumer_token.
+# consumer_token_command: "pass show hush-hush/consumer-token"
 caller: ""
 recipients: ""
 identity: ""

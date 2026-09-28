@@ -153,18 +153,20 @@ missing once flags/environment/file/defaults are all checked fails
 immediately, naming the flag, the environment variable, and `init` as the
 way to fix it.
 
-| Flag                 | Environment variable         | config key         | Meaning                                                                                                                                                    |
-| -------------------- | ---------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--server`           | `HUSH_HUSH_SERVER`           | `server`           | Server base URL. Default `http://localhost:8080`.                                                                                                          |
-| `--token`            | `HUSH_HUSH_TOKEN`            | `token`            | Bearer token, for `inject`/`update`/`delete`.                                                                                                              |
-| `--token-command`    | `HUSH_HUSH_TOKEN_COMMAND`    | `token_command`    | Command whose trimmed stdout is the token instead - wins over `--token` if both are set.                                                                   |
-| `--caller`           | `HUSH_HUSH_CALLER`           | `caller`           | Self-presented identity recorded in the audit log. Optional.                                                                                               |
-| `--recipients`       | `HUSH_HUSH_RECIPIENTS`       | `recipients`       | Comma-separated age recipients, for `inject`/`update`. Wins over `--used-by` resolution.                                                                   |
-| `--identity`         | `HUSH_HUSH_IDENTITY`         | `identity`         | Comma-separated age private keys, for `get`.                                                                                                               |
-| `--identity-command` | `HUSH_HUSH_IDENTITY_COMMAND` | `identity_command` | Command whose trimmed stdout is the identity instead - wins over `--identity` if both are set.                                                             |
-| `--used-by`          | -                            | -                  | Consumers of the secret (repeatable or comma-separated), `inject` only. With no `--recipients`, each consumer's registered public key is resolved instead. |
-| `--json`             | -                            | -                  | Print the raw JSON array instead of a table, `list` only.                                                                                                  |
-| `--description`      | -                            | -                  | Free-text label, fixed at creation, `inject` only.                                                                                                         |
+| Flag                       | Environment variable               | config key               | Meaning                                                                                                                                                    |
+| -------------------------- | ---------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--server`                 | `HUSH_HUSH_SERVER`                 | `server`                 | Server base URL. Default `http://localhost:8080`.                                                                                                          |
+| `--token`                  | `HUSH_HUSH_TOKEN`                  | `token`                  | Bearer token, required for `inject`/`update`/`delete`; also authorizes `get`, taking priority over `--consumer-token` when both are set.                   |
+| `--token-command`          | `HUSH_HUSH_TOKEN_COMMAND`          | `token_command`          | Command whose trimmed stdout is the token instead - wins over `--token` if both are set.                                                                   |
+| `--consumer-token`         | `HUSH_HUSH_CONSUMER_TOKEN`         | `consumer_token`         | Read-only, consumer-scoped bearer token, `get` only - used as a fallback when `--token` isn't set. Issued through the `hush-hush` web UI, not this CLI.    |
+| `--consumer-token-command` | `HUSH_HUSH_CONSUMER_TOKEN_COMMAND` | `consumer_token_command` | Command whose trimmed stdout is the consumer token instead - wins over `--consumer-token` if both are set.                                                 |
+| `--caller`                 | `HUSH_HUSH_CALLER`                 | `caller`                 | Self-presented identity recorded in the audit log. Optional.                                                                                               |
+| `--recipients`             | `HUSH_HUSH_RECIPIENTS`             | `recipients`             | Comma-separated age recipients, for `inject`/`update`. Wins over `--used-by` resolution.                                                                   |
+| `--identity`               | `HUSH_HUSH_IDENTITY`               | `identity`               | Comma-separated age private keys, for `get`.                                                                                                               |
+| `--identity-command`       | `HUSH_HUSH_IDENTITY_COMMAND`       | `identity_command`       | Command whose trimmed stdout is the identity instead - wins over `--identity` if both are set.                                                             |
+| `--used-by`                | -                                  | -                        | Consumers of the secret (repeatable or comma-separated), `inject` only. With no `--recipients`, each consumer's registered public key is resolved instead. |
+| `--json`                   | -                                  | -                        | Print the raw JSON array instead of a table, `list` only.                                                                                                  |
+| `--description`            | -                                  | -                        | Free-text label, fixed at creation, `inject` only.                                                                                                         |
 
 ## Contributing
 
