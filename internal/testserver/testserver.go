@@ -72,6 +72,11 @@ type Store struct {
 	// a directory entry, whether it got there via AddConsumer or via
 	// appearing in some object's used_by list at creation.
 	consumers map[string]*string
+	// consumerTokens holds every issued consumer read token: token ->
+	// the one consumer name it's bound to (alrayyes/hush-hush#446's
+	// consumerBearerAuth - a consumer token authorizes GetObject only,
+	// only for an object whose used_by includes its bound consumer).
+	consumerTokens map[string]string
 }
 
 // newStore defaults bootstrapped to true - the shape every other test in
@@ -79,10 +84,11 @@ type Store struct {
 // exercising the unbootstrapped case calls SetBootstrapped(false) itself.
 func newStore() *Store {
 	return &Store{
-		objects:      make(map[string]Object),
-		tokens:       make(map[string]time.Time),
-		bootstrapped: true,
-		consumers:    make(map[string]*string),
+		objects:        make(map[string]Object),
+		tokens:         make(map[string]time.Time),
+		bootstrapped:   true,
+		consumers:      make(map[string]*string),
+		consumerTokens: make(map[string]string),
 	}
 }
 
@@ -547,6 +553,19 @@ func (s *Store) CreateWriteToken(_ context.Context, name string, ttl time.Durati
 	return "", token, nil
 }
 
+// CreateConsumerToken issues a fresh read token bound to consumer -
+// mirroring CreateWriteToken's shape, but stored separately since a
+// consumer token authorizes GetObject only, never the write-token routes.
+func (s *Store) CreateConsumerToken(consumer string) (token string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	token = "consumer-" + consumer + "-" + randomSuffix()
+	s.consumerTokens[token] = consumer
+
+	return token
+}
+
 // randomSuffix never errors in practice - crypto/rand.Read only fails if
 // the OS entropy source itself is broken, not a condition a test fake
 // needs to handle - so a read failure falls back to a fixed suffix rather
@@ -567,6 +586,18 @@ func (s *Store) validateToken(token string) bool {
 	expiry, ok := s.tokens[token]
 
 	return ok && time.Now().Before(expiry)
+}
+
+// consumerForToken reports the consumer name token is bound to, and
+// whether it's a known consumer token at all - consumer tokens carry no
+// expiry in this fake, matching CreateConsumerToken not taking a ttl.
+func (s *Store) consumerForToken(token string) (consumer string, ok bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	consumer, ok = s.consumerTokens[token]
+
+	return consumer, ok
 }
 
 // New starts an httptest.Server backed by a fresh Store and issues a
@@ -691,12 +722,43 @@ func handleCreateObject(s *Store) http.HandlerFunc {
 	}
 }
 
-// handleGetObject is unauthenticated by design, matching hush-hush's own
-// v1 confidentiality boundary: "who holds a matching private key".
+// handleGetObject requires a write token, or a consumer token whose bound
+// consumer appears in the object's used_by list - matching hush-hush's
+// current contract (alrayyes/hush-hush#446), not the earlier
+// unauthenticated-by-design one. A consumer token presented for an object
+// outside its scope gets the same 404 an unknown slug would, never a 403,
+// so it can't be used to enumerate which other slugs exist - the same
+// anti-enumeration rule api/openapi.yaml documents on the real endpoint.
 func handleGetObject(s *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		got, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+
+		var consumer string
+
+		switch {
+		case ok && got != "" && s.validateToken(got):
+			// A write token reads any object - no scope check.
+		case ok && got != "":
+			consumer, ok = s.consumerForToken(got)
+			if !ok {
+				writeError(w, http.StatusUnauthorized, "missing or invalid bearer token")
+
+				return
+			}
+		default:
+			writeError(w, http.StatusUnauthorized, "missing or invalid bearer token")
+
+			return
+		}
+
 		obj, err := s.GetObject(r.Context(), r.PathValue("id"))
 		if err != nil {
+			writeError(w, http.StatusNotFound, "unknown object")
+
+			return
+		}
+
+		if consumer != "" && !slices.Contains(obj.UsedBy, consumer) {
 			writeError(w, http.StatusNotFound, "unknown object")
 
 			return
