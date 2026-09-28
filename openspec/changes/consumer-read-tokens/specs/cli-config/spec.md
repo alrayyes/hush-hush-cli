@@ -52,24 +52,34 @@ value and the command are set.
 
 ## ADDED Requirements
 
-### Requirement: Consumer read token sent on object fetches
+### Requirement: Consumer read token used as a fallback on object fetches
 
-The CLI SHALL send a resolved `consumer_token` as an
-`Authorization: Bearer <consumer_token>` header on every `GET
-/objects/{slug}` request, in addition to (not replacing) whatever write
-credential the request already carries.
+`get` SHALL send the resolved write `token` as its credential when one
+is configured, and only fall back to a resolved `consumer_token` when no
+write `token` is resolved. A request carries exactly one
+`Authorization: Bearer` credential; `consumer_token` never overrides or
+accompanies an already-configured write `token`.
 
-#### Scenario: Consumer token present
+#### Scenario: Write token takes priority
 
-- **WHEN** `get` runs with a `consumer_token` resolved from any source
+- **WHEN** `get` runs with both `token` and `consumer_token` resolved
+  from any source
+- **THEN** the request to fetch the object includes
+  `Authorization: Bearer <token>`, not the consumer token
+
+#### Scenario: Consumer token used when no write token is configured
+
+- **WHEN** `get` runs with `consumer_token` resolved and no `token`
+  resolved from any source
 - **THEN** the request to fetch the object includes
   `Authorization: Bearer <consumer_token>`
 
-#### Scenario: No consumer token configured
+#### Scenario: Neither credential configured
 
-- **WHEN** `get` runs with no `consumer_token` resolved from any source
-- **THEN** the CLI still attempts the fetch using whatever write
-  credential is configured, sending no consumer-token header
+- **WHEN** `get` runs with neither `token` nor `consumer_token` resolved
+  from any source
+- **THEN** the CLI still attempts the fetch with no credential, the same
+  as it does today
 
 ### Requirement: Actionable error on a rejected read
 
@@ -77,17 +87,26 @@ When a `GET /objects/{slug}` request is rejected with an unauthorized
 response, the CLI SHALL fail with an error naming the credential that
 was missing or invalid, rather than surfacing the raw HTTP failure.
 
-#### Scenario: Unauthorized with no consumer token configured
+#### Scenario: Unauthorized with neither credential configured
 
-- **WHEN** `get` runs with no `consumer_token` resolved and the server
-  responds unauthorized
-- **THEN** the CLI fails with an error naming `--consumer-token`,
-  `HUSH_HUSH_CONSUMER_TOKEN`, and `consumer_token` in the config file as
-  ways to provide it, not a raw HTTP status
-
-#### Scenario: Unauthorized with a consumer token configured
-
-- **WHEN** `get` runs with a `consumer_token` resolved from any source
+- **WHEN** `get` runs with neither `token` nor `consumer_token` resolved
   and the server responds unauthorized
+- **THEN** the CLI fails with an error naming `--token`/`--consumer-token`
+  and their environment variable and config-file forms as ways to
+  provide one, not a raw HTTP status
+
+#### Scenario: Unauthorized with a write token configured
+
+- **WHEN** `get` runs with `token` resolved (whether or not
+  `consumer_token` is also resolved) and the server responds
+  unauthorized
+- **THEN** the CLI fails with an error stating the configured write
+  token was rejected, not a raw HTTP status - the same message a
+  rejected `inject`/`update`/`delete` already gives
+
+#### Scenario: Unauthorized with only a consumer token configured
+
+- **WHEN** `get` runs with `consumer_token` resolved and no `token`
+  resolved, and the server responds unauthorized
 - **THEN** the CLI fails with an error stating the configured consumer
   token was rejected, not a raw HTTP status

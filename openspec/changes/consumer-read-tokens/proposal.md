@@ -21,9 +21,10 @@ fetches start failing. Tracked as `alrayyes/hush-hush-cli#133`.
   / `token_command` pair already has (`cli-config`'s "Configuration
   precedence" and "Credential fields resolve via command or literal
   value" requirements).
-- Send that token as `Authorization: Bearer <consumer_token>` on
-  `GET /objects/{slug}` reads, alongside (not replacing) the existing
-  write-token path — a consumer token authorizes reads only, per
+- Have `get` fall back to sending `consumer_token` as
+  `Authorization: Bearer <consumer_token>` when no write `token` is
+  configured — a write token already authorizes reads too, so it keeps
+  taking priority; a consumer token authorizes reads only, per
   `consumerBearerAuth`'s scope.
 - Report a 401 on a read with an actionable error naming the missing or
   invalid consumer token, rather than surfacing the raw HTTP failure —
@@ -54,16 +55,17 @@ performs, not a new capability)
 
 ## Impact
 
-- `internal/client`: `GetObject` needs to send a consumer bearer token
-  distinct from the write `token` used today via `hushhush.WithAPIKey`;
-  see `design.md` for why this is a real open question rather than a
-  drop-in change.
+- `internal/cli.Get`: picks which credential to hand the SDK client per
+  call (write token if set, else consumer token) instead of using the
+  shared `Config.newClient()` every other command uses unchanged. No
+  `internal/client` or SDK change needed — `hushhush.WithAPIKey` already
+  sends whatever credential it's given on every call, `GetObject`
+  included (`alrayyes/hush-hush-go#180`, closed without a code change;
+  see `design.md`).
 - CLI config loading/flags: new `consumer_token` /
   `consumer_token_command` fields alongside the existing `token` /
   `token_command` ones.
 - `README.md`, `CONTRIBUTING.md`: document the new configuration option.
-- `github.com/alrayyes/hush-hush-go` (external dependency, not owned by
-  this repo): as of commit `efa54ce` (2026-09-28, predates `#446`'s
-  merge) its `Client` has one `apiKey` used only for write operations,
-  and `GetObject` takes no separate credential — it hasn't been
-  regenerated against the contract `#446` added. See `design.md`.
+- `go.mod`: bump the `github.com/alrayyes/hush-hush-go/v4` pin from
+  `v4.1.0` to `v4.1.2` or later, a routine version bump rather than a
+  blocking dependency. See `design.md`.

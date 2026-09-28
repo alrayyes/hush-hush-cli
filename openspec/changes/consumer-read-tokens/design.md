@@ -2,33 +2,51 @@
 
 ## Context
 
-`internal/client.New` builds the SDK client with a single credential:
-`hushhush.NewClient(baseURL, hushhush.WithAPIKey(token))`
-(`internal/client/client.go:60`), and `GetObject` (`client.go:91`) calls
-`c.sdk.GetObject(ctx, id, c.Caller)` with no separate credential
-parameter — `WithAPIKey`'s doc comment says outright it's "the bearer
-credential used on write operations." `hush-hush-go` at `main`
-(`efa54ce`, 2026-09-28 04:34 UTC, before `hush-hush#446` merged at 15:17
-UTC the same day) has no notion of a second, read-scoped bearer token:
-there's one `apiKey` field on `config`, and `GetObject`'s signature
-carries no room for one. See proposal.md - Why for the server-side
-contract this closes the gap with.
+`internal/client.New(baseURL, token)` builds the SDK client with a
+single credential: `hushhush.NewClient(baseURL,
+hushhush.WithAPIKey(token))` (`client.go:60`), and `internal/cli.Config`
+has one `newClient()` helper (`cli.go:65`) that every command — `Get`
+included — calls with `c.Token`. There is exactly one `Authorization`
+header per request; the SDK doesn't send two.
 
-This repo's `CLAUDE.md` gotchas are explicit that the SDK is the only
-sanctioned way to talk to `hush-hush` — `internal/client` exists to wrap
-it "for exactly this reason," with the one carved-out exception being
-`hush-hush`'s own integration test on the server side. That rules out
-reaching for `net/http` directly in `internal/client` to route around the
-gap.
+An earlier version of this design assumed `hushhush.WithAPIKey` only
+attached its credential to write operations (create/update/delete) and
+that `GetObject` needed a new, separate SDK option to carry a
+read-scoped credential at all. That was wrong, confirmed by
+`hush-hush-go` owner Ryan Kes closing
+[`alrayyes/hush-hush-go#180`](https://github.com/alrayyes/hush-hush-go/issues/180#issuecomment-5874108681)
+without a code change:
+
+> this client's WithAPIKey token is already attached to every request
+> unconditionally (client.go's authEditor, applied the same way to
+> GetObject as to CreateObject) - it already sends Authorization:
+> Bearer on reads whenever a key is configured, and a consumer read
+> token works identically since the server doesn't care which field
+> name you called it. Verified: alrayyes/hush-hush-go@ef79b59 (post-
+> codegen-regen, released as 4.1.2).
+
+So `WithAPIKey` already sends whatever credential it's given on every
+call, `GetObject` included, and the server doesn't distinguish a write
+token from a consumer token by field name — only by what it's bound to
+and what `used_by` says. There is no SDK-side gap: `hush-hush-go` v4.1.2
+(`ef79b59`, already released) is sufficient as-is, and
+`alrayyes/hush-hush-go#180` is closed (`stateReason: COMPLETED`).
+
+That leaves a purely CLI-side decision. `client.New`/`newClient()` take
+exactly one token and hand it to exactly one `WithAPIKey` call, so this
+repo can't send a write token and a consumer token on the same request
+— it has to pick one credential per `Get` call.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Resolve and send a `consumer_token` distinct from the existing write
-  `token`, through the SDK.
-- Keep the write-token path (`WithAPIKey`, create/update/delete) exactly
-  as it is today — consumer tokens are additive, not a replacement.
+- Resolve `consumer_token` alongside the existing write `token`, and
+  have `Get` send it when there's no write token configured.
+- Keep every other command (`inject`, `update`, `delete`, `list`,
+  `audit-log`) exactly as they are today — they still require and send
+  only the write `token`, since `consumerBearerAuth` never authorizes
+  anything besides `getObject`.
 
 **Non-Goals:**
 
@@ -43,35 +61,29 @@ gap.
   (flag/env/config file/default) without an `init` prompt or a
   persistence-choice step. Revisit if usage shows people expect it in
   `init`.
-- Changing `hush-hush-go`'s own public API surface within _this_
-  change's scope. That SDK is a separate repo with its own release
-  cycle; this change depends on a release of it, but doesn't modify it.
 
 ## Decisions
 
-**Add a `WithConsumerToken` SDK option and thread it through
-`GetObject`, rather than reaching for raw HTTP.** The alternative —
-having `internal/client` send the `Authorization: Bearer` header itself
-around the generated client, or bypass the SDK for this one call — was
-considered and rejected: it's exactly the workaround this repo's
-standing SDK-only rule exists to prevent, and it would leave
-`hush-hush-go` never learning about a token type the wire contract
-(`consumerBearerAuth` in `api/openapi.yaml`) already documents. The
-`WithAPIKey`/`config.apiKey` naming and doc-comment pattern in
-`hush-hush-go`'s `client.go` gives a template to follow: a parallel
-`WithConsumerToken(token string) Option` setting a `consumerToken` field
-on `config`, and `GetObject` (or a new call the generated client already
-exposes once regenerated against the updated spec) sending it as
-`Authorization: Bearer <consumerToken>` when set, leaving the existing
-write-token behavior on every other endpoint untouched.
+**`Get` picks one credential — the write `token` if set, else
+`consumer_token` — rather than trying to send both.** The SDK client
+carries a single `apiKey`, so there's one `Authorization` header per
+request regardless of how many credentials are configured. A write
+token already authorizes every read (`bearerAuth` covers `getObject`
+too), so it takes priority when present; `consumer_token` is the
+fallback for a caller that holds no write token at all, which is the
+scenario proposal.md's Why describes — a read-only consumer. This
+happens in `internal/cli`, not `internal/client`: `Config.newClient()`
+(`cli.go:65`) is shared by every command and stays exactly as it is,
+sending `c.Token`. `Get` (`get.go:13`) gets its own client-construction
+step instead of calling the shared `newClient()`, choosing `c.Token` if
+non-empty, else `c.ConsumerToken`, before calling `client.New`.
 
-This is a change to `hush-hush-go`, not to this repo, so it's a
-prerequisite this change depends on rather than a task this repo's
-`tasks.md` can carry out itself. `alrayyes/hush-hush-go#180` already
-tracks it — filed independently as the deferred-scope follow-up to
-`hush-hush#438` — and is unblocked now that #438 closed. Linking it
-from `alrayyes/hush-hush-cli#133` (rather than leaving the dependency
-implicit here) is part of this change's task list.
+**No `hush-hush-go` dependency work.** The version already in `go.mod`
+either already includes the `ef79b59`/v4.1.2 codegen regen or needs
+nothing more than an ordinary `go get -u` bump to pick it up — check
+`go.mod`'s current pinned version against v4.1.2 when implementing; if
+it's already at or past that tag, task group 1 is just verifying the
+version, not waiting on anything.
 
 **`consumer_token` / `consumer_token_command` mirrors the existing
 `token` / `token_command` shape exactly**, per the issue body's own
@@ -81,24 +93,16 @@ literal value" requirement, extended by this change's delta spec) — same
 precedence order, same command-wins-over-literal rule, same
 non-swallowed command-failure behavior.
 
-**A consumer token is sent whenever resolved, with no flag to disable
-it**, since `consumerBearerAuth` only ever adds access (an object whose
-`used_by` includes the token's bound consumer) and never removes it — a
-`get` that already succeeds via a write token or session keeps
-succeeding with a consumer-token header attached, so there's no case
-where sending it unconditionally changes a successful outcome to a
-failing one.
-
 ## Risks / Trade-offs
 
-- **This CLI change is blocked on an external release.** Nothing in
-  `hush-hush-cli` can send a consumer token until `hush-hush-go` ships
-  `WithConsumerToken` (or equivalent) and this repo bumps its
-  `go.mod` to that version → mitigated by linking the SDK-side issue now
-  (this change's tasks.md) rather than discovering the gap mid-`apply`,
-  and by scoping this change's own tasks so everything except the final
-  wiring can proceed (config fields, flag/env parsing, error message,
-  docs) while that's pending.
+- **A caller holding both a write token and a consumer token always
+  reads with the write token, never exercising the consumer-scoped
+  path.** That's fine for what this CLI needs — a write-token holder
+  can already read anything — but it does mean there's no way to force
+  a `get` to authenticate as a specific consumer for testing/debugging
+  purposes without temporarily unsetting `token`. Not solving this now;
+  worth an explicit flag later if it turns out to matter
+  (`--consumer-token`-only mode), not blocking this change.
 - **A consumer token scoped to the wrong consumer name is
   indistinguishable, from the CLI's perspective, from no token at all** —
   both produce the same unauthorized response, per `api/openapi.yaml`'s
@@ -113,8 +117,10 @@ failing one.
 
 ## Migration Plan
 
-No data migration. Rollout is: (1) `hush-hush-go` ships consumer-token
-support, (2) this repo bumps its dependency and implements the config
-fields, header-sending and error handling, (3) README/CONTRIBUTING
-document it. Existing users who only use write tokens or sessions are
-unaffected — `consumer_token` is an additive, optional field.
+No data migration, and nothing external to wait on: (1) confirm
+`go.mod`'s `hush-hush-go` pin is at or past v4.1.2 (bump if not), (2)
+add the config fields and `Get`'s credential-selection step, (3)
+README/CONTRIBUTING document it. Existing users who only use write
+tokens or sessions are unaffected — `consumer_token` is an additive,
+optional field that only ever changes behavior for a caller with no
+write token configured.
