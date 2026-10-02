@@ -21,12 +21,21 @@ var errNoRecipients = errors.New("no recipients configured (--recipients, HUSH_H
 // registered consumer keys, so the message names that path too.
 var errNoRecipientsOrUsedBy = errors.New("no recipients configured (--recipients, HUSH_HUSH_RECIPIENTS, --used-by naming a consumer with a registered public key, or run `hush-hush-cli init`)")
 
+// errTagAndClearTags is a sentinel: a fixed condition (both flags given).
+var errTagAndClearTags = errors.New("--tag and --clear-tags can't be combined")
+
+// tagFlagUsage is shared by inject and update's --tag.
+const tagFlagUsage = "label for grouping secrets (repeatable, or comma-separated; 1-32 chars of a-z 0-9 . _ / -, max 10)"
+
 // newInjectCmd reads the plaintext value from stdin rather than a flag -
 // a flag value ends up in shell history and process listings, exactly
 // what injecting a secret should avoid.
 func newInjectCmd() *cobra.Command {
-	var usedBy []string
-	var description string
+	var (
+		usedBy      []string
+		tags        []string
+		description string
+	)
 
 	cmd := &cobra.Command{
 		Use:   "inject <id>",
@@ -60,12 +69,13 @@ func newInjectCmd() *cobra.Command {
 				return err
 			}
 
-			return cli.Inject(cmd.Context(), cfg, args[0], value, recipientList, usedBy, description)
+			return cli.Inject(cmd.Context(), cfg, args[0], value, recipientList, usedBy, description, cli.WithTags(tags))
 		},
 	}
 
 	cmd.Flags().StringSliceVar(&usedBy, "used-by", nil, "consumers of this secret (repeatable, or comma-separated)")
 	cmd.Flags().String("recipients", "", "comma-separated age recipient public keys")
+	cmd.Flags().StringSliceVar(&tags, "tag", nil, tagFlagUsage)
 	cmd.Flags().StringVar(&description, "description", "", "free-text label for this object, fixed at creation")
 
 	return cmd

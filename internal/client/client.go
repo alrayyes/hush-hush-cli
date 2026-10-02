@@ -45,6 +45,7 @@ type ObjectMetadata struct {
 	Slug        string   `json:"slug"`
 	UsedBy      []string `json:"used_by,omitempty"`
 	Description string   `json:"description,omitempty"`
+	Tags        []string `json:"tags"`
 }
 
 // Client is a hush-hush API client. Token is the write-path bearer token;
@@ -67,8 +68,9 @@ func New(baseURL, token string) (*Client, error) {
 
 // Create stores value under id, sealed to usedBy's recipients before this
 // is ever called - the client itself does no sealing. description is fixed
-// at creation, the same as usedBy.
-func (c *Client) Create(ctx context.Context, id string, value []byte, usedBy []string, description string) (ObjectMetadata, error) {
+// at creation, the same as usedBy. tags are optional labels; the server
+// lower-cases and de-duplicates them.
+func (c *Client) Create(ctx context.Context, id string, value []byte, usedBy []string, description string, tags []string) (ObjectMetadata, error) {
 	req := hushhush.CreateObjectRequest{Slug: id, Value: value}
 	if len(usedBy) > 0 {
 		req.UsedBy = &usedBy
@@ -76,6 +78,10 @@ func (c *Client) Create(ctx context.Context, id string, value []byte, usedBy []s
 
 	if description != "" {
 		req.Description = &description
+	}
+
+	if len(tags) > 0 {
+		req.Tags = &tags
 	}
 
 	meta, err := c.sdk.CreateObject(ctx, req, c.Caller)
@@ -97,9 +103,10 @@ func (c *Client) Get(ctx context.Context, id string) ([]byte, error) {
 }
 
 // Update replaces id's stored value, leaving its used_by metadata
-// unchanged.
-func (c *Client) Update(ctx context.Context, id string, value []byte) (ObjectMetadata, error) {
-	meta, err := c.sdk.UpdateObject(ctx, id, hushhush.UpdateObjectRequest{Value: value}, c.Caller)
+// unchanged. A nil tags leaves the object's tags alone; a non-nil one
+// replaces them, and an empty one clears them.
+func (c *Client) Update(ctx context.Context, id string, value []byte, tags *[]string) (ObjectMetadata, error) {
+	meta, err := c.sdk.UpdateObject(ctx, id, hushhush.UpdateObjectRequest{Value: value, Tags: tags}, c.Caller)
 	if err != nil {
 		return ObjectMetadata{}, mapError(err)
 	}
@@ -275,7 +282,11 @@ func toAuditLogEntry(e hushhush.AuditLogEntry) AuditLogEntry {
 }
 
 func toObjectMetadata(m *hushhush.ObjectMetadata) ObjectMetadata {
-	meta := ObjectMetadata{Slug: m.Slug}
+	meta := ObjectMetadata{Slug: m.Slug, Tags: m.Tags}
+	if meta.Tags == nil {
+		meta.Tags = []string{}
+	}
+
 	if m.UsedBy != nil {
 		meta.UsedBy = *m.UsedBy
 	}

@@ -18,7 +18,9 @@ import (
 // consumer directory instead (issue #125), and the call fails naming the
 // first consumer with no registered key rather than sealing to fewer
 // recipients than requested.
-func Inject(ctx context.Context, cfg Config, id string, value []byte, recipients []string, usedBy []string, description string) error {
+func Inject(ctx context.Context, cfg Config, id string, value []byte, recipients []string, usedBy []string, description string, opts ...WriteOption) error {
+	w := newWriteOptions(opts)
+
 	cl, err := cfg.newClient()
 	if err != nil {
 		return err
@@ -34,7 +36,7 @@ func Inject(ctx context.Context, cfg Config, id string, value []byte, recipients
 		return fmt.Errorf("seal value: %w", err)
 	}
 
-	if _, err := cl.Create(ctx, id, sealed, usedBy, description); err != nil {
+	if _, err := cl.Create(ctx, id, sealed, usedBy, description, w.tagsOrNil()); err != nil {
 		return fmt.Errorf("create object: %w", err)
 	}
 
