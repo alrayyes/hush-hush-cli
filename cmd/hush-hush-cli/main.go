@@ -112,6 +112,7 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newUsedByCmd())
 	root.AddCommand(newAuditLogCmd())
 	root.AddCommand(newTokenCmd())
+	root.AddCommand(newConsumerCmd())
 	root.AddCommand(newStatusCmd())
 	root.AddCommand(newConfigCmd())
 	root.AddCommand(newManCmd(root))
