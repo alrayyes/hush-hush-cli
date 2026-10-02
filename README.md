@@ -142,6 +142,21 @@ without deleting its record, so it still shows in `list`; `purge` removes
 an already-revoked or already-expired token's record for good, and
 refuses one that's still active.
 
+Manage the consumer directory - the names `--used-by` refers to, with an
+optional age public key `inject` seals to. A write token is required:
+
+```sh
+hush-hush-cli consumer list --query homelab
+hush-hush-cli consumer add homelab/new-device
+hush-hush-cli consumer update homelab/new-device --public-key age1...
+hush-hush-cli consumer update homelab/old-name --name homelab/new-name
+hush-hush-cli consumer delete homelab/new-device
+```
+
+`update` renames and/or registers a key; a rename onto an existing name
+merges the two. `delete` strips the consumer from every secret's
+`used_by` list but never deletes a secret.
+
 ## Configuration
 
 Settings are read in this order, each layer overriding the one before it:
