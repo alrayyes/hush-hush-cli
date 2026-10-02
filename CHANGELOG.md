@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.14.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.13.0...v1.14.0) (2026-10-02)
+
+
+### Features
+
+* **cli:** support object tags on inject, update and list ([ffd9850](https://github.com/alrayyes/hush-hush-cli/commit/ffd985040b263885e4d1165d3e570b8d35e9beaa))
+* **cli:** support object tags on inject, update and list ([961feda](https://github.com/alrayyes/hush-hush-cli/commit/961fedac3b5e4174c3880341d2c961835bd2fd37)), closes [#159](https://github.com/alrayyes/hush-hush-cli/issues/159)
+
+
+### Bug Fixes
+
+* **deps:** bump hush-hush-go to v4.2.3 ([76c3a6f](https://github.com/alrayyes/hush-hush-cli/commit/76c3a6fcec2bb5450f980f60cf1e7b39990f9219))
+
 ## [1.13.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.12.1...v1.13.0) (2026-10-02)
 
 
