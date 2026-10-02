@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.13.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.12.1...v1.13.0) (2026-10-02)
+
+
+### Features
+
+* **cli:** add consumer list/add/update/delete ([35c4c78](https://github.com/alrayyes/hush-hush-cli/commit/35c4c78627ce1c35f9b8e6251fe03e742be39e9f))
+* **cli:** add list --used-by filter ([e936e55](https://github.com/alrayyes/hush-hush-cli/commit/e936e5523397e3b264790a542d00b11f77a5b5ae))
+* **cli:** add list --used-by filter ([ec76ba6](https://github.com/alrayyes/hush-hush-cli/commit/ec76ba6af06d506522104b29f82705f79c4674b8)), closes [#156](https://github.com/alrayyes/hush-hush-cli/issues/156)
+
 ## [1.12.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.12.0...v1.12.1) (2026-10-02)
 
 
