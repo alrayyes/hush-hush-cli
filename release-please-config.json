@@ -4,7 +4,43 @@
     ".": {
       "release-type": "go",
       "changelog-path": "CHANGELOG.md",
-      "include-v-in-tag": true
+      "include-v-in-tag": true,
+      "exclude-paths": [
+        ".claude",
+        ".github",
+        ".worktrees",
+        "docs",
+        "integration",
+        "internal/testserver",
+        "openspec",
+        "scripts",
+        "styles",
+        "bun.lock",
+        "package.json",
+        "flake.lock",
+        "PKGBUILD",
+        "codecov.yml",
+        "lefthook.yml",
+        ".commitlintrc.json",
+        ".editorconfig",
+        ".gitattributes",
+        ".gitignore",
+        ".gitleaks.toml",
+        ".golangci.yml",
+        ".hadolint.yaml",
+        ".ltex.json",
+        ".markdownlint-cli2.yaml",
+        ".prettierignore",
+        ".prettierrc.json",
+        ".vale.ini",
+        ".dockerignore",
+        "CLAUDE.md",
+        "CONTRIBUTING.md",
+        "INSTALL.md",
+        "README.md",
+        "SECURITY.md",
+        "LICENSE"
+      ]
     }
   }
 }
