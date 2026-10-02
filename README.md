@@ -72,6 +72,7 @@ never the value itself, which is why this needs a token the same as
 ```sh
 hush-hush-cli list
 hush-hush-cli list --json | jq '.[].slug'
+hush-hush-cli list --used-by homelab/example-app
 ```
 
 Check what a single object is recorded as being used by - no credential
