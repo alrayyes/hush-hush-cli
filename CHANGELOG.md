@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.12.0...v1.12.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* **deps:** bump fast-uri to 3.1.8 for GHSA-hrr3-gc8f-f4qj ([1f5c07d](https://github.com/alrayyes/hush-hush-cli/commit/1f5c07d2f1345a7a2fc4b0b73e3cff40105d41f8))
+* **deps:** bump fast-uri to 3.1.8 for GHSA-hrr3-gc8f-f4qj ([51a8ade](https://github.com/alrayyes/hush-hush-cli/commit/51a8ade8ba218f666fe3ef6cc1bd5b118421f0f1)), closes [#148](https://github.com/alrayyes/hush-hush-cli/issues/148)
+
 ## [1.12.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.11.0...v1.12.0) (2026-09-28)
 
 
