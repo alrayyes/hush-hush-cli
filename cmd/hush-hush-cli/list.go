@@ -15,7 +15,10 @@ import (
 // is a capability none of the other, id-scoped reads grant on their own,
 // matching hush-hush's own GET /objects.
 func newListCmd() *cobra.Command {
-	var asJSON bool
+	var (
+		asJSON bool
+		usedBy string
+	)
 
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -27,7 +30,7 @@ func newListCmd() *cobra.Command {
 				return err
 			}
 
-			objects, err := cli.List(cmd.Context(), cfg)
+			objects, err := cli.List(cmd.Context(), cfg, usedBy)
 			if err != nil {
 				return fmt.Errorf("list: %w", err)
 			}
@@ -40,6 +43,7 @@ func newListCmd() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&usedBy, "used-by", "", "only objects whose used_by includes this consumer")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the raw JSON array instead of a table")
 
 	return cmd

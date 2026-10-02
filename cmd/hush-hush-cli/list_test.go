@@ -109,3 +109,25 @@ func TestListEmptyStorePrintsJustTheHeader(t *testing.T) {
 	assert.Contains(t, out.String(), "USED BY")
 	assert.Contains(t, out.String(), "DESCRIPTION")
 }
+
+func TestListUsedByFlagFiltersToThatConsumer(t *testing.T) {
+	srv, s, token := testserver.New(t)
+
+	require.NoError(t, s.CreateObject(t.Context(), "for-a", []byte("sealed"), []string{"a"}, ""))
+	require.NoError(t, s.CreateObject(t.Context(), "for-b", []byte("sealed"), []string{"b"}, ""))
+
+	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
+	t.Setenv("HUSH_HUSH_TOKEN", token)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	viper.Reset()
+
+	root := newRootCmd()
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetArgs([]string{"list", "--used-by", "a", "--json"})
+
+	require.NoError(t, root.Execute())
+
+	assert.Contains(t, out.String(), "for-a")
+	assert.NotContains(t, out.String(), "for-b")
+}

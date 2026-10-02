@@ -18,7 +18,7 @@ func TestListReturnsEveryObjectSortedByID(t *testing.T) {
 	require.NoError(t, s.CreateObject(t.Context(), "apple", []byte("v"), nil, ""))
 
 	cfg := cli.Config{Server: srv.URL, Token: token}
-	objects, err := cli.List(context.Background(), cfg)
+	objects, err := cli.List(context.Background(), cfg, "")
 	require.NoError(t, err)
 	require.Len(t, objects, 2)
 
@@ -34,7 +34,7 @@ func TestListWithoutAValidTokenIsRejected(t *testing.T) {
 	srv, _, _ := newTestServer(t)
 
 	cfg := cli.Config{Server: srv.URL, Token: "wrong-token"}
-	_, err := cli.List(context.Background(), cfg)
+	_, err := cli.List(context.Background(), cfg, "")
 	require.ErrorIs(t, err, client.ErrUnauthorized)
 }
 
@@ -44,7 +44,7 @@ func TestListEmptyStoreReturnsEmptySlice(t *testing.T) {
 	srv, _, token := newTestServer(t)
 
 	cfg := cli.Config{Server: srv.URL, Token: token}
-	objects, err := cli.List(context.Background(), cfg)
+	objects, err := cli.List(context.Background(), cfg, "")
 	require.NoError(t, err)
 	require.Empty(t, objects)
 }
