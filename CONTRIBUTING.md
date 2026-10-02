@@ -86,3 +86,7 @@ Conventional Commits on `main` and keeps a release pull request open with
 the next version and changelog entry; merging that one tags the release.
 [goreleaser](https://goreleaser.com) then builds the binaries and packages
 onto the release release-please just cut. Nobody picks a version by hand.
+
+Only logic changes count: a commit that touches nothing but docs, CI,
+lint config, lock files or test-only code (`exclude-paths` in
+`release-please-config.json`) never triggers a release, whatever its type.
