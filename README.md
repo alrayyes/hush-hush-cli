@@ -75,6 +75,18 @@ hush-hush-cli list --json | jq '.[].slug'
 hush-hush-cli list --used-by homelab/example-app
 ```
 
+Label secrets with `--tag` on `inject` (repeatable or comma-separated; 1 to 32
+characters from `a-z 0-9 . _ / -`, at most 10, lower-cased by the server).
+`list` shows them in a TAGS column. `update --tag` replaces a secret's tags,
+`update --clear-tags` removes them all, and `update` with neither leaves
+them alone:
+
+```sh
+hush-hush-cli inject db_password --used-by homelab/example-app --tag prod,db
+hush-hush-cli update db_password --tag staging
+hush-hush-cli update db_password --clear-tags
+```
+
 Check what a single object is recorded as being used by - no credential
 required, unlike `list`, since this only ever discloses what a caller
 already knows the slug of:

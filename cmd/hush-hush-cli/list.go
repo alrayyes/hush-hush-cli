@@ -64,12 +64,12 @@ func writeListJSON(cmd *cobra.Command, objects []client.ObjectMetadata) error {
 func writeListTable(cmd *cobra.Command, objects []client.ObjectMetadata) error {
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 
-	if _, err := fmt.Fprintln(w, "ID\tUSED BY\tDESCRIPTION"); err != nil {
+	if _, err := fmt.Fprintln(w, "ID\tUSED BY\tTAGS\tDESCRIPTION"); err != nil {
 		return fmt.Errorf("write list header: %w", err)
 	}
 
 	for _, obj := range objects {
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\n", obj.Slug, strings.Join(obj.UsedBy, ","), obj.Description); err != nil {
+		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", obj.Slug, strings.Join(obj.UsedBy, ","), strings.Join(obj.Tags, ","), obj.Description); err != nil {
 			return fmt.Errorf("write list row: %w", err)
 		}
 	}

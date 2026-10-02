@@ -8,9 +8,11 @@ import (
 )
 
 // Update seals value to recipients and replaces id's stored value, leaving
-// its used_by metadata unchanged (design.md) - the writer's process never
+// its used_by metadata unchanged (design.md; WithTags replaces its tags) - the writer's process never
 // handles a private key here either, same as Inject.
-func Update(ctx context.Context, cfg Config, id string, value []byte, recipients []string) error {
+func Update(ctx context.Context, cfg Config, id string, value []byte, recipients []string, opts ...WriteOption) error {
+	w := newWriteOptions(opts)
+
 	sealed, err := seal.Seal(value, recipients)
 	if err != nil {
 		return fmt.Errorf("seal value: %w", err)
@@ -21,7 +23,7 @@ func Update(ctx context.Context, cfg Config, id string, value []byte, recipients
 		return err
 	}
 
-	if _, err := cl.Update(ctx, id, sealed); err != nil {
+	if _, err := cl.Update(ctx, id, sealed, w.tags); err != nil {
 		return fmt.Errorf("update object: %w", err)
 	}
 

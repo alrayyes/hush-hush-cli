@@ -65,6 +65,7 @@ type Object struct {
 	Value       []byte
 	UsedBy      []string
 	Description string
+	Tags        []string
 }
 
 // Store is an in-memory object store plus write-token issuance, backing a
@@ -184,7 +185,11 @@ func (s *Store) AuthStatus(_ context.Context) AuthStatus {
 // no registered key, matching ConsumerEntry's own doc comment: a directory
 // entry is "a distinct consumer name recorded in some object's used_by
 // list", not only one added explicitly via AddConsumer.
-func (s *Store) CreateObject(_ context.Context, id string, value []byte, usedBy []string, description string) error {
+func (s *Store) CreateObject(ctx context.Context, id string, value []byte, usedBy []string, description string) error {
+	return s.createObject(ctx, id, value, usedBy, description, nil)
+}
+
+func (s *Store) createObject(_ context.Context, id string, value []byte, usedBy []string, description string, tags []string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -192,7 +197,7 @@ func (s *Store) CreateObject(_ context.Context, id string, value []byte, usedBy 
 		return ErrAlreadyExists
 	}
 
-	s.objects[id] = Object{Value: value, UsedBy: usedBy, Description: description}
+	s.objects[id] = Object{Value: value, UsedBy: usedBy, Description: description, Tags: tags}
 
 	for _, name := range usedBy {
 		if _, ok := s.consumers[name]; !ok {
@@ -216,9 +221,15 @@ func (s *Store) GetObject(_ context.Context, id string) (Object, error) {
 	return obj, nil
 }
 
-// UpdateObject replaces id's stored value, leaving used_by and
-// description unchanged, or ErrNotFound.
-func (s *Store) UpdateObject(_ context.Context, id string, value []byte) error {
+// UpdateObject replaces id's stored value, leaving used_by, description
+// and tags unchanged, or ErrNotFound.
+func (s *Store) UpdateObject(ctx context.Context, id string, value []byte) error {
+	return s.updateObject(ctx, id, value, nil)
+}
+
+// updateObject also replaces id's tags when tags is non-nil (an empty
+// slice clears them), matching PUT /objects/{slug}'s own tags semantics.
+func (s *Store) updateObject(_ context.Context, id string, value []byte, tags *[]string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -228,6 +239,27 @@ func (s *Store) UpdateObject(_ context.Context, id string, value []byte) error {
 	}
 
 	obj.Value = value
+	if tags != nil {
+		obj.Tags = *tags
+	}
+
+	s.objects[id] = obj
+
+	return nil
+}
+
+// SetObjectTags replaces id's tags as given - a test-setup shortcut that
+// skips the HTTP layer's normalization, so pass already-valid tags.
+func (s *Store) SetObjectTags(_ context.Context, id string, tags []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	obj, ok := s.objects[id]
+	if !ok {
+		return ErrNotFound
+	}
+
+	obj.Tags = tags
 	s.objects[id] = obj
 
 	return nil
@@ -490,7 +522,7 @@ func (s *Store) ListObjects(_ context.Context, usedByFilter string) ([]ObjectMet
 			continue
 		}
 
-		result = append(result, ObjectMetadata{Slug: id, UsedBy: obj.UsedBy, Description: obj.Description})
+		result = append(result, ObjectMetadata{Slug: id, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags)})
 	}
 
 	slices.SortFunc(result, func(a, b ObjectMetadata) int { return strings.Compare(a.Slug, b.Slug) })
@@ -801,6 +833,7 @@ type ObjectMetadata struct {
 	Slug        string   `json:"slug"`
 	UsedBy      []string `json:"used_by,omitempty"`
 	Description string   `json:"description,omitempty"`
+	Tags        []string `json:"tags"`
 }
 
 type createObjectRequest struct {
@@ -808,10 +841,53 @@ type createObjectRequest struct {
 	Value       []byte   `json:"value"`
 	UsedBy      []string `json:"used_by,omitempty"`
 	Description string   `json:"description,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
 }
 
 type updateObjectRequest struct {
-	Value []byte `json:"value"`
+	Value []byte    `json:"value"`
+	Tags  *[]string `json:"tags,omitempty"`
+}
+
+// tagPattern and maxTags mirror api/openapi.yaml's Tags schema: 1 to 32
+// characters from a-z 0-9 . _ / -, at most 10 per object.
+var tagPattern = regexp.MustCompile(`^[a-z0-9._/-]{1,32}$`)
+
+const maxTags = 10
+
+var errInvalidTags = errors.New("invalid tags")
+
+// normalizeTags lower-cases and de-duplicates tags, then validates them -
+// the same conversions and limits the real server applies.
+func normalizeTags(in []string) ([]string, error) {
+	out := make([]string, 0, len(in))
+
+	for _, tag := range in {
+		tag = strings.ToLower(tag)
+		if !tagPattern.MatchString(tag) {
+			return nil, fmt.Errorf("%w: tag %q must be 1-32 characters from a-z 0-9 . _ / -", errInvalidTags, tag)
+		}
+
+		if !slices.Contains(out, tag) {
+			out = append(out, tag)
+		}
+	}
+
+	if len(out) > maxTags {
+		return nil, fmt.Errorf("%w: at most %d tags per object", errInvalidTags, maxTags)
+	}
+
+	return out, nil
+}
+
+// tagsOrEmpty makes sure a response always carries the tags array, never
+// null, as the real API does.
+func tagsOrEmpty(tags []string) []string {
+	if tags == nil {
+		return []string{}
+	}
+
+	return tags
 }
 
 type errorBody struct {
@@ -885,13 +961,20 @@ func handleCreateObject(s *Store) http.HandlerFunc {
 			return
 		}
 
-		if err := s.CreateObject(r.Context(), req.Slug, req.Value, req.UsedBy, req.Description); err != nil {
+		tags, err := normalizeTags(req.Tags)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+
+			return
+		}
+
+		if err := s.createObject(r.Context(), req.Slug, req.Value, req.UsedBy, req.Description, tags); err != nil {
 			writeError(w, http.StatusConflict, "object already exists")
 
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, ObjectMetadata{Slug: req.Slug, UsedBy: req.UsedBy, Description: req.Description})
+		writeJSON(w, http.StatusCreated, ObjectMetadata{Slug: req.Slug, UsedBy: req.UsedBy, Description: req.Description, Tags: tagsOrEmpty(tags)})
 	}
 }
 
@@ -978,9 +1061,22 @@ func handleUpdateObject(s *Store) http.HandlerFunc {
 			return
 		}
 
+		var tags *[]string
+
+		if req.Tags != nil {
+			normalized, err := normalizeTags(*req.Tags)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, err.Error())
+
+				return
+			}
+
+			tags = &normalized
+		}
+
 		id := r.PathValue("id")
 
-		if err := s.UpdateObject(r.Context(), id, req.Value); err != nil {
+		if err := s.updateObject(r.Context(), id, req.Value, tags); err != nil {
 			writeError(w, http.StatusNotFound, "unknown object")
 
 			return
@@ -993,7 +1089,7 @@ func handleUpdateObject(s *Store) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, ObjectMetadata{Slug: id, UsedBy: obj.UsedBy, Description: obj.Description})
+		writeJSON(w, http.StatusOK, ObjectMetadata{Slug: id, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags)})
 	}
 }
 

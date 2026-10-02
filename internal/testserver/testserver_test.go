@@ -44,7 +44,7 @@ func TestListObjectsReturnsStoredMetadataSortedByID(t *testing.T) {
 	require.NoError(t, store.CreateObject(t.Context(), "apple", []byte("v2"), nil, ""))
 
 	require.JSONEq(t,
-		`[{"slug":"apple"},{"slug":"zebra","used_by":["homelab/vps-docker"],"description":"z desc"}]`,
+		`[{"slug":"apple","tags":[]},{"slug":"zebra","used_by":["homelab/vps-docker"],"description":"z desc","tags":[]}]`,
 		getObjects(t, srv.URL, token, ""),
 	)
 }
@@ -57,7 +57,7 @@ func TestListObjectsFiltersByUsedBy(t *testing.T) {
 	require.NoError(t, store.CreateObject(t.Context(), "matched", []byte("v"), []string{"homelab/vps-docker"}, ""))
 	require.NoError(t, store.CreateObject(t.Context(), "unmatched", []byte("v"), []string{"other/repo"}, ""))
 
-	require.JSONEq(t, `[{"slug":"matched","used_by":["homelab/vps-docker"]}]`, getObjects(t, srv.URL, token, "homelab/vps-docker"))
+	require.JSONEq(t, `[{"slug":"matched","used_by":["homelab/vps-docker"],"tags":[]}]`, getObjects(t, srv.URL, token, "homelab/vps-docker"))
 }
 
 func TestQueryAuditLogRequiresNoToken(t *testing.T) {
