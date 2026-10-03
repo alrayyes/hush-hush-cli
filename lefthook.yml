@@ -201,8 +201,10 @@ pre-push:
 
     # rules/dependencies.md: the ecosystem's own audit tool, separately
     # from whatever raises the update pull request.
+    # GHSA-vfj7-8cjw-p6xm (braces) has no patched release yet; remove the
+    # ignore once one ships (hush-hush-cli#166).
     - name: bun audit
-      run: bun audit
+      run: bun audit --ignore GHSA-vfj7-8cjw-p6xm
 
     - name: prettier
       run: bun run format:check
