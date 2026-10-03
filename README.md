@@ -110,6 +110,16 @@ hush-hush-cli delete mattermost_deploy_webhook
 flag or argument, so it never ends up in shell history or a process
 listing.
 
+`update --used-by a,b` replaces a secret's consumers and seals the new value
+to their registered public keys, the way `inject` does, unless `--recipients`
+is given. `update --clear-used-by` removes every consumer (and needs
+`--recipients`), and `update` with neither leaves them alone:
+
+```sh
+echo -n "new-value" | hush-hush-cli update mattermost_deploy_webhook \
+  --used-by homelab/vps-docker
+```
+
 Query the audit trail - who touched an object, when, and how. Filters
 combine with AND; `--since`/`--until` take RFC3339 timestamps:
 

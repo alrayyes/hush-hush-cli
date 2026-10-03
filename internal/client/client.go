@@ -119,8 +119,8 @@ func (c *Client) Get(ctx context.Context, id string) ([]byte, error) {
 // Update replaces id's stored value, leaving its used_by metadata
 // unchanged. A nil tags leaves the object's tags alone; a non-nil one
 // replaces them, and an empty one clears them.
-func (c *Client) Update(ctx context.Context, id string, value []byte, tags *[]string) (ObjectMetadata, error) {
-	meta, err := c.sdk.UpdateObject(ctx, id, hushhush.UpdateObjectRequest{Value: value, Tags: tags}, c.Caller)
+func (c *Client) Update(ctx context.Context, id string, value []byte, tags, usedBy *[]string) (ObjectMetadata, error) {
+	meta, err := c.sdk.UpdateObject(ctx, id, hushhush.UpdateObjectRequest{Value: value, Tags: tags, UsedBy: usedBy}, c.Caller)
 	if err != nil {
 		return ObjectMetadata{}, mapError(err)
 	}
