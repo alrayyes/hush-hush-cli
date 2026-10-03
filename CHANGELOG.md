@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.17.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.16.0...v1.17.0) (2026-10-03)
+
+
+### Features
+
+* **cli:** add --keep-readable-copy to inject and update ([94078e1](https://github.com/alrayyes/hush-hush-cli/commit/94078e1a6c976a71dc460b33a498daf31fbf733a))
+* **cli:** add --keep-readable-copy to inject and update ([dac5e88](https://github.com/alrayyes/hush-hush-cli/commit/dac5e882103dc6a30ae5ae681d6d3faee43b2602)), closes [#177](https://github.com/alrayyes/hush-hush-cli/issues/177)
+
+
+### Bug Fixes
+
+* **deps:** bump hush-hush-go to v4.3.0 ([1a0c659](https://github.com/alrayyes/hush-hush-cli/commit/1a0c6597c2922e762d635efdf00e7ddb837af7d1))
+
 ## [1.16.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.15.0...v1.16.0) (2026-10-03)
 
 
