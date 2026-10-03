@@ -546,13 +546,24 @@ func removeUsedBy(usedBy []string, name string) []string {
 // description - never the value - sorted by slug, optionally narrowed to
 // objects whose used_by includes usedByFilter ("" means no filter).
 // Matches hush-hush's own GET /objects (hush-hush#188/#189).
-func (s *Store) ListObjects(_ context.Context, usedByFilter string) ([]ObjectMetadata, error) {
+func (s *Store) ListObjects(ctx context.Context, usedByFilter string) ([]ObjectMetadata, error) {
+	return s.ListObjectsFiltered(ctx, usedByFilter, nil)
+}
+
+// ListObjectsFiltered is ListObjects narrowed further to objects carrying
+// every one of tags, compared case-insensitively, matching GET /objects'
+// repeated tag parameter.
+func (s *Store) ListObjectsFiltered(_ context.Context, usedByFilter string, tags []string) ([]ObjectMetadata, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	result := make([]ObjectMetadata, 0, len(s.objects))
 	for id, obj := range s.objects {
 		if usedByFilter != "" && !slices.Contains(obj.UsedBy, usedByFilter) {
+			continue
+		}
+
+		if !hasAllTags(obj.Tags, tags) {
 			continue
 		}
 
@@ -1184,7 +1195,7 @@ func handleUpdateObject(s *Store) http.HandlerFunc {
 // reads grant on their own.
 func handleListObjects(s *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		objects, err := s.ListObjects(r.Context(), r.URL.Query().Get("used_by"))
+		objects, err := s.ListObjectsFiltered(r.Context(), r.URL.Query().Get("used_by"), r.URL.Query()["tag"])
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "internal error")
 
@@ -1482,4 +1493,15 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, errorBody{Error: msg})
+}
+
+// hasAllTags reports whether have carries every one of want, ignoring case.
+func hasAllTags(have, want []string) bool {
+	for _, tag := range want {
+		if !slices.ContainsFunc(have, func(h string) bool { return strings.EqualFold(h, tag) }) {
+			return false
+		}
+	}
+
+	return true
 }

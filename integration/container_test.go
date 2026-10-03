@@ -166,7 +166,7 @@ func TestContainerListReturnsInjectedObjects(t *testing.T) {
 		_ = cli.Delete(t.Context(), writeCfg, "hush_hush_cli_integration_test_list")
 	})
 
-	objects, err := cli.List(t.Context(), writeCfg, "")
+	objects, err := cli.List(t.Context(), writeCfg, "", nil)
 	require.NoError(t, err)
 
 	var found bool

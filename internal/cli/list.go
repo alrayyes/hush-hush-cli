@@ -8,15 +8,16 @@ import (
 )
 
 // List returns stored objects' metadata - only those whose used_by
-// includes usedBy, when it's non-empty. There's nothing to seal or unseal
+// includes usedBy and that carry every one of tags, when either is given.
+// There's nothing to seal or unseal
 // here, unlike get/inject/update.
-func List(ctx context.Context, cfg Config, usedBy string) ([]client.ObjectMetadata, error) {
+func List(ctx context.Context, cfg Config, usedBy string, tags []string) ([]client.ObjectMetadata, error) {
 	cl, err := cfg.newClient()
 	if err != nil {
 		return nil, err
 	}
 
-	objects, err := cl.List(ctx, usedBy)
+	objects, err := cl.List(ctx, usedBy, tags)
 	if err != nil {
 		return nil, fmt.Errorf("list objects: %w", err)
 	}
