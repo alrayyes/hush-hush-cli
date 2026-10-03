@@ -13,6 +13,12 @@ on:
 permissions:
   contents: read
 
+# rules/tooling.md: no pipeline runs lefthook. `bun install` would otherwise
+# install the git hooks on the runner (package.json's `prepare`), and a job
+# that commits would fire them against a commit nothing interactively made.
+env:
+  LEFTHOOK: 0
+
 jobs:
   release-please:
     runs-on: ubuntu-latest
@@ -163,10 +169,6 @@ jobs:
       - name: Open a pull request with the same bump
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          # tooling.md: a job that runs `git commit` itself needs this, so
-          # lefthook doesn't fire against a commit nothing interactively
-          # made in a container that carries none of its tooling.
-          LEFTHOOK: 0
         run: |
           git diff --quiet -- PKGBUILD && exit 0
 

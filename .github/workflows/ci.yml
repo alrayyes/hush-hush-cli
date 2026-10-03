@@ -15,6 +15,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# rules/tooling.md: no pipeline runs lefthook. `bun install` would otherwise
+# install the git hooks on the runner (package.json's `prepare`), and a job
+# that commits would fire them against a commit nothing interactively made.
+env:
+  LEFTHOOK: 0
+
 jobs:
   actionlint:
     runs-on: ubuntu-24.04

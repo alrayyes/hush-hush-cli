@@ -16,6 +16,12 @@ permissions:
   contents: write
   pull-requests: write
 
+# rules/tooling.md: no pipeline runs lefthook. `bun install` would otherwise
+# install the git hooks on the runner (package.json's `prepare`), and a job
+# that commits would fire them against a commit nothing interactively made.
+env:
+  LEFTHOOK: 0
+
 jobs:
   update-flake-lock:
     runs-on: ubuntu-24.04
