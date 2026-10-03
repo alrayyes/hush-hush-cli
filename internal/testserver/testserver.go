@@ -122,6 +122,10 @@ type ConsumerToken struct {
 	ExpiresAt   time.Time  `json:"expires_at"`
 	LastUsedAt  *time.Time `json:"last_used_at,omitempty"`
 	Revoked     bool       `json:"revoked"`
+	// Status and AllowedActions mirror hush-hush's own server-computed
+	// fields (hush-hush-go v4.2.4+).
+	Status         string   `json:"status"`
+	AllowedActions []string `json:"allowed_actions"`
 }
 
 // ConsumerTokenWithValue is POST /consumer-tokens and
@@ -134,14 +138,25 @@ type ConsumerTokenWithValue struct {
 }
 
 func toConsumerTokenMetadata(t *consumerToken) ConsumerToken {
+	status, actions := "active", []string{"rotate", "revoke"}
+
+	switch {
+	case t.Revoked:
+		status, actions = "revoked", []string{"purge"}
+	case !time.Now().Before(t.ExpiresAt):
+		status, actions = "expired", []string{"purge"}
+	}
+
 	return ConsumerToken{
-		ID:          t.ID,
-		Consumer:    t.Consumer,
-		Description: t.Description,
-		CreatedAt:   t.CreatedAt,
-		ExpiresAt:   t.ExpiresAt,
-		LastUsedAt:  t.LastUsedAt,
-		Revoked:     t.Revoked,
+		Status:         status,
+		AllowedActions: actions,
+		ID:             t.ID,
+		Consumer:       t.Consumer,
+		Description:    t.Description,
+		CreatedAt:      t.CreatedAt,
+		ExpiresAt:      t.ExpiresAt,
+		LastUsedAt:     t.LastUsedAt,
+		Revoked:        t.Revoked,
 	}
 }
 

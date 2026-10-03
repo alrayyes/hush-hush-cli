@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/alrayyes/hush-hush-cli/internal/client"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
@@ -103,4 +105,58 @@ func TestTokenRevokeThenPurgeRemovesIt(t *testing.T) {
 	require.NoError(t, purgeRoot.Execute())
 
 	require.Empty(t, s.ListConsumerTokens())
+}
+
+func TestTokenListShowsStatusNotARevokedBoolean(t *testing.T) {
+	srv, s, token := testserver.New(t)
+	s.IssueConsumerToken("expired-consumer", "", 0)
+	s.IssueConsumerToken("active-consumer", "", time.Hour)
+	revoked := s.IssueConsumerToken("revoked-consumer", "", time.Hour)
+	s.RevokeConsumerToken(revoked.ID)
+
+	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
+	t.Setenv("HUSH_HUSH_TOKEN", token)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	viper.Reset()
+
+	root := newRootCmd()
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetArgs([]string{"token", "list"})
+
+	require.NoError(t, root.Execute())
+
+	rows := map[string]string{}
+	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n")[1:] {
+		fields := strings.Fields(line)
+		rows[fields[1]] = fields[len(fields)-1]
+	}
+
+	assert.Equal(t, "expired", rows["expired-consumer"])
+	assert.Equal(t, "active", rows["active-consumer"])
+	assert.Equal(t, "revoked", rows["revoked-consumer"])
+	assert.NotContains(t, out.String(), "REVOKED")
+}
+
+func TestTokenListJSONIncludesStatusAndAllowedActions(t *testing.T) {
+	srv, s, token := testserver.New(t)
+	s.IssueConsumerToken("active-consumer", "", time.Hour)
+
+	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
+	t.Setenv("HUSH_HUSH_TOKEN", token)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	viper.Reset()
+
+	root := newRootCmd()
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetArgs([]string{"token", "list", "--json"})
+
+	require.NoError(t, root.Execute())
+
+	var got []map[string]any
+	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
+	require.Len(t, got, 1)
+	assert.Equal(t, "active", got[0]["status"])
+	assert.ElementsMatch(t, []any{"rotate", "revoke"}, got[0]["allowed_actions"])
 }

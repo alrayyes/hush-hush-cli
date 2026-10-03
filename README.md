@@ -151,7 +151,8 @@ hush-hush-cli token purge <id>
 `create` and `rotate` print the raw value once - it's never recoverable
 again afterwards, and `list` never includes it. `--ttl` is required on
 both, a Go duration (`720h`, not `30d`). `revoke` invalidates a token
-without deleting its record, so it still shows in `list`; `purge` removes
+without deleting its record, so it still shows in `list`, whose
+`STATUS` column says `active`, `expired` or `revoked`; `purge` removes
 an already-revoked or already-expired token's record for good, and
 refuses one that's still active.
 
