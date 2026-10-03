@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.15.0...v1.16.0) (2026-10-03)
+
+
+### Features
+
+* **cli:** add update --used-by and --clear-used-by ([ec8af15](https://github.com/alrayyes/hush-hush-cli/commit/ec8af153cce1b147a83c0f28f5b006be1ff18c7a))
+
 ## [1.15.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.14.1...v1.15.0) (2026-10-03)
 
 
