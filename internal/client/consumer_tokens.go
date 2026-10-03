@@ -30,6 +30,11 @@ type ConsumerToken struct {
 	ExpiresAt   time.Time  `json:"expires_at"`
 	LastUsedAt  *time.Time `json:"last_used_at,omitempty"`
 	Revoked     bool       `json:"revoked"`
+	// Status is "active", "expired" or "revoked", and AllowedActions what
+	// may still be done to the token. Both come from the server; against
+	// an older one that doesn't send them, they're derived locally.
+	Status         string   `json:"status"`
+	AllowedActions []string `json:"allowed_actions"`
 }
 
 // ConsumerTokenWithValue is CreateConsumerToken and RotateConsumerToken's
@@ -108,7 +113,7 @@ func (c *Client) PurgeConsumerToken(ctx context.Context, id string) error {
 }
 
 func toConsumerToken(t hushhush.ConsumerTokenMetadata) ConsumerToken {
-	return ConsumerToken{
+	token := ConsumerToken{
 		ID:          t.Id,
 		Consumer:    t.Consumer,
 		Description: t.Description,
@@ -117,21 +122,57 @@ func toConsumerToken(t hushhush.ConsumerTokenMetadata) ConsumerToken {
 		LastUsedAt:  t.LastUsedAt,
 		Revoked:     t.Revoked,
 	}
+
+	if t.Status != nil {
+		token.Status = string(*t.Status)
+	}
+
+	if t.AllowedActions != nil {
+		token.AllowedActions = *t.AllowedActions
+	}
+
+	return withDerivedState(token)
+}
+
+// withDerivedState fills Status and AllowedActions in from Revoked and
+// ExpiresAt when the server sent neither.
+func withDerivedState(t ConsumerToken) ConsumerToken {
+	if t.Status == "" {
+		switch {
+		case t.Revoked:
+			t.Status = "revoked"
+		case !time.Now().Before(t.ExpiresAt):
+			t.Status = "expired"
+		default:
+			t.Status = "active"
+		}
+	}
+
+	if t.AllowedActions == nil {
+		if t.Status == "active" {
+			t.AllowedActions = []string{"rotate", "revoke"}
+		} else {
+			t.AllowedActions = []string{"purge"}
+		}
+	}
+
+	return t
 }
 
 func toConsumerTokenWithValue(t *hushhush.ConsumerTokenWithValue) ConsumerTokenWithValue {
-	return ConsumerTokenWithValue{
-		ConsumerToken{
-			ID:          t.Id,
-			Consumer:    t.Consumer,
-			Description: t.Description,
-			CreatedAt:   t.CreatedAt,
-			ExpiresAt:   t.ExpiresAt,
-			LastUsedAt:  t.LastUsedAt,
-			Revoked:     t.Revoked,
-		},
-		t.Value,
-	}
+	token := toConsumerToken(hushhush.ConsumerTokenMetadata{
+		AllowedActions: t.AllowedActions,
+		Consumer:       t.Consumer,
+		CreatedAt:      t.CreatedAt,
+		Description:    t.Description,
+		ExpiresAt:      t.ExpiresAt,
+		Id:             t.Id,
+		LastUsedAt:     t.LastUsedAt,
+		Revoked:        t.Revoked,
+		Status:         t.Status,
+	})
+
+	return ConsumerTokenWithValue{token, t.Value}
 }
 
 // mapConsumerTokenIDError translates mapError's generic, object-flavored

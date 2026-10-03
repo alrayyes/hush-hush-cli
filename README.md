@@ -77,7 +77,9 @@ hush-hush-cli list --used-by homelab/example-app
 
 Label secrets with `--tag` on `inject` (repeatable or comma-separated; 1 to 32
 characters from `a-z 0-9 . _ / -`, at most 10, lower-cased by the server).
-`list` shows them in a TAGS column. `update --tag` replaces a secret's tags,
+`list` shows them in a TAGS column, and when each secret was created and
+last updated in CREATED and UPDATED (`--json` adds who did it, as
+`created_by` and `updated_by`). `update --tag` replaces a secret's tags,
 `update --clear-tags` removes them all, and `update` with neither leaves
 them alone:
 
@@ -151,7 +153,8 @@ hush-hush-cli token purge <id>
 `create` and `rotate` print the raw value once - it's never recoverable
 again afterwards, and `list` never includes it. `--ttl` is required on
 both, a Go duration (`720h`, not `30d`). `revoke` invalidates a token
-without deleting its record, so it still shows in `list`; `purge` removes
+without deleting its record, so it still shows in `list`, whose
+`STATUS` column says `active`, `expired` or `revoked`; `purge` removes
 an already-revoked or already-expired token's record for good, and
 refuses one that's still active.
 

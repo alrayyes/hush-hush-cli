@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
@@ -130,4 +131,54 @@ func TestListUsedByFlagFiltersToThatConsumer(t *testing.T) {
 
 	assert.Contains(t, out.String(), "for-a")
 	assert.NotContains(t, out.String(), "for-b")
+}
+
+func TestListTableShowsCreatedAndUpdatedTimes(t *testing.T) {
+	srv, s, token := testserver.New(t)
+
+	require.NoError(t, s.CreateObject(t.Context(), "apple", []byte("sealed"), nil, ""))
+
+	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
+	t.Setenv("HUSH_HUSH_TOKEN", token)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	viper.Reset()
+
+	root := newRootCmd()
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetArgs([]string{"list"})
+
+	require.NoError(t, root.Execute())
+
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	require.Len(t, lines, 2)
+	assert.Contains(t, lines[0], "CREATED")
+	assert.Contains(t, lines[0], "UPDATED")
+	assert.Contains(t, lines[1], time.Now().Format(time.DateOnly))
+}
+
+func TestListJSONIncludesCreatedUpdatedAndActors(t *testing.T) {
+	srv, s, token := testserver.New(t)
+
+	require.NoError(t, s.CreateObject(t.Context(), "apple", []byte("sealed"), nil, ""))
+
+	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
+	t.Setenv("HUSH_HUSH_TOKEN", token)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	viper.Reset()
+
+	root := newRootCmd()
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetArgs([]string{"list", "--json"})
+
+	require.NoError(t, root.Execute())
+
+	var got []map[string]any
+	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
+	require.Len(t, got, 1)
+
+	for _, key := range []string{"created_at", "updated_at", "created_by", "updated_by"} {
+		assert.Contains(t, got[0], key)
+	}
 }
