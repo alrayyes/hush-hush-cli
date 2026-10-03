@@ -336,7 +336,13 @@ jobs:
   style:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    container:
+      # renovate: datasource=docker depName=jdkato/vale
+      image: jdkato/vale:v3.17.1@sha256:7dba3c9104ba366f172d119022c4ec53a005f7d14dc1b80e285421a3f0b71657
+      options: --entrypoint ""
     steps:
+      # The image is Alpine with neither bash nor git; checkout needs git.
+      - run: apk add --no-cache bash git
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/lint-vale.sh
 

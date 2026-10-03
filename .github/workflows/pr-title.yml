@@ -9,6 +9,12 @@ on:
   pull_request_target:
     types: [opened, reopened, edited, synchronize]
 
+concurrency:
+  # pull_request_target runs against the base branch, so github.ref is the
+  # same for every PR. Key on the PR number instead.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   pull-requests: read
   statuses: write

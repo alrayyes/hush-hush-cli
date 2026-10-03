@@ -17,6 +17,12 @@ name: codegen-auto-merge
 
 on: pull_request
 
+concurrency:
+  # A newer push re-runs this and arms the merge again (`gh pr merge --auto`
+  # is idempotent), so cancelling a superseded run can't lose a merge.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   pull-requests: write
