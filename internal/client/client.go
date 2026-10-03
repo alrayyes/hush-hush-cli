@@ -169,8 +169,8 @@ func (c *Client) Delete(ctx context.Context, id string) error {
 // List returns every stored object's metadata, sorted by id - never the
 // value. Requires a credential, unlike Get: enumerating every object is a
 // capability none of the other, id-scoped reads grant on their own.
-func (c *Client) List(ctx context.Context, usedBy string) ([]ObjectMetadata, error) {
-	metas, err := c.sdk.ListObjects(ctx, usedBy)
+func (c *Client) List(ctx context.Context, usedBy string, tags []string) ([]ObjectMetadata, error) {
+	metas, err := c.sdk.ListObjectsFiltered(ctx, hushhush.ListObjectsFilter{UsedBy: usedBy, Tags: tags})
 	if err != nil {
 		return nil, mapError(err)
 	}

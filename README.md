@@ -79,7 +79,9 @@ Label secrets with `--tag` on `inject` (repeatable or comma-separated; 1 to 32
 characters from `a-z 0-9 . _ / -`, at most 10, lower-cased by the server).
 `list` shows them in a TAGS column, and when each secret was created and
 last updated in CREATED and UPDATED (`--json` adds who did it, as
-`created_by` and `updated_by`). `update --tag` replaces a secret's tags,
+`created_by` and `updated_by`). `list --tag prod` keeps only objects carrying
+that tag; repeat the flag or comma-separate and an object must carry every
+one. It combines with `--used-by`. `update --tag` replaces a secret's tags,
 `update --clear-tags` removes them all, and `update` with neither leaves
 them alone:
 

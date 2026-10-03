@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -181,4 +182,74 @@ func TestListJSONIncludesCreatedUpdatedAndActors(t *testing.T) {
 	for _, key := range []string{"created_at", "updated_at", "created_by", "updated_by"} {
 		assert.Contains(t, got[0], key)
 	}
+}
+
+func listSlugs(t *testing.T, srv *httptest.Server, token string, args ...string) []string {
+	t.Helper()
+
+	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
+	t.Setenv("HUSH_HUSH_TOKEN", token)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	viper.Reset()
+
+	root := newRootCmd()
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetArgs(append([]string{"list", "--json"}, args...))
+
+	require.NoError(t, root.Execute())
+
+	var got []struct {
+		Slug string `json:"slug"`
+	}
+	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
+
+	slugs := make([]string, len(got))
+	for i, o := range got {
+		slugs[i] = o.Slug
+	}
+
+	return slugs
+}
+
+func seedTaggedObjects(t *testing.T, s *testserver.Store) {
+	t.Helper()
+
+	require.NoError(t, s.CreateObject(t.Context(), "a", []byte("v"), []string{"c"}, ""))
+	require.NoError(t, s.CreateObject(t.Context(), "b", []byte("v"), []string{"d"}, ""))
+	require.NoError(t, s.CreateObject(t.Context(), "c", []byte("v"), []string{"c"}, ""))
+	require.NoError(t, s.SetObjectTags(t.Context(), "a", []string{"prod", "ci"}))
+	require.NoError(t, s.SetObjectTags(t.Context(), "b", []string{"staging"}))
+	require.NoError(t, s.SetObjectTags(t.Context(), "c", []string{"prod"}))
+}
+
+func TestListTagFiltersToObjectsCarryingIt(t *testing.T) {
+	srv, s, token := testserver.New(t)
+	seedTaggedObjects(t, s)
+
+	assert.Equal(t, []string{"a", "c"}, listSlugs(t, srv, token, "--tag", "prod"))
+}
+
+func TestListRepeatedAndCommaSeparatedTagsMustAllMatch(t *testing.T) {
+	srv, s, token := testserver.New(t)
+	seedTaggedObjects(t, s)
+
+	assert.Equal(t, []string{"a"}, listSlugs(t, srv, token, "--tag", "prod", "--tag", "ci"))
+	assert.Equal(t, []string{"a"}, listSlugs(t, srv, token, "--tag", "prod,ci"))
+}
+
+func TestListTagCombinesWithUsedByAndIgnoresCase(t *testing.T) {
+	srv, s, token := testserver.New(t)
+	seedTaggedObjects(t, s)
+
+	assert.Equal(t, []string{"b"}, listSlugs(t, srv, token, "--tag", "Staging", "--used-by", "d"))
+	assert.Empty(t, listSlugs(t, srv, token, "--tag", "prod", "--used-by", "d"))
+	assert.Equal(t, []string{"a", "c"}, listSlugs(t, srv, token, "--tag", "PROD"))
+}
+
+func TestListWithoutTagStillListsEverything(t *testing.T) {
+	srv, s, token := testserver.New(t)
+	seedTaggedObjects(t, s)
+
+	assert.Equal(t, []string{"a", "b", "c"}, listSlugs(t, srv, token))
 }

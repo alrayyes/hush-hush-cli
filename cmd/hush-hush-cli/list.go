@@ -19,6 +19,7 @@ func newListCmd() *cobra.Command {
 	var (
 		asJSON bool
 		usedBy string
+		tags   []string
 	)
 
 	cmd := &cobra.Command{
@@ -31,7 +32,7 @@ func newListCmd() *cobra.Command {
 				return err
 			}
 
-			objects, err := cli.List(cmd.Context(), cfg, usedBy)
+			objects, err := cli.List(cmd.Context(), cfg, usedBy, tags)
 			if err != nil {
 				return fmt.Errorf("list: %w", err)
 			}
@@ -45,6 +46,7 @@ func newListCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&usedBy, "used-by", "", "only objects whose used_by includes this consumer")
+	cmd.Flags().StringSliceVar(&tags, "tag", nil, "only objects carrying this tag (repeatable, or comma-separated; all must match)")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the raw JSON array instead of a table")
 
 	return cmd
