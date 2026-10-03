@@ -301,8 +301,10 @@ jobs:
       # request - a real CVE already slipped through here once
       # (smol-toml's DoS advisory, patched by hand via `overrides` in #44)
       # before anything automated would have caught it.
+      # GHSA-vfj7-8cjw-p6xm (braces) has no patched release yet; remove
+      # the ignore once one ships (hush-hush-cli#166).
       - name: bun audit
-        run: bun audit
+        run: bun audit --ignore GHSA-vfj7-8cjw-p6xm
       - name: prettier --check
         run: bun run format:check
       - name: sort-package-json --check
