@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/alrayyes/hush-hush-cli/internal/client"
@@ -64,12 +65,12 @@ func writeListJSON(cmd *cobra.Command, objects []client.ObjectMetadata) error {
 func writeListTable(cmd *cobra.Command, objects []client.ObjectMetadata) error {
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 
-	if _, err := fmt.Fprintln(w, "ID\tUSED BY\tTAGS\tDESCRIPTION"); err != nil {
+	if _, err := fmt.Fprintln(w, "ID\tUSED BY\tTAGS\tCREATED\tUPDATED\tDESCRIPTION"); err != nil {
 		return fmt.Errorf("write list header: %w", err)
 	}
 
 	for _, obj := range objects {
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", obj.Slug, strings.Join(obj.UsedBy, ","), strings.Join(obj.Tags, ","), obj.Description); err != nil {
+		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", obj.Slug, strings.Join(obj.UsedBy, ","), strings.Join(obj.Tags, ","), formatTime(obj.CreatedAt), formatTime(obj.UpdatedAt), obj.Description); err != nil {
 			return fmt.Errorf("write list row: %w", err)
 		}
 	}
@@ -79,4 +80,13 @@ func writeListTable(cmd *cobra.Command, objects []client.ObjectMetadata) error {
 	}
 
 	return nil
+}
+
+// formatTime renders t in local time, or "-" when the server sent none.
+func formatTime(t *time.Time) string {
+	if t == nil {
+		return "-"
+	}
+
+	return t.Local().Format(time.DateTime)
 }

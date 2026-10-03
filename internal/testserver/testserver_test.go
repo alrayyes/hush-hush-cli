@@ -45,8 +45,44 @@ func TestListObjectsReturnsStoredMetadataSortedByID(t *testing.T) {
 
 	require.JSONEq(t,
 		`[{"slug":"apple","tags":[]},{"slug":"zebra","used_by":["homelab/vps-docker"],"description":"z desc","tags":[]}]`,
-		getObjects(t, srv.URL, token, ""),
+		withoutAuditFields(t, getObjects(t, srv.URL, token, "")),
 	)
+}
+
+func TestListObjectsIncludesCreatedAndUpdatedMetadata(t *testing.T) {
+	t.Parallel()
+
+	srv, store, token := testserver.New(t)
+
+	require.NoError(t, store.CreateObject(t.Context(), "apple", []byte("v"), nil, ""))
+
+	var got []map[string]any
+	require.NoError(t, json.Unmarshal([]byte(getObjects(t, srv.URL, token, "")), &got))
+	require.Len(t, got, 1)
+
+	for _, key := range []string{"created_at", "updated_at", "created_by", "updated_by"} {
+		require.Contains(t, got[0], key)
+	}
+}
+
+// withoutAuditFields strips the created/updated metadata GET /objects adds,
+// so a test can compare the rest of the response exactly.
+func withoutAuditFields(t *testing.T, body string) string {
+	t.Helper()
+
+	var objects []map[string]any
+	require.NoError(t, json.Unmarshal([]byte(body), &objects))
+
+	for _, obj := range objects {
+		for _, key := range []string{"created_at", "updated_at", "created_by", "updated_by"} {
+			delete(obj, key)
+		}
+	}
+
+	out, err := json.Marshal(objects)
+	require.NoError(t, err)
+
+	return string(out)
 }
 
 func TestListObjectsFiltersByUsedBy(t *testing.T) {
@@ -57,7 +93,7 @@ func TestListObjectsFiltersByUsedBy(t *testing.T) {
 	require.NoError(t, store.CreateObject(t.Context(), "matched", []byte("v"), []string{"homelab/vps-docker"}, ""))
 	require.NoError(t, store.CreateObject(t.Context(), "unmatched", []byte("v"), []string{"other/repo"}, ""))
 
-	require.JSONEq(t, `[{"slug":"matched","used_by":["homelab/vps-docker"],"tags":[]}]`, getObjects(t, srv.URL, token, "homelab/vps-docker"))
+	require.JSONEq(t, `[{"slug":"matched","used_by":["homelab/vps-docker"],"tags":[]}]`, withoutAuditFields(t, getObjects(t, srv.URL, token, "homelab/vps-docker")))
 }
 
 func TestQueryAuditLogRequiresNoToken(t *testing.T) {

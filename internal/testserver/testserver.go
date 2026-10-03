@@ -66,6 +66,8 @@ type Object struct {
 	UsedBy      []string
 	Description string
 	Tags        []string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 // Store is an in-memory object store plus write-token issuance, backing a
@@ -212,7 +214,8 @@ func (s *Store) createObject(_ context.Context, id string, value []byte, usedBy 
 		return ErrAlreadyExists
 	}
 
-	s.objects[id] = Object{Value: value, UsedBy: usedBy, Description: description, Tags: tags}
+	now := time.Now()
+	s.objects[id] = Object{Value: value, UsedBy: usedBy, Description: description, Tags: tags, CreatedAt: now, UpdatedAt: now}
 
 	for _, name := range usedBy {
 		if _, ok := s.consumers[name]; !ok {
@@ -254,6 +257,8 @@ func (s *Store) updateObject(_ context.Context, id string, value []byte, tags *[
 	}
 
 	obj.Value = value
+	obj.UpdatedAt = time.Now()
+
 	if tags != nil {
 		obj.Tags = *tags
 	}
@@ -537,7 +542,13 @@ func (s *Store) ListObjects(_ context.Context, usedByFilter string) ([]ObjectMet
 			continue
 		}
 
-		result = append(result, ObjectMetadata{Slug: id, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags)})
+		actor := &Actor{ID: "testserver", Type: "token"}
+		created, updated := obj.CreatedAt, obj.UpdatedAt
+
+		result = append(result, ObjectMetadata{
+			Slug: id, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags),
+			CreatedAt: &created, CreatedBy: actor, UpdatedAt: &updated, UpdatedBy: actor,
+		})
 	}
 
 	slices.SortFunc(result, func(a, b ObjectMetadata) int { return strings.Compare(a.Slug, b.Slug) })
@@ -849,6 +860,19 @@ type ObjectMetadata struct {
 	UsedBy      []string `json:"used_by,omitempty"`
 	Description string   `json:"description,omitempty"`
 	Tags        []string `json:"tags"`
+	// CreatedAt through UpdatedBy are only sent by GET /objects, as the
+	// real server does (hush-hush-go v4.2.4+). The fake has no audit log,
+	// so both actors are always the same stand-in.
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+	CreatedBy *Actor     `json:"created_by,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+	UpdatedBy *Actor     `json:"updated_by,omitempty"`
+}
+
+// Actor is who performed an audited write.
+type Actor struct {
+	ID   string `json:"id"`
+	Type string `json:"type"`
 }
 
 type createObjectRequest struct {
