@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.18.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.18.0...v1.18.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **deps:** bump golang ([#208](https://github.com/alrayyes/hush-hush-cli/issues/208)) ([65dcc97](https://github.com/alrayyes/hush-hush-cli/commit/65dcc97f365e705793f94f2d7ad0d786806eba03))
+* **packaging:** ship every man page in the archives and packages ([#204](https://github.com/alrayyes/hush-hush-cli/issues/204)) ([a26cddf](https://github.com/alrayyes/hush-hush-cli/commit/a26cddfe1790afdf059119ca7d8689c77d52b019)), closes [#191](https://github.com/alrayyes/hush-hush-cli/issues/191)
+
 ## [1.18.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.17.0...v1.18.0) (2026-10-03)
 
 
