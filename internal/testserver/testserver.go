@@ -96,6 +96,9 @@ type Store struct {
 	// RotateConsumerToken has to keep in sync when a token's value
 	// changes.
 	consumerTokenValues map[string]string
+	// ownerPublicKey is the owner's escrowed identity public key, served
+	// by GET /auth/identity. Empty means the owner hasn't registered one.
+	ownerPublicKey string
 }
 
 // consumerToken is one issued consumer read token's full state - the
@@ -958,6 +961,7 @@ func newMux(s *Store) *http.ServeMux {
 	mux.HandleFunc("GET /objects/{id}/used-by", handleGetObjectUsedBy(s))
 	mux.HandleFunc("GET /audit-log", handleQueryAuditLog(s))
 	mux.HandleFunc("GET /auth/status", handleAuthStatus(s))
+	mux.HandleFunc("GET /auth/identity", requireWriteToken(s, handleAuthIdentity(s)))
 	mux.HandleFunc("GET /consumers", requireWriteToken(s, handleListConsumers(s)))
 	mux.HandleFunc("POST /consumers", requireWriteToken(s, handleAddConsumer(s)))
 	// {name...}, not {name}: a consumer name is a repo or host slug and
@@ -972,6 +976,36 @@ func newMux(s *Store) *http.ServeMux {
 	mux.HandleFunc("DELETE /consumer-tokens/{id}", requireWriteToken(s, handleRevokeConsumerToken(s)))
 
 	return mux
+}
+
+// SetOwnerPublicKey sets the escrowed identity public key GET
+// /auth/identity returns. Unset, the response carries no public_key, as
+// for an owner who hasn't completed a first registration.
+func (s *Store) SetOwnerPublicKey(key string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.ownerPublicKey = key
+}
+
+// ownerIdentityResponse matches api/openapi.yaml's OwnerIdentity schema.
+type ownerIdentityResponse struct {
+	PublicKey *string `json:"public_key,omitempty"`
+}
+
+func handleAuthIdentity(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		s.mu.Lock()
+		key := s.ownerPublicKey
+		s.mu.Unlock()
+
+		resp := ownerIdentityResponse{}
+		if key != "" {
+			resp.PublicKey = &key
+		}
+
+		writeJSON(w, http.StatusOK, resp)
+	}
 }
 
 // handleAuthStatus is unauthenticated, matching hush-hush-go's own
