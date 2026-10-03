@@ -18,6 +18,10 @@ import (
 // GET /audit-log limit parameter, max 500).
 const auditLogPageMax = 500
 
+// ErrNoOwnerKey is returned by OwnerPublicKey for an owner who hasn't
+// completed a first registration, so has no escrowed identity key yet.
+var ErrNoOwnerKey = errors.New("owner has no escrowed identity public key yet")
+
 // Sentinel errors mapped from the server's documented status codes -
 // callers match on these rather than inspecting a status code themselves.
 var (
@@ -84,8 +88,12 @@ func New(baseURL, token string) (*Client, error) {
 // is ever called - the client itself does no sealing. description is fixed
 // at creation, the same as usedBy. tags are optional labels; the server
 // lower-cases and de-duplicates them.
-func (c *Client) Create(ctx context.Context, id string, value []byte, usedBy []string, description string, tags []string) (ObjectMetadata, error) {
+func (c *Client) Create(ctx context.Context, id string, value []byte, usedBy []string, description string, tags []string, keepReadableCopy bool) (ObjectMetadata, error) {
 	req := hushhush.CreateObjectRequest{Slug: id, Value: value}
+	if keepReadableCopy {
+		req.KeepReadableCopy = &keepReadableCopy
+	}
+
 	if len(usedBy) > 0 {
 		req.UsedBy = &usedBy
 	}
@@ -119,13 +127,34 @@ func (c *Client) Get(ctx context.Context, id string) ([]byte, error) {
 // Update replaces id's stored value, leaving its used_by metadata
 // unchanged. A nil tags leaves the object's tags alone; a non-nil one
 // replaces them, and an empty one clears them.
-func (c *Client) Update(ctx context.Context, id string, value []byte, tags, usedBy *[]string) (ObjectMetadata, error) {
-	meta, err := c.sdk.UpdateObject(ctx, id, hushhush.UpdateObjectRequest{Value: value, Tags: tags, UsedBy: usedBy}, c.Caller)
+func (c *Client) Update(ctx context.Context, id string, value []byte, tags, usedBy *[]string, keepReadableCopy bool) (ObjectMetadata, error) {
+	req := hushhush.UpdateObjectRequest{Value: value, Tags: tags, UsedBy: usedBy}
+	if keepReadableCopy {
+		req.KeepReadableCopy = &keepReadableCopy
+	}
+
+	meta, err := c.sdk.UpdateObject(ctx, id, req, c.Caller)
 	if err != nil {
 		return ObjectMetadata{}, mapError(err)
 	}
 
 	return toObjectMetadata(meta), nil
+}
+
+// OwnerPublicKey returns the owner's escrowed identity public key, the age
+// recipient to add before sealing when the owner wants a readable copy. It
+// needs a token, and returns ErrNoOwnerKey when none is registered yet.
+func (c *Client) OwnerPublicKey(ctx context.Context) (string, error) {
+	identity, err := c.sdk.GetOwnerIdentity(ctx)
+	if err != nil {
+		return "", mapError(err)
+	}
+
+	if identity.PublicKey == nil || *identity.PublicKey == "" {
+		return "", ErrNoOwnerKey
+	}
+
+	return *identity.PublicKey, nil
 }
 
 // Delete permanently removes id.

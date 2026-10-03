@@ -31,12 +31,17 @@ func Inject(ctx context.Context, cfg Config, id string, value []byte, recipients
 		return err
 	}
 
+	recipients, err = w.withOwnerKey(ctx, cl, recipients)
+	if err != nil {
+		return err
+	}
+
 	sealed, err := seal.Seal(value, recipients)
 	if err != nil {
 		return fmt.Errorf("seal value: %w", err)
 	}
 
-	if _, err := cl.Create(ctx, id, sealed, usedBy, description, w.tagsOrNil()); err != nil {
+	if _, err := cl.Create(ctx, id, sealed, usedBy, description, w.tagsOrNil(), w.keepReadableCopy); err != nil {
 		return fmt.Errorf("create object: %w", err)
 	}
 

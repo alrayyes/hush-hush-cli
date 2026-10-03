@@ -27,6 +27,19 @@ var errTagAndClearTags = errors.New("--tag and --clear-tags can't be combined")
 // errUsedByAndClearUsedBy is a sentinel: a fixed condition (both flags given).
 var errUsedByAndClearUsedBy = errors.New("--used-by and --clear-used-by can't be combined")
 
+// keepReadableCopyUsage is shared by inject and update's --keep-readable-copy.
+const keepReadableCopyUsage = "also seal to your own escrowed identity key, so you can decrypt it yourself"
+
+// injectOptions are inject's tags plus, when asked for, the owner's copy.
+func injectOptions(tags []string, keepCopy bool) []cli.WriteOption {
+	opts := []cli.WriteOption{cli.WithTags(tags)}
+	if keepCopy {
+		opts = append(opts, cli.WithKeepReadableCopy())
+	}
+
+	return opts
+}
+
 // tagFlagUsage is shared by inject and update's --tag.
 const tagFlagUsage = "label for grouping secrets (repeatable, or comma-separated; 1-32 chars of a-z 0-9 . _ / -, max 10)"
 
@@ -38,6 +51,7 @@ func newInjectCmd() *cobra.Command {
 		usedBy      []string
 		tags        []string
 		description string
+		keepCopy    bool
 	)
 
 	cmd := &cobra.Command{
@@ -72,13 +86,14 @@ func newInjectCmd() *cobra.Command {
 				return err
 			}
 
-			return cli.Inject(cmd.Context(), cfg, args[0], value, recipientList, usedBy, description, cli.WithTags(tags))
+			return cli.Inject(cmd.Context(), cfg, args[0], value, recipientList, usedBy, description, injectOptions(tags, keepCopy)...)
 		},
 	}
 
 	cmd.Flags().StringSliceVar(&usedBy, "used-by", nil, "consumers of this secret (repeatable, or comma-separated)")
 	cmd.Flags().String("recipients", "", "comma-separated age recipient public keys")
 	cmd.Flags().StringSliceVar(&tags, "tag", nil, tagFlagUsage)
+	cmd.Flags().BoolVar(&keepCopy, "keep-readable-copy", false, keepReadableCopyUsage)
 	cmd.Flags().StringVar(&description, "description", "", "free-text label for this object, fixed at creation")
 
 	return cmd

@@ -49,6 +49,7 @@ func newUpdateCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&f.tags, "tag", nil, tagFlagUsage+"; replaces the object's tags")
 	cmd.Flags().BoolVar(&f.clearTags, "clear-tags", false, "remove every tag from the object")
 	cmd.Flags().StringSliceVar(&f.usedBy, "used-by", nil, "replace the object's consumers (repeatable, or comma-separated); seals to their registered keys unless --recipients is given")
+	cmd.Flags().BoolVar(&f.keepCopy, "keep-readable-copy", false, keepReadableCopyUsage)
 	cmd.Flags().BoolVar(&f.clearUsedBy, "clear-used-by", false, "remove every consumer from the object")
 
 	return cmd
@@ -60,6 +61,7 @@ type updateFlags struct {
 	clearTags   bool
 	usedBy      []string
 	clearUsedBy bool
+	keepCopy    bool
 }
 
 // recipients validates the flag combination and returns the explicit
@@ -103,6 +105,10 @@ func (f updateFlags) options(cmd *cobra.Command) []cli.WriteOption {
 		opts = append(opts, cli.WithUsedBy([]string{}))
 	case cmd.Flags().Changed("used-by"):
 		opts = append(opts, cli.WithUsedBy(f.usedBy))
+	}
+
+	if f.keepCopy {
+		opts = append(opts, cli.WithKeepReadableCopy())
 	}
 
 	return opts

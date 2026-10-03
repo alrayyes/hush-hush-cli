@@ -120,6 +120,12 @@ echo -n "new-value" | hush-hush-cli update mattermost_deploy_webhook \
   --used-by homelab/vps-docker
 ```
 
+`inject --keep-readable-copy` and `update --keep-readable-copy` also seal the
+value to your own escrowed identity key, so you can decrypt what you wrote.
+The server never adds it for you, and the flag fails, without writing
+anything, if you have no escrowed key yet. It needs hush-hush v2.54.0 or
+later.
+
 Query the audit trail - who touched an object, when, and how. Filters
 combine with AND; `--since`/`--until` take RFC3339 timestamps:
 
