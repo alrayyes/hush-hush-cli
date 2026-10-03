@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.15.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.14.1...v1.15.0) (2026-10-03)
+
+
+### Features
+
+* **cli:** show created and updated times in list ([0b0d955](https://github.com/alrayyes/hush-hush-cli/commit/0b0d955e0addbdd029b557a5f96cf1f87447fe55))
+* **cli:** show created and updated times in list ([12768a8](https://github.com/alrayyes/hush-hush-cli/commit/12768a866543dd1ea979a5f52aeaf311c9ec5dcd)), closes [#164](https://github.com/alrayyes/hush-hush-cli/issues/164)
+* **cli:** show token status in token list ([c4a1ad4](https://github.com/alrayyes/hush-hush-cli/commit/c4a1ad4c5d8238662b0ecfe5e61e8c3251b6f95d)), closes [#165](https://github.com/alrayyes/hush-hush-cli/issues/165)
+
+
+### Bug Fixes
+
+* **deps:** bump hush-hush-go to v4.2.5 ([3963681](https://github.com/alrayyes/hush-hush-cli/commit/396368108a62163a454b13b330f8ded4b05b08ab))
+
 ## [1.14.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.14.0...v1.14.1) (2026-10-03)
 
 
