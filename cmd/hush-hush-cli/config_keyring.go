@@ -3,13 +3,10 @@ package main
 import (
 	"fmt"
 
+	"github.com/alrayyes/hush-hush-cli/internal/cliconfig"
 	"github.com/spf13/cobra"
 	"github.com/zalando/go-keyring"
 )
-
-// keyringService names hush-hush-cli's own OS keyring entries - one
-// "account" per credential field ("token", "identity").
-const keyringService = "hush-hush-cli"
 
 // newConfigCmd groups init's own generated _command subcommands under one
 // hidden parent, rather than a bare top-level "keyring-get": nothing here
@@ -41,7 +38,7 @@ func newKeyringGetCmd() *cobra.Command {
 		Hidden: true,
 		Args:   cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			value, err := keyring.Get(keyringService, args[0])
+			value, err := keyring.Get(cliconfig.KeyringService, args[0])
 			if err != nil {
 				return fmt.Errorf("keyring get %s: %w", args[0], err)
 			}

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alrayyes/hush-hush-cli/internal/cliconfig"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -176,7 +177,7 @@ func TestRunInteractiveInitKeyringChoiceStoresInTheKeyring(t *testing.T) {
 	assert.Contains(t, string(content), `token_command: "hush-hush-cli config keyring-get token"`)
 	assert.NotContains(t, string(content), "s3cret-token")
 
-	stored, err := keyring.Get(keyringService, "token")
+	stored, err := keyring.Get(cliconfig.KeyringService, "token")
 	require.NoError(t, err)
 	assert.Equal(t, "s3cret-token", stored)
 }

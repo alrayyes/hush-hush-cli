@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/alrayyes/hush-hush-cli/internal/cliconfig"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,7 @@ func TestConfigKeyringGetPrintsAStoredValue(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	viper.Reset()
 
-	require.NoError(t, keyring.Set(keyringService, "token", "s3cret"))
+	require.NoError(t, keyring.Set(cliconfig.KeyringService, "token", "s3cret"))
 
 	root := newRootCmd()
 	var out bytes.Buffer
