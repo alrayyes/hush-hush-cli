@@ -10,14 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/alrayyes/hush-hush-cli/internal/cliconfig"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/zalando/go-keyring"
 	"golang.org/x/term"
 )
 
@@ -29,17 +26,6 @@ var version = "dev"
 // per-call detail - the path itself is per-call detail, so it's wrapped
 // in rather than folded into the message.
 var errConfigAlreadyExists = errors.New("config file already exists (use --force to overwrite)")
-
-// configEnvVars are every HUSH_HUSH_* variable a command reads - the
-// persistent flags below plus recipients/identity, which are bound
-// per-subcommand rather than on root. Used only to decide whether the
-// tool is already configured through the environment, not to read a
-// value.
-var configEnvVars = []string{
-	"HUSH_HUSH_SERVER", "HUSH_HUSH_TOKEN", "HUSH_HUSH_TOKEN_COMMAND", "HUSH_HUSH_CALLER",
-	"HUSH_HUSH_RECIPIENTS", "HUSH_HUSH_IDENTITY",
-	"HUSH_HUSH_CONSUMER_TOKEN", "HUSH_HUSH_CONSUMER_TOKEN_COMMAND",
-}
 
 func main() {
 	if err := newRootCmd().Execute(); err != nil {
@@ -203,29 +189,8 @@ func newInitCmd() *cobra.Command {
 	return cmd
 }
 
-const starterConfig = `# hush-hush-cli config file. Flags and HUSH_HUSH_* environment variables
-# both override these - see README.md#configuration.
-server: http://localhost:8080
-token: ""
-# token_command runs a command and uses its trimmed stdout as the token
-# instead - it wins over the literal value above if both are set.
-# token_command: "pass show hush-hush/write-token"
-# consumer_token is a read-only, consumer-scoped token - only used by
-# get, and only when token above is empty. Mint one with
-# "hush-hush-cli token create <consumer> --ttl <duration>".
-consumer_token: ""
-# consumer_token_command works the same as token_command, for consumer_token.
-# consumer_token_command: "pass show hush-hush/consumer-token"
-caller: ""
-recipients: ""
-identity: ""
-# identity_command runs a command and uses its trimmed stdout as the
-# identity instead - it wins over the literal value above if both are set.
-# identity_command: "pass show hush-hush/identity-key"
-`
-
 func writeStarterConfig(cmd *cobra.Command, path string) error {
-	if err := os.WriteFile(path, []byte(starterConfig), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(cliconfig.StarterConfig), 0o600); err != nil {
 		return fmt.Errorf("write config file: %w", err)
 	}
 
@@ -258,17 +223,17 @@ func runInteractiveInit(cmd *cobra.Command, path string, sc *bufio.Scanner, read
 		return fmt.Errorf("prompt for config: %w", err)
 	}
 
-	token, err := persistCredential(result.Token, "token")
+	token, err := cliconfig.PersistCredential(result.Token, "token")
 	if err != nil {
-		return err
+		return fmt.Errorf("persist token: %w", err)
 	}
 
-	identity, err := persistCredential(result.Identity, "identity")
+	identity, err := cliconfig.PersistCredential(result.Identity, "identity")
 	if err != nil {
-		return err
+		return fmt.Errorf("persist identity: %w", err)
 	}
 
-	content := renderConfig(result.Server, token, result.Caller, result.Recipients, identity)
+	content := cliconfig.Render(result.Server, token, result.Caller, result.Recipients, identity)
 
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		return fmt.Errorf("write config file: %w", err)
@@ -279,71 +244,6 @@ func runInteractiveInit(cmd *cobra.Command, path string, sc *bufio.Scanner, read
 	}
 
 	return nil
-}
-
-// renderedSecret is a credential field's config-file representation after
-// its persistence choice has been applied: at most one of Literal/Command
-// is non-empty (PersistSkip leaves both empty, matching an unanswered
-// field).
-type renderedSecret struct {
-	Literal string
-	Command string
-}
-
-// persistCredential turns one prompted credential answer into its
-// config-file representation, storing the value in the OS keyring first
-// when that's the chosen persistence.
-func persistCredential(answer cliconfig.CredentialAnswer, field string) (renderedSecret, error) {
-	switch answer.Choice {
-	case cliconfig.PersistKeyring:
-		if err := keyring.Set(keyringService, field, answer.Value); err != nil {
-			return renderedSecret{}, fmt.Errorf("store %s in keyring: %w", field, err)
-		}
-
-		return renderedSecret{Command: "hush-hush-cli config keyring-get " + field}, nil
-	case cliconfig.PersistCommand:
-		return renderedSecret{Command: answer.Extra}, nil
-	case cliconfig.PersistLiteral:
-		return renderedSecret{Literal: answer.Value}, nil
-	default: // cliconfig.PersistSkip
-		return renderedSecret{}, nil
-	}
-}
-
-// renderConfig builds the YAML an interactive init writes. Every value is
-// double-quoted via strconv.Quote regardless of content - simpler and
-// safer than deciding case by case which values need it, at the cost of
-// looking less like starterConfig's own hand-written, selectively-quoted
-// style; that constant is untouched and still what --yes/no-TTY writes.
-func renderConfig(server string, token renderedSecret, caller, recipients string, identity renderedSecret) string {
-	var b strings.Builder
-
-	b.WriteString("# hush-hush-cli config file. Flags and HUSH_HUSH_* environment variables\n")
-	b.WriteString("# both override these - see README.md#configuration.\n")
-	fmt.Fprintf(&b, "server: %s\n", strconv.Quote(server))
-	fmt.Fprintf(&b, "token: %s\n", strconv.Quote(token.Literal))
-	b.WriteString("# token_command runs a command and uses its trimmed stdout as the token\n")
-	b.WriteString("# instead - it wins over the literal value above if both are set.\n")
-
-	if token.Command != "" {
-		fmt.Fprintf(&b, "token_command: %s\n", strconv.Quote(token.Command))
-	} else {
-		b.WriteString("# token_command: \"pass show hush-hush/write-token\"\n")
-	}
-
-	fmt.Fprintf(&b, "caller: %s\n", strconv.Quote(caller))
-	fmt.Fprintf(&b, "recipients: %s\n", strconv.Quote(recipients))
-	fmt.Fprintf(&b, "identity: %s\n", strconv.Quote(identity.Literal))
-	b.WriteString("# identity_command runs a command and uses its trimmed stdout as the\n")
-	b.WriteString("# identity instead - it wins over the literal value above if both are set.\n")
-
-	if identity.Command != "" {
-		fmt.Fprintf(&b, "identity_command: %s\n", strconv.Quote(identity.Command))
-	} else {
-		b.WriteString("# identity_command: \"pass show hush-hush/identity-key\"\n")
-	}
-
-	return b.String()
 }
 
 // maybeOfferInit is rules/cli.md's "a run with no config file and no
@@ -369,7 +269,7 @@ func renderConfig(server string, token renderedSecret, caller, recipients string
 // function's own job, wiring the two together with the right scanner, is
 // what's left untested at the cobra level, not the behavior itself.
 func maybeOfferInit(cmd *cobra.Command) error {
-	anyEnvSet := anyConfigEnvVarSet()
+	anyEnvSet := cliconfig.AnyEnvVarSet()
 	if anyEnvSet {
 		return nil
 	}
@@ -446,14 +346,4 @@ func writeConfig(cmd *cobra.Command, path string, yes bool, sc *bufio.Scanner) e
 	}
 
 	return runInteractiveInit(cmd, path, sc, term.ReadPassword)
-}
-
-func anyConfigEnvVarSet() bool {
-	for _, name := range configEnvVars {
-		if _, ok := os.LookupEnv(name); ok {
-			return true
-		}
-	}
-
-	return false
 }
