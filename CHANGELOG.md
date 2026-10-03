@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.17.0...v1.18.0) (2026-10-03)
+
+
+### Features
+
+* **cli:** add list --tag filter ([e59cb3e](https://github.com/alrayyes/hush-hush-cli/commit/e59cb3e1004c75c7c552b09409726491a465675b))
+
 ## [1.17.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.16.0...v1.17.0) (2026-10-03)
 
 
