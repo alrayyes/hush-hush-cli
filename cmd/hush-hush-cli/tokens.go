@@ -235,13 +235,13 @@ func writeConsumerTokensJSON(cmd *cobra.Command, tokens []client.ConsumerToken) 
 func writeConsumerTokensTable(cmd *cobra.Command, tokens []client.ConsumerToken) error {
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 
-	if _, err := fmt.Fprintln(w, "ID\tCONSUMER\tDESCRIPTION\tEXPIRES\tREVOKED"); err != nil {
+	if _, err := fmt.Fprintln(w, "ID\tCONSUMER\tDESCRIPTION\tEXPIRES\tSTATUS"); err != nil {
 		return fmt.Errorf("write token list header: %w", err)
 	}
 
 	for _, t := range tokens {
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%t\n",
-			t.ID, t.Consumer, t.Description, t.ExpiresAt.Local().Format(time.DateTime), t.Revoked); err != nil {
+		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+			t.ID, t.Consumer, t.Description, t.ExpiresAt.Local().Format(time.DateTime), t.Status); err != nil {
 			return fmt.Errorf("write token list row: %w", err)
 		}
 	}

@@ -46,6 +46,20 @@ type ObjectMetadata struct {
 	UsedBy      []string `json:"used_by,omitempty"`
 	Description string   `json:"description,omitempty"`
 	Tags        []string `json:"tags"`
+	// CreatedAt through UpdatedBy are only set by List: the server leaves
+	// them out of a create or update response, and CreatedBy/UpdatedBy
+	// are also nil for an object that predates auditing.
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+	CreatedBy *Actor     `json:"created_by,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+	UpdatedBy *Actor     `json:"updated_by,omitempty"`
+}
+
+// Actor is who performed an audited write: Type is "session", "token" or
+// "consumer_token", and ID that actor's own id.
+type Actor struct {
+	ID   string `json:"id"`
+	Type string `json:"type"`
 }
 
 // Client is a hush-hush API client. Token is the write-path bearer token;
@@ -293,6 +307,18 @@ func toObjectMetadata(m *hushhush.ObjectMetadata) ObjectMetadata {
 
 	if m.Description != nil {
 		meta.Description = *m.Description
+	}
+
+	meta.CreatedAt, meta.UpdatedAt = m.CreatedAt, m.UpdatedAt
+
+	// hush-hush-go doesn't alias its Actor type, so the fields are read
+	// off each pointer directly.
+	if m.CreatedBy != nil {
+		meta.CreatedBy = &Actor{ID: m.CreatedBy.Id, Type: m.CreatedBy.Type}
+	}
+
+	if m.UpdatedBy != nil {
+		meta.UpdatedBy = &Actor{ID: m.UpdatedBy.Id, Type: m.UpdatedBy.Type}
 	}
 
 	return meta
