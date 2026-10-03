@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.14.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.14.0...v1.14.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **ci:** ignore unpatched braces advisory in bun audit ([6f5ba47](https://github.com/alrayyes/hush-hush-cli/commit/6f5ba47a7d971133bc09db1f6d18da1d563b75fa))
+* **ci:** ignore unpatched braces advisory in bun audit ([a80bb56](https://github.com/alrayyes/hush-hush-cli/commit/a80bb568dd4e55cce464438d3a5602ff7ddcf9d7)), closes [#166](https://github.com/alrayyes/hush-hush-cli/issues/166)
+
 ## [1.14.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.13.0...v1.14.0) (2026-10-02)
 
 
