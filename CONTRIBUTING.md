@@ -17,6 +17,11 @@ for whoever runs it.
   from the pinned image independently (a package manager updating one
   without the other) is a real failure mode this closes, not a
   hypothetical one.
+- **Docker, or a local binary, for the prose checks.** The style and grammar
+  checks run from `scripts/lint-vale.sh` and `scripts/lint-ltex.sh`. Each
+  uses `vale` or `ltex-cli-plus` if it's on your `PATH` and otherwise runs
+  the same pinned image CI uses, so with Docker running you need nothing
+  else.
 - **[bun](https://bun.sh)** for the tooling that isn't Go — commitlint,
   Prettier, markdownlint, and the [lefthook](https://lefthook.dev) that runs
   the git hooks. There's a `package.json`, but nothing here is JavaScript; it
@@ -47,6 +52,8 @@ golangci-lint fmt          # the fixer; `run` stays the check
 
 bun run format:check       # prettier --check, add --write to fix
 bun run lint:md
+./scripts/lint-vale.sh     # house style; only error-level alerts fail
+./scripts/lint-ltex.sh     # grammar
 ```
 
 ## Where this came from
@@ -58,8 +65,8 @@ for why the split happened. The split is done: the code
 (`cmd/hush-hush-cli`, `internal/cli`, `internal/client`, `internal/seal`,
 `internal/cliconfig`) lives only here now, `hush-hush` has removed its own
 copy, and every packaging path (AUR, `.deb`/`.rpm`, Docker, `go install`)
-ships from this repo's own release pipeline - see [INSTALL.md](INSTALL.md).
-Nix (`hush-hush-cli#8`/`#9`) is what's left, not blocking anything.
+ships from this repo's own release pipeline, and so does the Nix flake - see
+[INSTALL.md](INSTALL.md).
 
 ## Commit messages
 
