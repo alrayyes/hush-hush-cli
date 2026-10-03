@@ -24,6 +24,9 @@ var errNoRecipientsOrUsedBy = errors.New("no recipients configured (--recipients
 // errTagAndClearTags is a sentinel: a fixed condition (both flags given).
 var errTagAndClearTags = errors.New("--tag and --clear-tags can't be combined")
 
+// errUsedByAndClearUsedBy is a sentinel: a fixed condition (both flags given).
+var errUsedByAndClearUsedBy = errors.New("--used-by and --clear-used-by can't be combined")
+
 // tagFlagUsage is shared by inject and update's --tag.
 const tagFlagUsage = "label for grouping secrets (repeatable, or comma-separated; 1-32 chars of a-z 0-9 . _ / -, max 10)"
 

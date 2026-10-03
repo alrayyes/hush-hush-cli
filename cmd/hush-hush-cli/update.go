@@ -13,10 +13,7 @@ import (
 // newUpdateCmd reads the new plaintext value from stdin, same reasoning as
 // newInjectCmd: a flag value ends up in shell history and process listings.
 func newUpdateCmd() *cobra.Command {
-	var (
-		tags      []string
-		clearTags bool
-	)
+	var f updateFlags
 
 	cmd := &cobra.Command{
 		Use:   "update <id>",
@@ -29,13 +26,9 @@ func newUpdateCmd() *cobra.Command {
 			// key at a time.
 			_ = viper.BindPFlag("recipients", cmd.Flags().Lookup("recipients"))
 
-			if clearTags && cmd.Flags().Changed("tag") {
-				return errTagAndClearTags
-			}
-
-			recipients := viper.GetString("recipients")
-			if recipients == "" {
-				return errNoRecipients
+			recipients, err := f.recipients(cmd)
+			if err != nil {
+				return err
 			}
 
 			value, err := io.ReadAll(cmd.InOrStdin())
@@ -48,22 +41,69 @@ func newUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			var opts []cli.WriteOption
-
-			switch {
-			case clearTags:
-				opts = append(opts, cli.WithTags([]string{}))
-			case cmd.Flags().Changed("tag"):
-				opts = append(opts, cli.WithTags(tags))
-			}
-
-			return cli.Update(cmd.Context(), cfg, args[0], value, strings.Split(recipients, ","), opts...)
+			return cli.Update(cmd.Context(), cfg, args[0], value, recipients, f.options(cmd)...)
 		},
 	}
 
 	cmd.Flags().String("recipients", "", "comma-separated age recipient public keys")
-	cmd.Flags().StringSliceVar(&tags, "tag", nil, tagFlagUsage+"; replaces the object's tags")
-	cmd.Flags().BoolVar(&clearTags, "clear-tags", false, "remove every tag from the object")
+	cmd.Flags().StringSliceVar(&f.tags, "tag", nil, tagFlagUsage+"; replaces the object's tags")
+	cmd.Flags().BoolVar(&f.clearTags, "clear-tags", false, "remove every tag from the object")
+	cmd.Flags().StringSliceVar(&f.usedBy, "used-by", nil, "replace the object's consumers (repeatable, or comma-separated); seals to their registered keys unless --recipients is given")
+	cmd.Flags().BoolVar(&f.clearUsedBy, "clear-used-by", false, "remove every consumer from the object")
 
 	return cmd
+}
+
+// updateFlags holds update's tag and consumer flags.
+type updateFlags struct {
+	tags        []string
+	clearTags   bool
+	usedBy      []string
+	clearUsedBy bool
+}
+
+// recipients validates the flag combination and returns the explicit
+// recipients, nil when they should be resolved from --used-by instead.
+func (f updateFlags) recipients(cmd *cobra.Command) ([]string, error) {
+	usedByGiven := cmd.Flags().Changed("used-by")
+
+	switch {
+	case f.clearTags && cmd.Flags().Changed("tag"):
+		return nil, errTagAndClearTags
+	case f.clearUsedBy && usedByGiven:
+		return nil, errUsedByAndClearUsedBy
+	}
+
+	recipients := viper.GetString("recipients")
+
+	switch {
+	case recipients != "":
+		return strings.Split(recipients, ","), nil
+	case len(f.usedBy) > 0:
+		return nil, nil
+	case usedByGiven:
+		return nil, errNoRecipientsOrUsedBy
+	default:
+		return nil, errNoRecipients
+	}
+}
+
+func (f updateFlags) options(cmd *cobra.Command) []cli.WriteOption {
+	var opts []cli.WriteOption
+
+	switch {
+	case f.clearTags:
+		opts = append(opts, cli.WithTags([]string{}))
+	case cmd.Flags().Changed("tag"):
+		opts = append(opts, cli.WithTags(f.tags))
+	}
+
+	switch {
+	case f.clearUsedBy:
+		opts = append(opts, cli.WithUsedBy([]string{}))
+	case cmd.Flags().Changed("used-by"):
+		opts = append(opts, cli.WithUsedBy(f.usedBy))
+	}
+
+	return opts
 }

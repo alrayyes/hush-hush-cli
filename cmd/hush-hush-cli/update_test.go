@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"io"
+	"net/http/httptest"
 	"testing"
 
 	"filippo.io/age"
@@ -74,4 +77,109 @@ func TestUpdateFailsFastWithNoTokenConfigured(t *testing.T) {
 	obj, err := s.GetObject(t.Context(), "mattermost_deploy_webhook")
 	require.NoError(t, err)
 	require.NotEqual(t, []byte("new-value"), obj.Value)
+}
+
+func newConsumerWithKey(t *testing.T, s *testserver.Store, name string) *age.X25519Identity {
+	t.Helper()
+
+	identity, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
+	require.NoError(t, s.AddConsumer(t.Context(), name))
+
+	recipient := identity.Recipient().String()
+	_, err = s.UpdateConsumer(t.Context(), name, nil, &recipient)
+	require.NoError(t, err)
+
+	return identity
+}
+
+func runUpdate(t *testing.T, srv *httptest.Server, token string, args ...string) error {
+	t.Helper()
+
+	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
+	t.Setenv("HUSH_HUSH_TOKEN", token)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	viper.Reset()
+
+	root := newRootCmd()
+	root.SetArgs(append([]string{"update", "secret"}, args...))
+	root.SetIn(bytes.NewReader([]byte("new-value")))
+
+	if err := root.Execute(); err != nil {
+		return fmt.Errorf("run update: %w", err)
+	}
+
+	return nil
+}
+
+func TestUpdateUsedByReplacesConsumersAndSealsToTheirKey(t *testing.T) {
+	srv, s, token := testserver.New(t)
+	b := newConsumerWithKey(t, s, "b")
+
+	require.NoError(t, s.CreateObject(t.Context(), "secret", []byte("old"), []string{"a"}, ""))
+
+	require.NoError(t, runUpdate(t, srv, token, "--used-by", "b"))
+
+	obj, err := s.GetObject(t.Context(), "secret")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"b"}, obj.UsedBy)
+
+	r, err := age.Decrypt(bytes.NewReader(obj.Value), b)
+	require.NoError(t, err)
+
+	plaintext, err := io.ReadAll(r)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("new-value"), plaintext)
+}
+
+func TestUpdateWithoutUsedByLeavesConsumersAlone(t *testing.T) {
+	srv, s, token := testserver.New(t)
+	identity, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
+
+	require.NoError(t, s.CreateObject(t.Context(), "secret", []byte("old"), []string{"a"}, ""))
+
+	require.NoError(t, runUpdate(t, srv, token, "--recipients", identity.Recipient().String()))
+
+	obj, err := s.GetObject(t.Context(), "secret")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a"}, obj.UsedBy)
+}
+
+func TestUpdateClearUsedByRemovesEveryConsumer(t *testing.T) {
+	srv, s, token := testserver.New(t)
+	identity, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
+
+	require.NoError(t, s.CreateObject(t.Context(), "secret", []byte("old"), []string{"a"}, ""))
+
+	require.NoError(t, runUpdate(t, srv, token, "--clear-used-by", "--recipients", identity.Recipient().String()))
+
+	obj, err := s.GetObject(t.Context(), "secret")
+	require.NoError(t, err)
+	assert.Empty(t, obj.UsedBy)
+}
+
+func TestUpdateUsedByAndClearUsedByCantBeCombined(t *testing.T) {
+	srv, s, token := testserver.New(t)
+	require.NoError(t, s.CreateObject(t.Context(), "secret", []byte("old"), nil, ""))
+
+	err := runUpdate(t, srv, token, "--used-by", "b", "--clear-used-by")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--clear-used-by")
+}
+
+func TestUpdateUsedByWithNoRegisteredKeyFailsAndLeavesTheObjectAlone(t *testing.T) {
+	srv, s, token := testserver.New(t)
+	require.NoError(t, s.AddConsumer(t.Context(), "b"))
+	require.NoError(t, s.CreateObject(t.Context(), "secret", []byte("old"), []string{"a"}, ""))
+
+	err := runUpdate(t, srv, token, "--used-by", "b")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "b")
+
+	obj, getErr := s.GetObject(t.Context(), "secret")
+	require.NoError(t, getErr)
+	assert.Equal(t, []string{"a"}, obj.UsedBy)
+	assert.Equal(t, []byte("old"), obj.Value)
 }
