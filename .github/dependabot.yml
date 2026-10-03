@@ -42,6 +42,27 @@ updates:
         patterns: ["*"]
         update-types: [major]
 
+  # The base images in Dockerfile and Dockerfile.release are pinned by tag and
+  # digest, which nothing else watches. They ship in the published image, so
+  # a bump is a `fix`, like a Go dependency.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Amsterdam
+    commit-message:
+      prefix: fix
+      include: scope
+    groups:
+      docker-images:
+        patterns: ["*"]
+        update-types: [minor, patch]
+      docker-images-major:
+        patterns: ["*"]
+        update-types: [major]
+
   # Nothing here is JavaScript. package.json exists so commitlint can
   # resolve the shared config it extends, which bunx alone cannot do.
   - package-ecosystem: bun
