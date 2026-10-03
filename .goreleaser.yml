@@ -41,23 +41,55 @@ archives:
     ids: [hush-hush-cli]
     formats: [tar.gz]
     name_template: "hush-hush-cli_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    # The same six pages the nfpms below package into the .deb/.rpm - every
+    # The same pages the nfpms below package into the .deb/.rpm - every
     # distribution path carries the same docs, no exceptions. Not a
     # manpages/*.1 glob: that would also pick up cobra's auto-generated
     # completion-* pages, which the deb/rpm deliberately leave out.
+    # TestEveryManPageIsPackaged fails when a command's page is missing
+    # from either list.
     files:
       - src: manpages/hush-hush-cli.1
         dst: man1/hush-hush-cli.1
+      - src: manpages/hush-hush-cli-audit-log.1
+        dst: man1/hush-hush-cli-audit-log.1
+      - src: manpages/hush-hush-cli-consumer-add.1
+        dst: man1/hush-hush-cli-consumer-add.1
+      - src: manpages/hush-hush-cli-consumer-delete.1
+        dst: man1/hush-hush-cli-consumer-delete.1
+      - src: manpages/hush-hush-cli-consumer-list.1
+        dst: man1/hush-hush-cli-consumer-list.1
+      - src: manpages/hush-hush-cli-consumer-update.1
+        dst: man1/hush-hush-cli-consumer-update.1
+      - src: manpages/hush-hush-cli-consumer.1
+        dst: man1/hush-hush-cli-consumer.1
+      - src: manpages/hush-hush-cli-delete.1
+        dst: man1/hush-hush-cli-delete.1
+      - src: manpages/hush-hush-cli-get.1
+        dst: man1/hush-hush-cli-get.1
       - src: manpages/hush-hush-cli-init.1
         dst: man1/hush-hush-cli-init.1
       - src: manpages/hush-hush-cli-inject.1
         dst: man1/hush-hush-cli-inject.1
-      - src: manpages/hush-hush-cli-get.1
-        dst: man1/hush-hush-cli-get.1
+      - src: manpages/hush-hush-cli-list.1
+        dst: man1/hush-hush-cli-list.1
+      - src: manpages/hush-hush-cli-status.1
+        dst: man1/hush-hush-cli-status.1
+      - src: manpages/hush-hush-cli-token-create.1
+        dst: man1/hush-hush-cli-token-create.1
+      - src: manpages/hush-hush-cli-token-list.1
+        dst: man1/hush-hush-cli-token-list.1
+      - src: manpages/hush-hush-cli-token-purge.1
+        dst: man1/hush-hush-cli-token-purge.1
+      - src: manpages/hush-hush-cli-token-revoke.1
+        dst: man1/hush-hush-cli-token-revoke.1
+      - src: manpages/hush-hush-cli-token-rotate.1
+        dst: man1/hush-hush-cli-token-rotate.1
+      - src: manpages/hush-hush-cli-token.1
+        dst: man1/hush-hush-cli-token.1
       - src: manpages/hush-hush-cli-update.1
         dst: man1/hush-hush-cli-update.1
-      - src: manpages/hush-hush-cli-delete.1
-        dst: man1/hush-hush-cli-delete.1
+      - src: manpages/hush-hush-cli-used-by.1
+        dst: man1/hush-hush-cli-used-by.1
       - src: LICENSE
         dst: LICENSE
 
@@ -77,16 +109,46 @@ nfpms:
     contents:
       - src: manpages/hush-hush-cli.1
         dst: /usr/share/man/man1/hush-hush-cli.1
+      - src: manpages/hush-hush-cli-audit-log.1
+        dst: /usr/share/man/man1/hush-hush-cli-audit-log.1
+      - src: manpages/hush-hush-cli-consumer-add.1
+        dst: /usr/share/man/man1/hush-hush-cli-consumer-add.1
+      - src: manpages/hush-hush-cli-consumer-delete.1
+        dst: /usr/share/man/man1/hush-hush-cli-consumer-delete.1
+      - src: manpages/hush-hush-cli-consumer-list.1
+        dst: /usr/share/man/man1/hush-hush-cli-consumer-list.1
+      - src: manpages/hush-hush-cli-consumer-update.1
+        dst: /usr/share/man/man1/hush-hush-cli-consumer-update.1
+      - src: manpages/hush-hush-cli-consumer.1
+        dst: /usr/share/man/man1/hush-hush-cli-consumer.1
+      - src: manpages/hush-hush-cli-delete.1
+        dst: /usr/share/man/man1/hush-hush-cli-delete.1
+      - src: manpages/hush-hush-cli-get.1
+        dst: /usr/share/man/man1/hush-hush-cli-get.1
       - src: manpages/hush-hush-cli-init.1
         dst: /usr/share/man/man1/hush-hush-cli-init.1
       - src: manpages/hush-hush-cli-inject.1
         dst: /usr/share/man/man1/hush-hush-cli-inject.1
-      - src: manpages/hush-hush-cli-get.1
-        dst: /usr/share/man/man1/hush-hush-cli-get.1
+      - src: manpages/hush-hush-cli-list.1
+        dst: /usr/share/man/man1/hush-hush-cli-list.1
+      - src: manpages/hush-hush-cli-status.1
+        dst: /usr/share/man/man1/hush-hush-cli-status.1
+      - src: manpages/hush-hush-cli-token-create.1
+        dst: /usr/share/man/man1/hush-hush-cli-token-create.1
+      - src: manpages/hush-hush-cli-token-list.1
+        dst: /usr/share/man/man1/hush-hush-cli-token-list.1
+      - src: manpages/hush-hush-cli-token-purge.1
+        dst: /usr/share/man/man1/hush-hush-cli-token-purge.1
+      - src: manpages/hush-hush-cli-token-revoke.1
+        dst: /usr/share/man/man1/hush-hush-cli-token-revoke.1
+      - src: manpages/hush-hush-cli-token-rotate.1
+        dst: /usr/share/man/man1/hush-hush-cli-token-rotate.1
+      - src: manpages/hush-hush-cli-token.1
+        dst: /usr/share/man/man1/hush-hush-cli-token.1
       - src: manpages/hush-hush-cli-update.1
         dst: /usr/share/man/man1/hush-hush-cli-update.1
-      - src: manpages/hush-hush-cli-delete.1
-        dst: /usr/share/man/man1/hush-hush-cli-delete.1
+      - src: manpages/hush-hush-cli-used-by.1
+        dst: /usr/share/man/man1/hush-hush-cli-used-by.1
       - src: LICENSE
         dst: /usr/share/licenses/hush-hush-cli/LICENSE
 
