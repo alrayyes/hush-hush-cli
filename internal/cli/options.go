@@ -8,6 +8,9 @@ type writeOptions struct {
 	// tags is nil when unset. On Update a non-nil empty slice clears the
 	// object's tags; on Inject empty and nil are the same.
 	tags *[]string
+	// usedBy is nil when unset. On Update a non-nil empty slice clears the
+	// object's consumers.
+	usedBy *[]string
 }
 
 func newWriteOptions(opts []WriteOption) writeOptions {
@@ -32,4 +35,10 @@ func (w writeOptions) tagsOrNil() []string {
 // full replacement. Pass an empty, non-nil slice to Update to clear them.
 func WithTags(tags []string) WriteOption {
 	return func(w *writeOptions) { w.tags = &tags }
+}
+
+// WithUsedBy replaces an object's consumers on Update. Pass an empty,
+// non-nil slice to clear them. Inject takes its consumers as an argument.
+func WithUsedBy(usedBy []string) WriteOption {
+	return func(w *writeOptions) { w.usedBy = &usedBy }
 }

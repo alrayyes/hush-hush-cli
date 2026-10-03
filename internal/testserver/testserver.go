@@ -224,12 +224,13 @@ func (s *Store) GetObject(_ context.Context, id string) (Object, error) {
 // UpdateObject replaces id's stored value, leaving used_by, description
 // and tags unchanged, or ErrNotFound.
 func (s *Store) UpdateObject(ctx context.Context, id string, value []byte) error {
-	return s.updateObject(ctx, id, value, nil)
+	return s.updateObject(ctx, id, value, nil, nil)
 }
 
 // updateObject also replaces id's tags when tags is non-nil (an empty
-// slice clears them), matching PUT /objects/{slug}'s own tags semantics.
-func (s *Store) updateObject(_ context.Context, id string, value []byte, tags *[]string) error {
+// slice clears them), and likewise its used_by when usedBy is non-nil,
+// matching PUT /objects/{slug}'s own semantics.
+func (s *Store) updateObject(_ context.Context, id string, value []byte, tags, usedBy *[]string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -241,6 +242,16 @@ func (s *Store) updateObject(_ context.Context, id string, value []byte, tags *[
 	obj.Value = value
 	if tags != nil {
 		obj.Tags = *tags
+	}
+
+	if usedBy != nil {
+		obj.UsedBy = *usedBy
+
+		for _, name := range *usedBy {
+			if _, ok := s.consumers[name]; !ok {
+				s.consumers[name] = nil
+			}
+		}
 	}
 
 	s.objects[id] = obj
@@ -845,8 +856,9 @@ type createObjectRequest struct {
 }
 
 type updateObjectRequest struct {
-	Value []byte    `json:"value"`
-	Tags  *[]string `json:"tags,omitempty"`
+	Value  []byte    `json:"value"`
+	Tags   *[]string `json:"tags,omitempty"`
+	UsedBy *[]string `json:"used_by,omitempty"`
 }
 
 // tagPattern and maxTags mirror api/openapi.yaml's Tags schema: 1 to 32
@@ -1076,7 +1088,7 @@ func handleUpdateObject(s *Store) http.HandlerFunc {
 
 		id := r.PathValue("id")
 
-		if err := s.updateObject(r.Context(), id, req.Value, tags); err != nil {
+		if err := s.updateObject(r.Context(), id, req.Value, tags, req.UsedBy); err != nil {
 			writeError(w, http.StatusNotFound, "unknown object")
 
 			return
