@@ -1,10 +1,11 @@
-package main
+package cmd_test
 
 import (
 	"bytes"
 	"encoding/json"
 	"testing"
 
+	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,7 @@ func TestStatusRunsWithNoTokenConfigured(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"status"})
@@ -42,7 +43,7 @@ func TestStatusReportsAnUnbootstrappedServerAsSuccess(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"status"})
@@ -59,7 +60,7 @@ func TestStatusJSONFlagPrintsRawObject(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"status", "--json"})

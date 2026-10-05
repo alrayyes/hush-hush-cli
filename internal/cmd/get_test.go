@@ -1,10 +1,11 @@
-package main
+package cmd_test
 
 import (
 	"bytes"
 	"testing"
 
 	"filippo.io/age"
+	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/seal"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
@@ -36,7 +37,7 @@ func TestGetRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 
 	var out bytes.Buffer
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"get", "mattermost_deploy_webhook"})
 	root.SetOut(&out)
 
@@ -69,7 +70,7 @@ func TestGetUsesConsumerTokenFromEnvironmentWhenNoWriteToken(t *testing.T) {
 
 	var out bytes.Buffer
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"get", "mattermost_deploy_webhook"})
 	root.SetOut(&out)
 
@@ -96,7 +97,7 @@ func TestGetIdentityCommandWinsOverALiteralIdentity(t *testing.T) {
 
 	var out bytes.Buffer
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{
 		"get", "mattermost_deploy_webhook",
 		"--server", srv.URL,
@@ -114,7 +115,7 @@ func TestGetFailsFastWithNoIdentityConfigured(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"get", "mattermost_deploy_webhook"})
 
 	err := root.Execute()
@@ -128,7 +129,7 @@ func TestGetReportsAnIdentityCommandFailure(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"get", "anything", "--identity-command", "exit 1"})
 
 	err := root.Execute()

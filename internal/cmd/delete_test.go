@@ -1,8 +1,9 @@
-package main
+package cmd_test
 
 import (
 	"testing"
 
+	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,7 @@ func TestDeleteRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"delete", "mattermost_deploy_webhook"})
 
 	require.NoError(t, root.Execute())
@@ -43,7 +44,7 @@ func TestDeleteFailsFastWithNoTokenConfigured(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"delete", "mattermost_deploy_webhook"})
 
 	err := root.Execute()

@@ -1,4 +1,4 @@
-package main
+package cmd_test
 
 import (
 	"os"
@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/spf13/cobra/doc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,7 @@ import (
 func TestEveryManPageIsPackaged(t *testing.T) {
 	dir := t.TempDir()
 	header := &doc.GenManHeader{Title: "HUSH-HUSH-CLI", Section: "1"}
-	require.NoError(t, doc.GenManTree(newRootCmd(), header, dir))
+	require.NoError(t, doc.GenManTree(cmd.NewRootCmd("dev"), header, dir))
 
 	pages, err := filepath.Glob(filepath.Join(dir, "*.1"))
 	require.NoError(t, err)

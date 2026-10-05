@@ -1,4 +1,4 @@
-package main
+package cmd_test
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"filippo.io/age"
+	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/seal"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
@@ -35,7 +36,7 @@ func TestUpdateRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"update", "mattermost_deploy_webhook"})
 	root.SetIn(bytes.NewReader([]byte("new-value")))
 
@@ -63,7 +64,7 @@ func TestUpdateFailsFastWithNoTokenConfigured(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"update", "mattermost_deploy_webhook"})
 	root.SetIn(bytes.NewReader([]byte("new-value")))
 
@@ -101,7 +102,7 @@ func runUpdate(t *testing.T, srv *httptest.Server, token string, args ...string)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs(append([]string{"update", "secret"}, args...))
 	root.SetIn(bytes.NewReader([]byte("new-value")))
 

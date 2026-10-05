@@ -2,7 +2,7 @@
 // hush-hush server's HTTP API - internal/client's actual transport
 // contract (api/openapi.yaml's /objects endpoints), not hush-hush's own
 // internal/api implementation, which stays in that repo. It exists so
-// internal/cli and cmd/hush-hush-cli's tests can exercise a real
+// internal/cli and internal/cmd's tests can exercise a real
 // create/get/update/delete/list round trip - including auth, 404, and 409
 // semantics against live state - without a second repo's server in the
 // loop (openspec/changes/split-cli-into-own-repo/design.md: a Prism

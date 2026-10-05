@@ -1,4 +1,4 @@
-package main
+package cmd_test
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cliconfig"
+	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,7 +26,7 @@ func TestConfigKeyringGetPrintsAStoredValue(t *testing.T) {
 
 	require.NoError(t, keyring.Set(cliconfig.KeyringService, "token", "s3cret"))
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"config", "keyring-get", "token"})
@@ -41,7 +42,7 @@ func TestConfigKeyringGetFailsForAMissingValue(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(dir, "config"))
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"config", "keyring-get", "token"})
 
 	require.Error(t, root.Execute())

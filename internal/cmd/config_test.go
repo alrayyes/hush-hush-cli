@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"os"
@@ -15,7 +15,7 @@ func TestConfigTokenCommandWinsOverALiteralToken(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	viper.Reset()
 
-	root := newRootCmd()
+	root := NewRootCmd("dev")
 	require.NoError(t, root.PersistentFlags().Set("server", "http://localhost:8080"))
 	require.NoError(t, root.PersistentFlags().Set("token", "literal-token"))
 	require.NoError(t, root.PersistentFlags().Set("token-command", "echo command-token"))
@@ -30,7 +30,7 @@ func TestConfigReportsATokenCommandFailure(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	viper.Reset()
 
-	root := newRootCmd()
+	root := NewRootCmd("dev")
 	require.NoError(t, root.PersistentFlags().Set("server", "http://localhost:8080"))
 	require.NoError(t, root.PersistentFlags().Set("token-command", "exit 1"))
 
@@ -47,7 +47,7 @@ func TestConfigConsumerTokenCommandWinsOverALiteralConsumerToken(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	viper.Reset()
 
-	root := newRootCmd()
+	root := NewRootCmd("dev")
 	require.NoError(t, root.PersistentFlags().Set("server", "http://localhost:8080"))
 	require.NoError(t, root.PersistentFlags().Set("consumer-token", "literal-consumer-token"))
 	require.NoError(t, root.PersistentFlags().Set("consumer-token-command", "echo command-consumer-token"))
@@ -71,7 +71,7 @@ func TestConfigConsumerTokenResolvesFromEveryLayer(t *testing.T) {
 		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
 		require.NoError(t, os.WriteFile(path, []byte("server: http://localhost:8080\nconsumer_token: file-consumer-token\n"), 0o600))
 
-		newRootCmd() // re-registers flags and re-reads the config file into viper
+		NewRootCmd("dev") // re-registers flags and re-reads the config file into viper
 
 		cfg, err := config(false)
 		require.NoError(t, err)
@@ -88,7 +88,7 @@ func TestConfigConsumerTokenResolvesFromEveryLayer(t *testing.T) {
 		require.NoError(t, os.WriteFile(path, []byte("server: http://localhost:8080\nconsumer_token: file-consumer-token\n"), 0o600))
 		t.Setenv("HUSH_HUSH_CONSUMER_TOKEN", "env-consumer-token")
 
-		newRootCmd()
+		NewRootCmd("dev")
 
 		cfg, err := config(false)
 		require.NoError(t, err)
@@ -105,7 +105,7 @@ func TestConfigConsumerTokenResolvesFromEveryLayer(t *testing.T) {
 		require.NoError(t, os.WriteFile(path, []byte("server: http://localhost:8080\nconsumer_token: file-consumer-token\n"), 0o600))
 		t.Setenv("HUSH_HUSH_CONSUMER_TOKEN", "env-consumer-token")
 
-		root := newRootCmd()
+		root := NewRootCmd("dev")
 		require.NoError(t, root.PersistentFlags().Set("consumer-token", "flag-consumer-token"))
 
 		cfg, err := config(false)
@@ -119,7 +119,7 @@ func TestConfigReportsAConsumerTokenCommandFailure(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	viper.Reset()
 
-	root := newRootCmd()
+	root := NewRootCmd("dev")
 	require.NoError(t, root.PersistentFlags().Set("server", "http://localhost:8080"))
 	require.NoError(t, root.PersistentFlags().Set("consumer-token-command", "exit 1"))
 

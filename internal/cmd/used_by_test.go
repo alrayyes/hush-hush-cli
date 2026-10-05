@@ -1,10 +1,11 @@
-package main
+package cmd_test
 
 import (
 	"bytes"
 	"encoding/json"
 	"testing"
 
+	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,7 @@ func TestUsedByRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"used-by", "mattermost_deploy_webhook"})
@@ -43,7 +44,7 @@ func TestUsedByJSONFlagPrintsRawArray(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"used-by", "mattermost_deploy_webhook", "--json"})
@@ -64,7 +65,7 @@ func TestUsedByNoConsumersPrintsNoLines(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"used-by", "x"})
@@ -80,7 +81,7 @@ func TestUsedByUnknownIDFails(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"used-by", "nope"})
 
 	err := root.Execute()

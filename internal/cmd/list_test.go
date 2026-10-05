@@ -1,4 +1,4 @@
-package main
+package cmd_test
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,7 @@ func TestListRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"list"})
@@ -54,7 +55,7 @@ func TestListFailsFastWithNoTokenConfigured(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"list"})
 
 	err := root.Execute()
@@ -74,7 +75,7 @@ func TestListJSONFlagPrintsRawArray(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"list", "--json"})
@@ -101,7 +102,7 @@ func TestListEmptyStorePrintsJustTheHeader(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"list"})
@@ -123,7 +124,7 @@ func TestListUsedByFlagFiltersToThatConsumer(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"list", "--used-by", "a", "--json"})
@@ -144,7 +145,7 @@ func TestListTableShowsCreatedAndUpdatedTimes(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"list"})
@@ -168,7 +169,7 @@ func TestListJSONIncludesCreatedUpdatedAndActors(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"list", "--json"})
@@ -192,7 +193,7 @@ func listSlugs(t *testing.T, srv *httptest.Server, token string, args ...string)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs(append([]string{"list", "--json"}, args...))
