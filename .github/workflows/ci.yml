@@ -22,7 +22,46 @@ env:
   LEFTHOOK: 0
 
 jobs:
+  # rules/ci.md: a check runs only when the files it covers change. A
+  # workflow-level `paths:` filter would leave a required check pending
+  # forever, so every job instead gates on this one's outputs: a job
+  # skipped by `if:` counts as passing for branch protection. The globs
+  # live in scripts/changed-paths.sh, which has its own test.
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      actionlint: ${{ steps.paths.outputs.actionlint }}
+      docker: ${{ steps.paths.outputs.docker }}
+      docker_build: ${{ steps.paths.outputs.docker_build }}
+      go: ${{ steps.paths.outputs.go }}
+      markdown: ${{ steps.paths.outputs.markdown }}
+      nix: ${{ steps.paths.outputs.nix }}
+      pkgbuild: ${{ steps.paths.outputs.pkgbuild }}
+      prose: ${{ steps.paths.outputs.prose }}
+      release: ${{ steps.paths.outputs.release }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Test the classifier
+        run: sh scripts/changed-paths.test.sh
+      # A push to main has no base to diff against, so everything runs.
+      - name: Classify the changed files
+        id: paths
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            git diff --name-only "$BASE...$HEAD" | sh scripts/changed-paths.sh >>"$GITHUB_OUTPUT"
+          else
+            sh scripts/changed-paths.sh --all >>"$GITHUB_OUTPUT"
+          fi
   actionlint:
+    needs: changes
+    if: needs.changes.outputs.actionlint == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -33,6 +72,8 @@ jobs:
       - run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
 
   lint:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     container:
@@ -56,6 +97,8 @@ jobs:
         run: golangci-lint run
 
   test:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -91,6 +134,8 @@ jobs:
           fail_ci_if_error: false
 
   build:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -101,6 +146,8 @@ jobs:
       - run: go build ./...
 
   hadolint:
+    needs: changes
+    if: needs.changes.outputs.docker == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     container:
@@ -118,6 +165,8 @@ jobs:
   # release - this job is only for the from-source Dockerfile, which
   # nothing else here ever builds (rules/containers.md).
   docker-build:
+    needs: changes
+    if: needs.changes.outputs.docker_build == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -132,6 +181,8 @@ jobs:
   # over just not nesting, the same reasoning hush-hush's own equivalent
   # job gives.
   container-integration:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -142,6 +193,8 @@ jobs:
       - run: go test -tags=integration ./integration/... -v
 
   gomod:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -155,6 +208,8 @@ jobs:
         run: go mod tidy -diff
 
   govulncheck:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     container:
@@ -167,6 +222,8 @@ jobs:
       - run: govulncheck ./...
 
   goreleaser-check:
+    needs: changes
+    if: needs.changes.outputs.release == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -182,6 +239,8 @@ jobs:
   # .deb/.rpm - a bad contents: path - fails here instead of on the first
   # real release.
   package:
+    needs: changes
+    if: needs.changes.outputs.release == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -225,6 +284,8 @@ jobs:
   # edit or a bad automated bump (release.yml's publish-aur job) before it
   # reaches AUR users (hush-hush-cli#71).
   pkgbuild:
+    needs: changes
+    if: needs.changes.outputs.pkgbuild == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     container: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
@@ -261,6 +322,8 @@ jobs:
   # works" step every other packaging format's CI job already does
   # (deb/rpm's install-and-run in `package` above).
   nix-flake:
+    needs: changes
+    if: needs.changes.outputs.nix == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -277,6 +340,8 @@ jobs:
           test -s ./result/share/man/man1/hush-hush-cli.1.gz
 
   markdown:
+    needs: changes
+    if: needs.changes.outputs.markdown == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -321,6 +386,8 @@ jobs:
   # Mechanics: grammar, spelling, the phonetic article. A right answer, so
   # this one gates rather than advises.
   grammar:
+    needs: changes
+    if: needs.changes.outputs.prose == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     container:
@@ -334,6 +401,8 @@ jobs:
   # verdict - MinAlertLevel in .vale.ini prints it, and only Vale.Terms
   # takes the job down.
   style:
+    needs: changes
+    if: needs.changes.outputs.prose == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     container:

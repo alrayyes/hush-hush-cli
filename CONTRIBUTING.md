@@ -56,6 +56,15 @@ bun run lint:md
 ./scripts/lint-ltex.sh     # grammar
 ```
 
+## Which checks run
+
+CI and the `pre-push` hook run a check only when the files it covers
+change, so a README-only pull request skips the Go, Docker, Nix and
+packaging jobs. The file globs live in `scripts/changed-paths.sh` for CI
+and in `lefthook.yml` for the hook; a new job needs a group in the first,
+a case in `scripts/changed-paths.test.sh` and a matching glob in the
+second. `commits`, `secrets` and `check` always run.
+
 ## Where this came from
 
 `hush-hush-cli` split out of [`hush-hush`](https://github.com/alrayyes/hush-hush),
