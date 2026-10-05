@@ -1,19 +1,13 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
-	"time"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
-
-// errTTLRequired is a sentinel: a fixed condition (no --ttl given), not a
-// message built from per-call detail.
-var errTTLRequired = errors.New("--ttl is required (a Go duration, e.g. 720h)")
 
 // newTokenCmd groups every consumer read token lifecycle command - all of
 // them require a write token, the same as inject/update/delete: minting
@@ -46,9 +40,9 @@ func newTokenCreateCmd(v *viper.Viper) *cobra.Command {
 		Short: "Mint a new consumer read token",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			d, err := parseTTL(ttl)
+			d, err := cli.ParseTTL(ttl)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck // the error already names the flag
 			}
 
 			cfg, err := config(v, true)
@@ -114,9 +108,9 @@ func newTokenRotateCmd(v *viper.Viper) *cobra.Command {
 		Short: "Replace a consumer token's secret and expiry",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			d, err := parseTTL(ttl)
+			d, err := cli.ParseTTL(ttl)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck // the error already names the flag
 			}
 
 			cfg, err := config(v, true)
@@ -177,17 +171,4 @@ func newTokenPurgeCmd(v *viper.Viper) *cobra.Command {
 			return nil
 		},
 	}
-}
-
-func parseTTL(ttl string) (time.Duration, error) {
-	if ttl == "" {
-		return 0, errTTLRequired
-	}
-
-	d, err := time.ParseDuration(ttl)
-	if err != nil {
-		return 0, fmt.Errorf("--ttl: %w", err)
-	}
-
-	return d, nil
 }
