@@ -10,7 +10,6 @@ import (
 	"github.com/alrayyes/hush-hush-cli/internal/client"
 	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +20,6 @@ func TestTokenCreateJSONFlagPrintsTheMintedValue(t *testing.T) {
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("HUSH_HUSH_TOKEN", token)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
@@ -43,7 +41,6 @@ func TestTokenCreateRequiresTTL(t *testing.T) {
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("HUSH_HUSH_TOKEN", token)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"token", "create", "homelab/vps-docker"})
@@ -58,7 +55,6 @@ func TestTokenCreateFailsFastWithNoTokenConfigured(t *testing.T) {
 
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"token", "create", "homelab/vps-docker", "--ttl", "1h"})
@@ -75,7 +71,6 @@ func TestTokenListTableIncludesEveryMintedToken(t *testing.T) {
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("HUSH_HUSH_TOKEN", token)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
@@ -94,13 +89,11 @@ func TestTokenRevokeThenPurgeRemovesIt(t *testing.T) {
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("HUSH_HUSH_TOKEN", token)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	revokeRoot := cmd.NewRootCmd("dev")
 	revokeRoot.SetArgs([]string{"token", "revoke", minted.ID})
 	require.NoError(t, revokeRoot.Execute())
 
-	viper.Reset()
 	purgeRoot := cmd.NewRootCmd("dev")
 	purgeRoot.SetArgs([]string{"token", "purge", minted.ID})
 	require.NoError(t, purgeRoot.Execute())
@@ -118,7 +111,6 @@ func TestTokenListShowsStatusNotARevokedBoolean(t *testing.T) {
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("HUSH_HUSH_TOKEN", token)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
@@ -146,7 +138,6 @@ func TestTokenListJSONIncludesStatusAndAllowedActions(t *testing.T) {
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("HUSH_HUSH_TOKEN", token)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer

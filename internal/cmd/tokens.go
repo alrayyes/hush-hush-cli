@@ -8,6 +8,7 @@ import (
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // errTTLRequired is a sentinel: a fixed condition (no --ttl given), not a
@@ -18,22 +19,22 @@ var errTTLRequired = errors.New("--ttl is required (a Go duration, e.g. 720h)")
 // them require a write token, the same as inject/update/delete: minting
 // or managing a credential that grants read access is itself a
 // write-path operation (alrayyes/hush-hush#467).
-func newTokenCmd() *cobra.Command {
+func newTokenCmd(v *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "token",
 		Short: "Mint and manage consumer read tokens",
 	}
 
-	cmd.AddCommand(newTokenCreateCmd())
-	cmd.AddCommand(newTokenListCmd())
-	cmd.AddCommand(newTokenRotateCmd())
-	cmd.AddCommand(newTokenRevokeCmd())
-	cmd.AddCommand(newTokenPurgeCmd())
+	cmd.AddCommand(newTokenCreateCmd(v))
+	cmd.AddCommand(newTokenListCmd(v))
+	cmd.AddCommand(newTokenRotateCmd(v))
+	cmd.AddCommand(newTokenRevokeCmd(v))
+	cmd.AddCommand(newTokenPurgeCmd(v))
 
 	return cmd
 }
 
-func newTokenCreateCmd() *cobra.Command {
+func newTokenCreateCmd(v *viper.Viper) *cobra.Command {
 	var (
 		description string
 		ttl         string
@@ -50,7 +51,7 @@ func newTokenCreateCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, err := config(true)
+			cfg, err := config(v, true)
 			if err != nil {
 				return err
 			}
@@ -71,7 +72,7 @@ func newTokenCreateCmd() *cobra.Command {
 	return cmd
 }
 
-func newTokenListCmd() *cobra.Command {
+func newTokenListCmd(v *viper.Viper) *cobra.Command {
 	var asJSON bool
 
 	cmd := &cobra.Command{
@@ -79,7 +80,7 @@ func newTokenListCmd() *cobra.Command {
 		Short: "List every issued consumer token's metadata",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			cfg, err := config(true)
+			cfg, err := config(v, true)
 			if err != nil {
 				return err
 			}
@@ -102,7 +103,7 @@ func newTokenListCmd() *cobra.Command {
 	return cmd
 }
 
-func newTokenRotateCmd() *cobra.Command {
+func newTokenRotateCmd(v *viper.Viper) *cobra.Command {
 	var (
 		ttl    string
 		asJSON bool
@@ -118,7 +119,7 @@ func newTokenRotateCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, err := config(true)
+			cfg, err := config(v, true)
 			if err != nil {
 				return err
 			}
@@ -138,13 +139,13 @@ func newTokenRotateCmd() *cobra.Command {
 	return cmd
 }
 
-func newTokenRevokeCmd() *cobra.Command {
+func newTokenRevokeCmd(v *viper.Viper) *cobra.Command {
 	return &cobra.Command{
 		Use:   "revoke <id>",
 		Short: "Invalidate a consumer token",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config(true)
+			cfg, err := config(v, true)
 			if err != nil {
 				return err
 			}
@@ -158,13 +159,13 @@ func newTokenRevokeCmd() *cobra.Command {
 	}
 }
 
-func newTokenPurgeCmd() *cobra.Command {
+func newTokenPurgeCmd(v *viper.Viper) *cobra.Command {
 	return &cobra.Command{
 		Use:   "purge <id>",
 		Short: "Permanently remove an already-revoked or expired consumer token",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config(true)
+			cfg, err := config(v, true)
 			if err != nil {
 				return err
 			}

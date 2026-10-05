@@ -8,7 +8,6 @@ import (
 	"filippo.io/age"
 	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,12 +26,10 @@ func TestInjectRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 	t.Setenv("HUSH_HUSH_TOKEN", token)
 	t.Setenv("HUSH_HUSH_RECIPIENTS", identity.Recipient().String())
 
-	// A fresh viper instance per test: the package-level default one
-	// otherwise carries flag bindings and values across tests in this
-	// package, which is exactly what a "no CI-specific code path" test
-	// must not rely on to pass.
+	// Every NewRootCmd owns a fresh viper, so no flag binding or value
+	// carries over from another test: exactly what a "no CI-specific code
+	// path" test must not rely on to pass.
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"inject", "mattermost_deploy_webhook"})
@@ -57,7 +54,6 @@ func TestInjectDescriptionFlagSetsIt(t *testing.T) {
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("HUSH_HUSH_TOKEN", token)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{
@@ -87,7 +83,6 @@ func TestInjectFailsFastWithNoTokenConfigured(t *testing.T) {
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("HUSH_HUSH_RECIPIENTS", identity.Recipient().String())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"inject", "mattermost_deploy_webhook"})
@@ -105,7 +100,6 @@ func TestInjectFailsFastWithNoTokenConfigured(t *testing.T) {
 
 func TestInjectFailsFastWithNoRecipientsConfigured(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"inject", "mattermost_deploy_webhook"})
@@ -137,7 +131,6 @@ func TestInjectWithUsedByAndNoRecipientsResolvesTheConsumersRegisteredKey(t *tes
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("HUSH_HUSH_TOKEN", token)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"inject", "mattermost_deploy_webhook", "--used-by", "homelab/vps-docker"})
@@ -167,7 +160,6 @@ func TestInjectWithUsedByAndNoRegisteredKeyFailsNamingTheConsumer(t *testing.T) 
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("HUSH_HUSH_TOKEN", token)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"inject", "mattermost_deploy_webhook", "--used-by", "homelab/vps-docker"})

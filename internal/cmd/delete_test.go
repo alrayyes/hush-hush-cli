@@ -5,7 +5,6 @@ import (
 
 	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +21,6 @@ func TestDeleteRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 	t.Setenv("HUSH_HUSH_TOKEN", token)
 
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"delete", "mattermost_deploy_webhook"})
@@ -42,7 +40,6 @@ func TestDeleteFailsFastWithNoTokenConfigured(t *testing.T) {
 
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"delete", "mattermost_deploy_webhook"})

@@ -8,6 +8,7 @@ import (
 	"github.com/alrayyes/hush-hush-cli/internal/client"
 	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // errConsumerUpdateNothing is a sentinel: a fixed condition (neither flag
@@ -17,21 +18,21 @@ var errConsumerUpdateNothing = errors.New("nothing to update: pass --name and/or
 // newConsumerCmd groups the consumer directory commands - all of them
 // require a write token, the same as list: the directory enumerates names
 // no caller necessarily holds the id of.
-func newConsumerCmd() *cobra.Command {
+func newConsumerCmd(v *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "consumer",
 		Short: "Manage the consumer directory",
 	}
 
-	cmd.AddCommand(newConsumerListCmd())
-	cmd.AddCommand(newConsumerAddCmd())
-	cmd.AddCommand(newConsumerUpdateCmd())
-	cmd.AddCommand(newConsumerDeleteCmd())
+	cmd.AddCommand(newConsumerListCmd(v))
+	cmd.AddCommand(newConsumerAddCmd(v))
+	cmd.AddCommand(newConsumerUpdateCmd(v))
+	cmd.AddCommand(newConsumerDeleteCmd(v))
 
 	return cmd
 }
 
-func newConsumerListCmd() *cobra.Command {
+func newConsumerListCmd(v *viper.Viper) *cobra.Command {
 	var (
 		query  string
 		asJSON bool
@@ -42,7 +43,7 @@ func newConsumerListCmd() *cobra.Command {
 		Short: "List consumers with their secret count and public key",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			cfg, err := config(true)
+			cfg, err := config(v, true)
 			if err != nil {
 				return err
 			}
@@ -70,7 +71,7 @@ func newConsumerListCmd() *cobra.Command {
 	return cmd
 }
 
-func newConsumerAddCmd() *cobra.Command {
+func newConsumerAddCmd(v *viper.Viper) *cobra.Command {
 	var asJSON bool
 
 	cmd := &cobra.Command{
@@ -78,7 +79,7 @@ func newConsumerAddCmd() *cobra.Command {
 		Short: "Add a consumer no secret references yet",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config(true)
+			cfg, err := config(v, true)
 			if err != nil {
 				return err
 			}
@@ -97,7 +98,7 @@ func newConsumerAddCmd() *cobra.Command {
 	return cmd
 }
 
-func newConsumerUpdateCmd() *cobra.Command {
+func newConsumerUpdateCmd(v *viper.Viper) *cobra.Command {
 	var (
 		newName   string
 		publicKey string
@@ -123,7 +124,7 @@ func newConsumerUpdateCmd() *cobra.Command {
 				return errConsumerUpdateNothing
 			}
 
-			cfg, err := config(true)
+			cfg, err := config(v, true)
 			if err != nil {
 				return err
 			}
@@ -144,7 +145,7 @@ func newConsumerUpdateCmd() *cobra.Command {
 	return cmd
 }
 
-func newConsumerDeleteCmd() *cobra.Command {
+func newConsumerDeleteCmd(v *viper.Viper) *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <name>",
 		Short: "Remove a consumer from every secret that references it",
@@ -152,7 +153,7 @@ func newConsumerDeleteCmd() *cobra.Command {
 			"No secret is deleted, even one left with an empty used_by list.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config(true)
+			cfg, err := config(v, true)
 			if err != nil {
 				return err
 			}

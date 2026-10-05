@@ -8,7 +8,6 @@ import (
 
 	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +24,6 @@ func TestAuditLogHelpListsEverySevenFlag(t *testing.T) {
 func TestAuditLogRejectsAnUnknownFormatBeforeAnyRequest(t *testing.T) {
 	t.Setenv("HUSH_HUSH_SERVER", "http://127.0.0.1:1") // unreachable - a request here would fail differently
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"audit-log", "--format", "xml"})
@@ -38,7 +36,6 @@ func TestAuditLogRejectsAnUnknownFormatBeforeAnyRequest(t *testing.T) {
 func TestAuditLogRejectsAMalformedSinceBeforeAnyRequest(t *testing.T) {
 	t.Setenv("HUSH_HUSH_SERVER", "http://127.0.0.1:1") // unreachable - a request here would fail differently
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"audit-log", "--since", "not-a-date"})
@@ -56,7 +53,6 @@ func TestAuditLogNoFiltersReturnsEverything(t *testing.T) {
 
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
@@ -81,7 +77,6 @@ func TestAuditLogLimitBelowTheMatchingCountPrintsOnlyThatMany(t *testing.T) {
 
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
@@ -104,7 +99,6 @@ func TestAuditLogLimitAtOrAboveTheMatchingCountPrintsEveryEntry(t *testing.T) {
 
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
@@ -125,7 +119,6 @@ func TestAuditLogTableFormatShowsADashForANilCaller(t *testing.T) {
 
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer

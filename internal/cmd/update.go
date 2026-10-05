@@ -12,7 +12,7 @@ import (
 
 // newUpdateCmd reads the new plaintext value from stdin, same reasoning as
 // newInjectCmd: a flag value ends up in shell history and process listings.
-func newUpdateCmd() *cobra.Command {
+func newUpdateCmd(v *viper.Viper) *cobra.Command {
 	var f updateFlags
 
 	cmd := &cobra.Command{
@@ -24,9 +24,9 @@ func newUpdateCmd() *cobra.Command {
 			// inject and update share the --recipients/HUSH_HUSH_RECIPIENTS
 			// name and only one command's flag object can hold the viper
 			// key at a time.
-			_ = viper.BindPFlag("recipients", cmd.Flags().Lookup("recipients"))
+			_ = v.BindPFlag("recipients", cmd.Flags().Lookup("recipients"))
 
-			recipients, err := f.recipients(cmd)
+			recipients, err := f.recipients(v, cmd)
 			if err != nil {
 				return err
 			}
@@ -36,7 +36,7 @@ func newUpdateCmd() *cobra.Command {
 				return fmt.Errorf("read value from stdin: %w", err)
 			}
 
-			cfg, err := config(true)
+			cfg, err := config(v, true)
 			if err != nil {
 				return err
 			}
@@ -66,7 +66,7 @@ type updateFlags struct {
 
 // recipients validates the flag combination and returns the explicit
 // recipients, nil when they should be resolved from --used-by instead.
-func (f updateFlags) recipients(cmd *cobra.Command) ([]string, error) {
+func (f updateFlags) recipients(v *viper.Viper, cmd *cobra.Command) ([]string, error) {
 	usedByGiven := cmd.Flags().Changed("used-by")
 
 	switch {
@@ -76,7 +76,7 @@ func (f updateFlags) recipients(cmd *cobra.Command) ([]string, error) {
 		return nil, errUsedByAndClearUsedBy
 	}
 
-	recipients := viper.GetString("recipients")
+	recipients := v.GetString("recipients")
 
 	switch {
 	case recipients != "":

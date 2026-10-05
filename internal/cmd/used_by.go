@@ -6,12 +6,13 @@ import (
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // newUsedByCmd is unauthenticated, matching newGetCmd: fetching one
 // already-known object's recorded consumers needs no token, unlike list's
 // full enumeration.
-func newUsedByCmd() *cobra.Command {
+func newUsedByCmd(v *viper.Viper) *cobra.Command {
 	var asJSON bool
 
 	cmd := &cobra.Command{
@@ -19,7 +20,7 @@ func newUsedByCmd() *cobra.Command {
 		Short: "Print an object's recorded consumers",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config(false)
+			cfg, err := config(v, false)
 			if err != nil {
 				return err
 			}

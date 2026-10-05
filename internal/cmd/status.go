@@ -6,13 +6,14 @@ import (
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // newStatusCmd is unauthenticated, matching internal/cli.AuthStatus - it
 // works with no token configured at all, unlike list/inject/update/delete.
 // An unbootstrapped server is a normal result to print, not an error: exit
 // 0 either way (#107's own acceptance criteria).
-func newStatusCmd() *cobra.Command {
+func newStatusCmd(v *viper.Viper) *cobra.Command {
 	var asJSON bool
 
 	cmd := &cobra.Command{
@@ -20,7 +21,7 @@ func newStatusCmd() *cobra.Command {
 		Short: "Report whether the target server has an admin account bootstrapped yet",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			cfg, err := config(false)
+			cfg, err := config(v, false)
 			if err != nil {
 				return err
 			}

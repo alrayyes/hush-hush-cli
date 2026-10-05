@@ -7,7 +7,6 @@ import (
 
 	"github.com/alrayyes/hush-hush-cli/internal/cliconfig"
 	"github.com/alrayyes/hush-hush-cli/internal/cmd"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zalando/go-keyring"
@@ -22,7 +21,6 @@ func TestConfigKeyringGetPrintsAStoredValue(t *testing.T) {
 
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
-	viper.Reset()
 
 	require.NoError(t, keyring.Set(cliconfig.KeyringService, "token", "s3cret"))
 
@@ -40,7 +38,6 @@ func TestConfigKeyringGetFailsForAMissingValue(t *testing.T) {
 
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(dir, "config"))
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"config", "keyring-get", "token"})
