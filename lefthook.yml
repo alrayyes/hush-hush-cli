@@ -126,6 +126,13 @@ pre-push:
     # broken .goreleaser.yml fails on the machine that wrote it. The version
     # matches the one CI's goreleaser-action installs.
     - name: goreleaser check
+      glob:
+        - ".goreleaser.y*ml"
+        - "Dockerfile.release"
+        - "manpages/**"
+        - "*.go"
+        - "go.mod"
+        - "go.sum"
       run: >-
         docker run --rm --user "$(id -u):$(id -g)"
         -v "$(pwd):/src" -w /src -e HOME=/tmp
@@ -133,6 +140,10 @@ pre-push:
         check
 
     - name: test
+      glob:
+        - "*.go"
+        - "go.mod"
+        - "go.sum"
       run: >-
         docker run --rm --user "$(id -u):$(id -g)"
         -v "$(pwd):/src" -w /src
@@ -155,6 +166,10 @@ pre-push:
     # the same reasoning ci.yml's own container-integration job gives for
     # staying off a `container:` runner.
     - name: container-integration
+      glob:
+        - "*.go"
+        - "go.mod"
+        - "go.sum"
       run: go test -tags=integration ./integration/... -v
 
     # No --fix here, unlike pre-commit's fixer above: pre-push checks,
@@ -163,6 +178,11 @@ pre-push:
     # cost as a pure check, so there's nothing this buys at push time that
     # pre-commit's own fixer hasn't already applied and restaged.
     - name: golangci-lint run
+      glob:
+        - "*.go"
+        - "go.mod"
+        - "go.sum"
+        - ".golangci.yml"
       run: >-
         docker run --rm --user "$(id -u):$(id -g)"
         -v "$(pwd):/src" -w /src
@@ -179,6 +199,10 @@ pre-push:
     # after runs against the host's own git same as any other pre-push job
     # here.
     - name: gomod
+      glob:
+        - "go.mod"
+        - "go.sum"
+        - "*.go"
       run: >-
         docker run --rm --user "$(id -u):$(id -g)"
         -v "$(pwd):/src" -w /src
@@ -193,6 +217,10 @@ pre-push:
     # something nothing imports anymore - real drift `go build`/`go test`
     # never catches on their own (rules/go-mod.md).
     - name: gomod-tidy
+      glob:
+        - "go.mod"
+        - "go.sum"
+        - "*.go"
       run: >-
         docker run --rm --user "$(id -u):$(id -g)"
         -v "$(pwd):/src" -w /src
@@ -206,6 +234,9 @@ pre-push:
     # hush-hush-cli#44) when a routine `bun install` after a package.json
     # edit wrote version 2 again. Same check as ci.yml's `markdown` job.
     - name: bun.lock lockfileVersion
+      glob:
+        - "bun.lock"
+        - "package.json"
       run: >-
         version="$(grep -m1 '"lockfileVersion"' bun.lock | grep -oE '[0-9]+')";
         [ "$version" = "1" ] || {
@@ -218,24 +249,53 @@ pre-push:
     # GHSA-vfj7-8cjw-p6xm (braces) has no patched release yet; remove the
     # ignore once one ships (hush-hush-cli#166).
     - name: bun audit
+      glob:
+        - "bun.lock"
+        - "package.json"
       run: bun audit --ignore GHSA-vfj7-8cjw-p6xm
 
     - name: prettier
+      glob:
+        - "*.{md,yml,yaml}"
+        - "package.json"
+        - "bun.lock"
+        - ".prettier*"
       run: bun run format:check
 
     - name: sort-package-json
+      glob:
+        - "package.json"
       run: bunx sort-package-json --check package.json
 
     - name: markdownlint
+      glob:
+        - "*.md"
+        - ".markdownlint-cli2.yaml"
+        - "package.json"
+        - "bun.lock"
       run: bun run lint:md
 
     - name: vale
+      glob:
+        - "*.md"
+        - "styles/**"
+        - ".vale.ini"
+        - "scripts/lint-vale.sh"
       run: ./scripts/lint-vale.sh
 
     - name: ltex
+      glob:
+        - "*.md"
+        - ".ltex.json"
+        - "scripts/lint-ltex.sh"
       run: ./scripts/lint-ltex.sh
 
     - name: hadolint
+      glob:
+        - "Dockerfile"
+        - "Dockerfile.release"
+        - ".dockerignore"
+        - ".hadolint.yaml"
       run: >-
         docker run --rm
         -v "$(pwd)/.hadolint.yaml:/.hadolint.yaml"
@@ -244,7 +304,12 @@ pre-push:
         hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d
         hadolint Dockerfile Dockerfile.release
 
-    # Unconditional here, unlike pre-commit's glob-scoped copy: the check
-    # nothing gets past regardless of what changed (rules/containers.md).
+    # Same files as CI's docker-build job (scripts/changed-paths.sh).
     - name: docker build
+      glob:
+        - "Dockerfile"
+        - ".dockerignore"
+        - "*.go"
+        - "go.mod"
+        - "go.sum"
       run: docker build -t hush-hush-cli:pre-push-check -f Dockerfile .
