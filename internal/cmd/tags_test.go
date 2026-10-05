@@ -14,7 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// tagsEnv points the CLI at srv with one age recipient, and returns that
+// tagsEnv sets process-wide environment (see helpers_test.go), so the tests
+// that call it are not parallel. It points the CLI at srv with one age recipient, and returns that
 // recipient so update/inject can seal.
 func tagsEnv(t *testing.T, srvURL, token string) string {
 	t.Helper()

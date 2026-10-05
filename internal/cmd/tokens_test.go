@@ -8,20 +8,17 @@ import (
 	"time"
 
 	"github.com/alrayyes/hush-hush-cli/internal/client"
-	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTokenCreateJSONFlagPrintsTheMintedValue(t *testing.T) {
+	t.Parallel()
+
 	srv, _, token := testserver.New(t)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"token", "create", "homelab/vps-docker", "--ttl", "1h", "--description", "ci reader", "--json"})
@@ -36,13 +33,11 @@ func TestTokenCreateJSONFlagPrintsTheMintedValue(t *testing.T) {
 }
 
 func TestTokenCreateRequiresTTL(t *testing.T) {
+	t.Parallel()
+
 	srv, _, token := testserver.New(t)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	root.SetArgs([]string{"token", "create", "homelab/vps-docker"})
 
 	err := root.Execute()
@@ -51,12 +46,11 @@ func TestTokenCreateRequiresTTL(t *testing.T) {
 }
 
 func TestTokenCreateFailsFastWithNoTokenConfigured(t *testing.T) {
+	t.Parallel()
+
 	srv, _, _ := testserver.New(t)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, "")
 	root.SetArgs([]string{"token", "create", "homelab/vps-docker", "--ttl", "1h"})
 
 	err := root.Execute()
@@ -65,14 +59,12 @@ func TestTokenCreateFailsFastWithNoTokenConfigured(t *testing.T) {
 }
 
 func TestTokenListTableIncludesEveryMintedToken(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	s.IssueConsumerToken("homelab/vps-docker", "ci reader", 0)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"token", "list"})
@@ -83,18 +75,16 @@ func TestTokenListTableIncludesEveryMintedToken(t *testing.T) {
 }
 
 func TestTokenRevokeThenPurgeRemovesIt(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	minted := s.IssueConsumerToken("homelab/vps-docker", "", 0)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	revokeRoot := cmd.NewRootCmd("dev")
+	revokeRoot := newRoot(t, srv.URL, token)
 	revokeRoot.SetArgs([]string{"token", "revoke", minted.ID})
 	require.NoError(t, revokeRoot.Execute())
 
-	purgeRoot := cmd.NewRootCmd("dev")
+	purgeRoot := newRoot(t, srv.URL, token)
 	purgeRoot.SetArgs([]string{"token", "purge", minted.ID})
 	require.NoError(t, purgeRoot.Execute())
 
@@ -102,17 +92,15 @@ func TestTokenRevokeThenPurgeRemovesIt(t *testing.T) {
 }
 
 func TestTokenListShowsStatusNotARevokedBoolean(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	s.IssueConsumerToken("expired-consumer", "", 0)
 	s.IssueConsumerToken("active-consumer", "", time.Hour)
 	revoked := s.IssueConsumerToken("revoked-consumer", "", time.Hour)
 	s.RevokeConsumerToken(revoked.ID)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"token", "list"})
@@ -132,14 +120,12 @@ func TestTokenListShowsStatusNotARevokedBoolean(t *testing.T) {
 }
 
 func TestTokenListJSONIncludesStatusAndAllowedActions(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	s.IssueConsumerToken("active-consumer", "", time.Hour)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"token", "list", "--json"})

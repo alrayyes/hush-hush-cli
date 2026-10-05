@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,12 +15,11 @@ import (
 // a CI job with no HUSH_HUSH_TOKEN set at all still gets a real answer
 // rather than the --token nudge list/inject/update/delete give.
 func TestStatusRunsWithNoTokenConfigured(t *testing.T) {
+	t.Parallel()
+
 	srv, _, _ := testserver.New(t)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, "")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"status"})
@@ -34,13 +32,12 @@ func TestStatusRunsWithNoTokenConfigured(t *testing.T) {
 // acceptance criterion: an unbootstrapped server is a normal, exit-0
 // result to report, not an error to surface as one.
 func TestStatusReportsAnUnbootstrappedServerAsSuccess(t *testing.T) {
+	t.Parallel()
+
 	srv, store, _ := testserver.New(t)
 	store.SetBootstrapped(false)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, "")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"status"})
@@ -50,13 +47,12 @@ func TestStatusReportsAnUnbootstrappedServerAsSuccess(t *testing.T) {
 }
 
 func TestStatusJSONFlagPrintsRawObject(t *testing.T) {
+	t.Parallel()
+
 	srv, store, _ := testserver.New(t)
 	store.SetBootstrapped(false)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, "")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"status", "--json"})

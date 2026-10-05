@@ -34,14 +34,13 @@ func TestDeleteRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 // TestDeleteFailsFastWithNoTokenConfigured mirrors
 // TestInjectFailsFastWithNoTokenConfigured for the delete command.
 func TestDeleteFailsFastWithNoTokenConfigured(t *testing.T) {
+	t.Parallel()
+
 	srv, s, _ := testserver.New(t)
 
 	require.NoError(t, s.CreateObject(t.Context(), "mattermost_deploy_webhook", []byte("sealed"), nil, ""))
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, "")
 	root.SetArgs([]string{"delete", "mattermost_deploy_webhook"})
 
 	err := root.Execute()

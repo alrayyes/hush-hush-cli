@@ -6,14 +6,15 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAuditLogHelpListsEverySevenFlag(t *testing.T) {
-	sub, _, err := cmd.NewRootCmd("dev").Find([]string{"audit-log"})
+	t.Parallel()
+
+	sub, _, err := newBareRoot(t).Find([]string{"audit-log"})
 	require.NoError(t, err)
 
 	for _, name := range []string{"object", "actor", "caller", "since", "until", "format", "limit"} {
@@ -22,10 +23,9 @@ func TestAuditLogHelpListsEverySevenFlag(t *testing.T) {
 }
 
 func TestAuditLogRejectsAnUnknownFormatBeforeAnyRequest(t *testing.T) {
-	t.Setenv("HUSH_HUSH_SERVER", "http://127.0.0.1:1") // unreachable - a request here would fail differently
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Parallel()
 
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, "http://127.0.0.1:1", "") // unreachable - a request here would fail differently
 	root.SetArgs([]string{"audit-log", "--format", "xml"})
 
 	err := root.Execute()
@@ -34,10 +34,9 @@ func TestAuditLogRejectsAnUnknownFormatBeforeAnyRequest(t *testing.T) {
 }
 
 func TestAuditLogRejectsAMalformedSinceBeforeAnyRequest(t *testing.T) {
-	t.Setenv("HUSH_HUSH_SERVER", "http://127.0.0.1:1") // unreachable - a request here would fail differently
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Parallel()
 
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, "http://127.0.0.1:1", "") // unreachable - a request here would fail differently
 	root.SetArgs([]string{"audit-log", "--since", "not-a-date"})
 
 	err := root.Execute()
@@ -46,15 +45,14 @@ func TestAuditLogRejectsAMalformedSinceBeforeAnyRequest(t *testing.T) {
 }
 
 func TestAuditLogNoFiltersReturnsEverything(t *testing.T) {
+	t.Parallel()
+
 	srv, store, _ := testserver.New(t)
 
 	store.RecordAuditEntry(testserver.AuditLogEntry{ObjectID: "secret-1", Action: "read", IP: "10.0.0.1"})
 	store.RecordAuditEntry(testserver.AuditLogEntry{ObjectID: "secret-2", Action: "create", IP: "10.0.0.2"})
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, "")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"audit-log", "--format", "json"})
@@ -69,16 +67,15 @@ func TestAuditLogNoFiltersReturnsEverything(t *testing.T) {
 }
 
 func TestAuditLogLimitBelowTheMatchingCountPrintsOnlyThatMany(t *testing.T) {
+	t.Parallel()
+
 	srv, store, _ := testserver.New(t)
 
 	for range 5 {
 		store.RecordAuditEntry(testserver.AuditLogEntry{ObjectID: "secret-1", Action: "read", IP: "10.0.0.1"})
 	}
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, "")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"audit-log", "--format", "json", "--limit", "3"})
@@ -91,16 +88,15 @@ func TestAuditLogLimitBelowTheMatchingCountPrintsOnlyThatMany(t *testing.T) {
 }
 
 func TestAuditLogLimitAtOrAboveTheMatchingCountPrintsEveryEntry(t *testing.T) {
+	t.Parallel()
+
 	srv, store, _ := testserver.New(t)
 
 	for range 3 {
 		store.RecordAuditEntry(testserver.AuditLogEntry{ObjectID: "secret-1", Action: "read", IP: "10.0.0.1"})
 	}
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, "")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"audit-log", "--format", "json", "--limit", "10"})
@@ -113,14 +109,13 @@ func TestAuditLogLimitAtOrAboveTheMatchingCountPrintsEveryEntry(t *testing.T) {
 }
 
 func TestAuditLogTableFormatShowsADashForANilCaller(t *testing.T) {
+	t.Parallel()
+
 	srv, store, _ := testserver.New(t)
 
 	store.RecordAuditEntry(testserver.AuditLogEntry{ObjectID: "secret-1", Action: "read", IP: "10.0.0.1"})
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, "")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"audit-log"})

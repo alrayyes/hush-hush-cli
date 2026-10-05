@@ -33,15 +33,14 @@ func TestUsedByRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 }
 
 func TestUsedByJSONFlagPrintsRawArray(t *testing.T) {
+	t.Parallel()
+
 	srv, s, _ := testserver.New(t)
 
 	require.NoError(t, s.CreateObject(t.Context(), "mattermost_deploy_webhook", []byte("sealed"),
 		[]string{"homelab/vps-docker"}, ""))
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, "")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"used-by", "mattermost_deploy_webhook", "--json"})
@@ -54,14 +53,13 @@ func TestUsedByJSONFlagPrintsRawArray(t *testing.T) {
 }
 
 func TestUsedByNoConsumersPrintsNoLines(t *testing.T) {
+	t.Parallel()
+
 	srv, s, _ := testserver.New(t)
 
 	require.NoError(t, s.CreateObject(t.Context(), "x", []byte("sealed"), nil, ""))
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, "")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"used-by", "x"})
@@ -71,12 +69,11 @@ func TestUsedByNoConsumersPrintsNoLines(t *testing.T) {
 }
 
 func TestUsedByUnknownIDFails(t *testing.T) {
+	t.Parallel()
+
 	srv, _, _ := testserver.New(t)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, "")
 	root.SetArgs([]string{"used-by", "nope"})
 
 	err := root.Execute()
