@@ -3,10 +3,8 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
-	"github.com/alrayyes/hush-hush-cli/internal/client"
 	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -35,9 +33,9 @@ func newAuditLogCmd(v *viper.Viper) *cobra.Command {
 				return fmt.Errorf("--format %q: %w", format, errUnknownAuditLogFormat)
 			}
 
-			filter, err := buildAuditLogFilter(objectID, actor, caller, since, until, limit)
+			filter, err := cli.ParseAuditLogFilter(objectID, actor, caller, since, until, limit)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck // the error already names the flag
 			}
 
 			cfg, err := config(v, false)
@@ -68,47 +66,4 @@ func newAuditLogCmd(v *viper.Viper) *cobra.Command {
 	cmd.Flags().IntVar(&limit, "limit", 0, "maximum number of entries to print (0 means every matching entry)")
 
 	return cmd
-}
-
-// buildAuditLogFilter parses --since/--until as RFC3339 (design.md) before
-// any request is made, so a malformed value fails locally rather than as
-// a 400 from the server.
-func buildAuditLogFilter(objectID, actor, caller, since, until string, limit int) (client.AuditLogFilter, error) {
-	var filter client.AuditLogFilter
-
-	if objectID != "" {
-		filter.ObjectID = &objectID
-	}
-
-	if actor != "" {
-		filter.Token = &actor
-	}
-
-	if caller != "" {
-		filter.Caller = &caller
-	}
-
-	if since != "" {
-		t, err := time.Parse(time.RFC3339, since)
-		if err != nil {
-			return filter, fmt.Errorf("--since: %w", err)
-		}
-
-		filter.Since = &t
-	}
-
-	if until != "" {
-		t, err := time.Parse(time.RFC3339, until)
-		if err != nil {
-			return filter, fmt.Errorf("--until: %w", err)
-		}
-
-		filter.Until = &t
-	}
-
-	if limit > 0 {
-		filter.Limit = &limit
-	}
-
-	return filter, nil
 }
