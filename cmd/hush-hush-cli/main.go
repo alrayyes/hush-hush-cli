@@ -190,27 +190,18 @@ func newInitCmd() *cobra.Command {
 }
 
 func writeStarterConfig(cmd *cobra.Command, path string) error {
-	if err := os.WriteFile(path, []byte(cliconfig.StarterConfig), 0o600); err != nil {
-		return fmt.Errorf("write config file: %w", err)
+	if err := cliconfig.WriteStarter(path); err != nil {
+		return fmt.Errorf("%s: %w", path, err)
 	}
 
-	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", path); err != nil {
-		return fmt.Errorf("write init confirmation: %w", err)
-	}
-
-	return nil
+	return reportWrote(cmd, path)
 }
 
 // runInteractiveInit is the value-by-value flow behind init's own RunE and
-// the pre-command nudge (maybeOfferInit): prompt for every connection
-// setting via cliconfig.PromptConfig, apply each credential field's chosen
-// persistence, and write the result. sc and readPassword are threaded
-// through as parameters rather than built from cmd.InOrStdin()/
-// term.ReadPassword directly: maybeOfferInit needs to hand this the exact
-// same scanner its own Confirm prompt just read from (see Confirm's doc
-// comment for why a fresh one over the same reader would lose input), and
-// a test needs to fake a TTY that doesn't exist in CI. init's own RunE
-// builds a fresh scanner and passes term.ReadPassword itself.
+// the pre-command nudge (maybeOfferInit): the prompting, persistence and
+// writing live in cliconfig.WriteInteractive, seeded here with whatever
+// viper already resolved. sc and readPassword are threaded through for the
+// reasons its doc comment gives.
 func runInteractiveInit(cmd *cobra.Command, path string, sc *bufio.Scanner, readPassword cliconfig.PasswordReader) error {
 	current := cliconfig.Values{
 		Server:     viper.GetString("server"),
@@ -218,27 +209,14 @@ func runInteractiveInit(cmd *cobra.Command, path string, sc *bufio.Scanner, read
 		Recipients: viper.GetString("recipients"),
 	}
 
-	result, err := cliconfig.PromptConfig(sc, cmd.OutOrStdout(), int(os.Stdin.Fd()), readPassword, current)
-	if err != nil {
-		return fmt.Errorf("prompt for config: %w", err)
+	if err := cliconfig.WriteInteractive(path, sc, cmd.OutOrStdout(), int(os.Stdin.Fd()), readPassword, current); err != nil {
+		return fmt.Errorf("%s: %w", path, err)
 	}
 
-	token, err := cliconfig.PersistCredential(result.Token, "token")
-	if err != nil {
-		return fmt.Errorf("persist token: %w", err)
-	}
+	return reportWrote(cmd, path)
+}
 
-	identity, err := cliconfig.PersistCredential(result.Identity, "identity")
-	if err != nil {
-		return fmt.Errorf("persist identity: %w", err)
-	}
-
-	content := cliconfig.Render(result.Server, token, result.Caller, result.Recipients, identity)
-
-	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
-		return fmt.Errorf("write config file: %w", err)
-	}
-
+func reportWrote(cmd *cobra.Command, path string) error {
 	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", path); err != nil {
 		return fmt.Errorf("write init confirmation: %w", err)
 	}
