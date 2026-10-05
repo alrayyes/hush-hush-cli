@@ -1202,7 +1202,7 @@ func handleListObjects(s *Store) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, objects)
+		writeJSON(w, http.StatusOK, paged(w, r, objects))
 	}
 }
 
@@ -1356,8 +1356,8 @@ func handleCreateConsumerToken(s *Store) http.HandlerFunc {
 }
 
 func handleListConsumerTokens(s *Store) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, s.ListConsumerTokens())
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, paged(w, r, s.ListConsumerTokens()))
 	}
 }
 
@@ -1504,4 +1504,35 @@ func hasAllTags(have, want []string) bool {
 	}
 
 	return true
+}
+
+const (
+	// defaultListPage is how many rows a list request with no `limit` gets,
+	// and maxListPage the most one request may ask for: the real server's
+	// own caps (alrayyes/Hush-Hush#649, #662).
+	defaultListPage = 50
+	maxListPage     = 500
+)
+
+// paged returns the page of items that r's `limit` and `offset` select and
+// sets X-Total-Count to the full count, the way the real server's list
+// endpoints do. A request with no `limit` gets one default page, so a client
+// that doesn't page silently sees only the first 50 rows.
+func paged[T any](w http.ResponseWriter, r *http.Request, items []T) []T {
+	w.Header().Set("X-Total-Count", strconv.Itoa(len(items)))
+
+	limit, offset := defaultListPage, 0
+
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 {
+		limit = min(v, maxListPage)
+	}
+
+	if v, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && v > 0 {
+		offset = v
+	}
+
+	start := min(offset, len(items))
+	end := min(start+limit, len(items))
+
+	return items[start:end]
 }
