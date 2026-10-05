@@ -1,4 +1,4 @@
-package main
+package cmd_test
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -16,7 +17,7 @@ func TestInitWritesAStarterConfigFile(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"init"})
 	require.NoError(t, root.Execute())
 
@@ -34,7 +35,7 @@ func TestInitRefusesToOverwriteAnExistingFileWithoutForce(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
 	require.NoError(t, os.WriteFile(path, []byte("server: https://edited\n"), 0o600))
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"init"})
 	require.Error(t, root.Execute())
 
@@ -52,7 +53,7 @@ func TestInitForceOverwritesAnExistingFile(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
 	require.NoError(t, os.WriteFile(path, []byte("server: https://edited\n"), 0o600))
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"init", "--force"})
 	require.NoError(t, root.Execute())
 
@@ -72,7 +73,7 @@ func TestUnconfiguredNonInteractiveRunProceedsOnDefaults(t *testing.T) {
 
 	srv, _, _ := testserver.New(t)
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"get", "nope", "--server", srv.URL})
 	var errOut bytes.Buffer
 	root.SetErr(&errOut)
@@ -95,7 +96,7 @@ func TestYesFlagWritesAStarterConfigWithNoPrompt(t *testing.T) {
 
 	srv, _, _ := testserver.New(t)
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"get", "nope", "--server", srv.URL, "--yes"})
 
 	_ = root.Execute() // unknown object - irrelevant to this test
@@ -122,7 +123,7 @@ func TestConfigNudgeNeverBlocksARunTheEnvironmentAlreadyConfigures(t *testing.T)
 
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"get", "nope"})
 
 	err := root.Execute()

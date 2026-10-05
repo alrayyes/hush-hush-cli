@@ -1,4 +1,4 @@
-package main
+package cmd_test
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -13,10 +14,11 @@ import (
 )
 
 func TestAuditLogHelpListsEverySevenFlag(t *testing.T) {
-	cmd := newAuditLogCmd()
+	sub, _, err := cmd.NewRootCmd("dev").Find([]string{"audit-log"})
+	require.NoError(t, err)
 
 	for _, name := range []string{"object", "actor", "caller", "since", "until", "format", "limit"} {
-		assert.NotNil(t, cmd.Flags().Lookup(name), "expected a --%s flag", name)
+		assert.NotNil(t, sub.Flags().Lookup(name), "expected a --%s flag", name)
 	}
 }
 
@@ -25,7 +27,7 @@ func TestAuditLogRejectsAnUnknownFormatBeforeAnyRequest(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"audit-log", "--format", "xml"})
 
 	err := root.Execute()
@@ -38,7 +40,7 @@ func TestAuditLogRejectsAMalformedSinceBeforeAnyRequest(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"audit-log", "--since", "not-a-date"})
 
 	err := root.Execute()
@@ -56,7 +58,7 @@ func TestAuditLogNoFiltersReturnsEverything(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"audit-log", "--format", "json"})
@@ -81,7 +83,7 @@ func TestAuditLogLimitBelowTheMatchingCountPrintsOnlyThatMany(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"audit-log", "--format", "json", "--limit", "3"})
@@ -104,7 +106,7 @@ func TestAuditLogLimitAtOrAboveTheMatchingCountPrintsEveryEntry(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"audit-log", "--format", "json", "--limit", "10"})
@@ -125,7 +127,7 @@ func TestAuditLogTableFormatShowsADashForANilCaller(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"audit-log"})

@@ -1,4 +1,4 @@
-package main
+package cmd_test
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"filippo.io/age"
+	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -33,7 +34,7 @@ func TestInjectRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"inject", "mattermost_deploy_webhook"})
 	root.SetIn(bytes.NewReader([]byte("plaintext-value")))
 
@@ -58,7 +59,7 @@ func TestInjectDescriptionFlagSetsIt(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{
 		"inject", "mattermost_deploy_webhook",
 		"--recipients", identity.Recipient().String(),
@@ -88,7 +89,7 @@ func TestInjectFailsFastWithNoTokenConfigured(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"inject", "mattermost_deploy_webhook"})
 	root.SetIn(bytes.NewReader([]byte("plaintext-value")))
 
@@ -106,7 +107,7 @@ func TestInjectFailsFastWithNoRecipientsConfigured(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"inject", "mattermost_deploy_webhook"})
 	root.SetIn(bytes.NewReader([]byte("plaintext-value")))
 
@@ -138,7 +139,7 @@ func TestInjectWithUsedByAndNoRecipientsResolvesTheConsumersRegisteredKey(t *tes
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"inject", "mattermost_deploy_webhook", "--used-by", "homelab/vps-docker"})
 	root.SetIn(bytes.NewReader([]byte("plaintext-value")))
 
@@ -168,7 +169,7 @@ func TestInjectWithUsedByAndNoRegisteredKeyFailsNamingTheConsumer(t *testing.T) 
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"inject", "mattermost_deploy_webhook", "--used-by", "homelab/vps-docker"})
 	root.SetIn(bytes.NewReader([]byte("plaintext-value")))
 

@@ -1,4 +1,4 @@
-package main
+package cmd_test
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/alrayyes/hush-hush-cli/internal/client"
+	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,7 @@ func TestTokenCreateJSONFlagPrintsTheMintedValue(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"token", "create", "homelab/vps-docker", "--ttl", "1h", "--description", "ci reader", "--json"})
@@ -44,7 +45,7 @@ func TestTokenCreateRequiresTTL(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"token", "create", "homelab/vps-docker"})
 
 	err := root.Execute()
@@ -59,7 +60,7 @@ func TestTokenCreateFailsFastWithNoTokenConfigured(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"token", "create", "homelab/vps-docker", "--ttl", "1h"})
 
 	err := root.Execute()
@@ -76,7 +77,7 @@ func TestTokenListTableIncludesEveryMintedToken(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"token", "list"})
@@ -95,12 +96,12 @@ func TestTokenRevokeThenPurgeRemovesIt(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	revokeRoot := newRootCmd()
+	revokeRoot := cmd.NewRootCmd("dev")
 	revokeRoot.SetArgs([]string{"token", "revoke", minted.ID})
 	require.NoError(t, revokeRoot.Execute())
 
 	viper.Reset()
-	purgeRoot := newRootCmd()
+	purgeRoot := cmd.NewRootCmd("dev")
 	purgeRoot.SetArgs([]string{"token", "purge", minted.ID})
 	require.NoError(t, purgeRoot.Execute())
 
@@ -119,7 +120,7 @@ func TestTokenListShowsStatusNotARevokedBoolean(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"token", "list"})
@@ -147,7 +148,7 @@ func TestTokenListJSONIncludesStatusAndAllowedActions(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	viper.Reset()
 
-	root := newRootCmd()
+	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"token", "list", "--json"})

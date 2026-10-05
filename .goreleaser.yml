@@ -5,7 +5,7 @@ project_name: hush-hush-cli
 before:
   hooks:
     - go mod download
-    # Generated from hush-hush-cli's own command tree (cmd/hush-hush-cli/man.go)
+    # Generated from hush-hush-cli's own command tree (internal/cmd/man.go)
     # rather than hand-written, so a page can't drift out of sync with the
     # command it documents. `go run`, not a pre-built binary: this runs
     # before the builds below produce one.
