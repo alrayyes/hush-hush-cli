@@ -1,13 +1,12 @@
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"text/tabwriter"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/alrayyes/hush-hush-cli/internal/client"
+	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
 )
 
@@ -58,10 +57,10 @@ func newConsumerListCmd() *cobra.Command {
 					consumers = []client.Consumer{}
 				}
 
-				return writeConsumerJSON(cmd, consumers)
+				return render.ConsumersJSON(cmd.OutOrStdout(), consumers)
 			}
 
-			return writeConsumerTable(cmd, consumers)
+			return render.ConsumersTable(cmd.OutOrStdout(), consumers)
 		},
 	}
 
@@ -89,7 +88,7 @@ func newConsumerAddCmd() *cobra.Command {
 				return fmt.Errorf("consumer add: %w", err)
 			}
 
-			return writeOneConsumer(cmd, consumer, asJSON)
+			return render.OneConsumer(cmd.OutOrStdout(), consumer, asJSON)
 		},
 	}
 
@@ -134,7 +133,7 @@ func newConsumerUpdateCmd() *cobra.Command {
 				return fmt.Errorf("consumer update: %w", err)
 			}
 
-			return writeOneConsumer(cmd, consumer, asJSON)
+			return render.OneConsumer(cmd.OutOrStdout(), consumer, asJSON)
 		},
 	}
 
@@ -165,44 +164,4 @@ func newConsumerDeleteCmd() *cobra.Command {
 			return nil
 		},
 	}
-}
-
-func writeOneConsumer(cmd *cobra.Command, consumer client.Consumer, asJSON bool) error {
-	if asJSON {
-		if err := json.NewEncoder(cmd.OutOrStdout()).Encode(consumer); err != nil {
-			return fmt.Errorf("write consumer as json: %w", err)
-		}
-
-		return nil
-	}
-
-	return writeConsumerTable(cmd, []client.Consumer{consumer})
-}
-
-func writeConsumerJSON(cmd *cobra.Command, consumers []client.Consumer) error {
-	if err := json.NewEncoder(cmd.OutOrStdout()).Encode(consumers); err != nil {
-		return fmt.Errorf("write consumers as json: %w", err)
-	}
-
-	return nil
-}
-
-func writeConsumerTable(cmd *cobra.Command, consumers []client.Consumer) error {
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-
-	if _, err := fmt.Fprintln(w, "NAME\tSECRETS\tPUBLIC KEY"); err != nil {
-		return fmt.Errorf("write consumer header: %w", err)
-	}
-
-	for _, c := range consumers {
-		if _, err := fmt.Fprintf(w, "%s\t%d\t%s\n", c.Name, c.SecretCount, c.PublicKey); err != nil {
-			return fmt.Errorf("write consumer row: %w", err)
-		}
-	}
-
-	if err := w.Flush(); err != nil {
-		return fmt.Errorf("flush consumer table: %w", err)
-	}
-
-	return nil
 }

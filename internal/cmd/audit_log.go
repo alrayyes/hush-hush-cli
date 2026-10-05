@@ -1,14 +1,13 @@
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"text/tabwriter"
 	"time"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/alrayyes/hush-hush-cli/internal/client"
+	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
 )
 
@@ -51,10 +50,10 @@ func newAuditLogCmd() *cobra.Command {
 			}
 
 			if format == "json" {
-				return writeAuditLogJSON(cmd, entries)
+				return render.AuditLogJSON(cmd.OutOrStdout(), entries)
 			}
 
-			return writeAuditLogTable(cmd, entries)
+			return render.AuditLogTable(cmd.OutOrStdout(), entries)
 		},
 	}
 
@@ -111,42 +110,4 @@ func buildAuditLogFilter(objectID, actor, caller, since, until string, limit int
 	}
 
 	return filter, nil
-}
-
-func writeAuditLogJSON(cmd *cobra.Command, entries []client.AuditLogEntry) error {
-	if entries == nil {
-		entries = []client.AuditLogEntry{}
-	}
-
-	if err := json.NewEncoder(cmd.OutOrStdout()).Encode(entries); err != nil {
-		return fmt.Errorf("write audit-log as json: %w", err)
-	}
-
-	return nil
-}
-
-func writeAuditLogTable(cmd *cobra.Command, entries []client.AuditLogEntry) error {
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-
-	if _, err := fmt.Fprintln(w, "TIMESTAMP\tACTION\tOBJECT ID\tCALLER\tIP"); err != nil {
-		return fmt.Errorf("write audit-log header: %w", err)
-	}
-
-	for _, e := range entries {
-		caller := "-"
-		if e.Caller != nil {
-			caller = *e.Caller
-		}
-
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-			e.Timestamp.Local().Format(time.DateTime), e.Action, e.ObjectID, caller, e.IP); err != nil {
-			return fmt.Errorf("write audit-log row: %w", err)
-		}
-	}
-
-	if err := w.Flush(); err != nil {
-		return fmt.Errorf("flush audit-log table: %w", err)
-	}
-
-	return nil
 }

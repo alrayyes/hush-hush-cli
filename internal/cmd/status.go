@@ -1,11 +1,10 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
-	"github.com/alrayyes/hush-hush-cli/internal/client"
+	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +31,7 @@ func newStatusCmd() *cobra.Command {
 			}
 
 			if asJSON {
-				return writeStatusJSON(cmd, status)
+				return render.StatusJSON(cmd.OutOrStdout(), status)
 			}
 
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "bootstrapped: %t\n", status.Bootstrapped)
@@ -47,12 +46,4 @@ func newStatusCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the raw JSON object instead of a plain line")
 
 	return cmd
-}
-
-func writeStatusJSON(cmd *cobra.Command, status client.AuthStatus) error {
-	if err := json.NewEncoder(cmd.OutOrStdout()).Encode(status); err != nil {
-		return fmt.Errorf("write status as json: %w", err)
-	}
-
-	return nil
 }
