@@ -8,14 +8,12 @@ import (
 
 	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
 func TestInitWritesAStarterConfigFile(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"init"})
@@ -29,7 +27,6 @@ func TestInitWritesAStarterConfigFile(t *testing.T) {
 func TestInitRefusesToOverwriteAnExistingFileWithoutForce(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
-	viper.Reset()
 
 	path := filepath.Join(dir, "hush-hush-cli", "config.yaml")
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
@@ -47,7 +44,6 @@ func TestInitRefusesToOverwriteAnExistingFileWithoutForce(t *testing.T) {
 func TestInitForceOverwritesAnExistingFile(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
-	viper.Reset()
 
 	path := filepath.Join(dir, "hush-hush-cli", "config.yaml")
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
@@ -69,7 +65,6 @@ func TestInitForceOverwritesAnExistingFile(t *testing.T) {
 func TestUnconfiguredNonInteractiveRunProceedsOnDefaults(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
-	viper.Reset()
 
 	srv, _, _ := testserver.New(t)
 
@@ -92,7 +87,6 @@ func TestUnconfiguredNonInteractiveRunProceedsOnDefaults(t *testing.T) {
 func TestYesFlagWritesAStarterConfigWithNoPrompt(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
-	viper.Reset()
 
 	srv, _, _ := testserver.New(t)
 
@@ -117,7 +111,6 @@ func TestConfigNudgeNeverBlocksARunTheEnvironmentAlreadyConfigures(t *testing.T)
 	t.Cleanup(func() { require.NoError(t, os.Chmod(unwritable, 0o700)) }) //nolint:gosec // G302 checks file perms; this chmod is on a directory - TempDir cleanup also needs write back
 
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(unwritable, "config"))
-	viper.Reset()
 
 	srv, _, _ := testserver.New(t)
 

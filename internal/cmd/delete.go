@@ -5,15 +5,16 @@ import (
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newDeleteCmd() *cobra.Command {
+func newDeleteCmd(v *viper.Viper) *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <id>",
 		Short: "Permanently remove an object",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config(true)
+			cfg, err := config(v, true)
 			if err != nil {
 				return err
 			}

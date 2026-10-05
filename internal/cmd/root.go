@@ -27,6 +27,18 @@ var errConfigAlreadyExists = errors.New("config file already exists (use --force
 // inside CI" requirement). A config file at configPath() sits below both:
 // rules/cli.md's flags > environment > config file > defaults.
 func NewRootCmd(version string) *cobra.Command {
+	root, _ := newRootCmd(version)
+
+	return root
+}
+
+// newRootCmd is NewRootCmd plus the viper instance every subcommand reads,
+// for the internal tests that call config() directly.
+func newRootCmd(version string) (*cobra.Command, *viper.Viper) {
+	// One viper per command tree, not the package-level one: two roots (two
+	// tests, say) must never see each other's flags, env or config file.
+	v := viper.New()
+
 	root := &cobra.Command{
 		Use:           "hush-hush-cli",
 		Short:         "Client for the hush-hush secrets object store",
@@ -44,7 +56,7 @@ func NewRootCmd(version string) *cobra.Command {
 			case "init", "man", "config", "keyring-get":
 				return nil
 			default:
-				return maybeOfferInit(cmd)
+				return maybeOfferInit(v, cmd)
 			}
 		},
 	}
@@ -58,37 +70,37 @@ func NewRootCmd(version string) *cobra.Command {
 	root.PersistentFlags().BoolP("yes", "y", false, "write a starter config with no prompt, if none exists")
 
 	for _, name := range []string{"server", "token", "caller"} {
-		_ = viper.BindPFlag(name, root.PersistentFlags().Lookup(name))
+		_ = v.BindPFlag(name, root.PersistentFlags().Lookup(name))
 	}
 
-	_ = viper.BindPFlag("token_command", root.PersistentFlags().Lookup("token-command"))
-	_ = viper.BindPFlag("consumer_token", root.PersistentFlags().Lookup("consumer-token"))
-	_ = viper.BindPFlag("consumer_token_command", root.PersistentFlags().Lookup("consumer-token-command"))
+	_ = v.BindPFlag("token_command", root.PersistentFlags().Lookup("token-command"))
+	_ = v.BindPFlag("consumer_token", root.PersistentFlags().Lookup("consumer-token"))
+	_ = v.BindPFlag("consumer_token_command", root.PersistentFlags().Lookup("consumer-token-command"))
 
-	viper.SetEnvPrefix("hush_hush")
-	viper.AutomaticEnv()
+	v.SetEnvPrefix("hush_hush")
+	v.AutomaticEnv()
 
 	if path, err := configFilePath(); err == nil {
-		viper.SetConfigFile(path)
-		viper.SetConfigType("yaml")
-		_ = viper.ReadInConfig() // no config file yet is not an error
+		v.SetConfigFile(path)
+		v.SetConfigType("yaml")
+		_ = v.ReadInConfig() // no config file yet is not an error
 	}
 
-	root.AddCommand(newInitCmd())
-	root.AddCommand(newInjectCmd())
-	root.AddCommand(newGetCmd())
-	root.AddCommand(newUpdateCmd())
-	root.AddCommand(newListCmd())
-	root.AddCommand(newDeleteCmd())
-	root.AddCommand(newUsedByCmd())
-	root.AddCommand(newAuditLogCmd())
-	root.AddCommand(newTokenCmd())
-	root.AddCommand(newConsumerCmd())
-	root.AddCommand(newStatusCmd())
+	root.AddCommand(newInitCmd(v))
+	root.AddCommand(newInjectCmd(v))
+	root.AddCommand(newGetCmd(v))
+	root.AddCommand(newUpdateCmd(v))
+	root.AddCommand(newListCmd(v))
+	root.AddCommand(newDeleteCmd(v))
+	root.AddCommand(newUsedByCmd(v))
+	root.AddCommand(newAuditLogCmd(v))
+	root.AddCommand(newTokenCmd(v))
+	root.AddCommand(newConsumerCmd(v))
+	root.AddCommand(newStatusCmd(v))
 	root.AddCommand(newConfigCmd())
 	root.AddCommand(newManCmd(root))
 
-	return root
+	return root, v
 }
 
 // config resolves the CLI's connection settings, running --token-command/
@@ -106,22 +118,22 @@ func NewRootCmd(version string) *cobra.Command {
 // the server, rather than surfacing as a bare 401 from deep inside the
 // SDK. get accepts either token being empty - it falls back to whichever
 // of Token/ConsumerToken is set, or neither, itself.
-func config(requireToken bool) (cli.Config, error) {
-	token, err := cliconfig.ResolveSecret(viper.GetString("token"), viper.GetString("token_command"))
+func config(v *viper.Viper, requireToken bool) (cli.Config, error) {
+	token, err := cliconfig.ResolveSecret(v.GetString("token"), v.GetString("token_command"))
 	if err != nil {
 		return cli.Config{}, fmt.Errorf("token_command: %w", err)
 	}
 
-	consumerToken, err := cliconfig.ResolveSecret(viper.GetString("consumer_token"), viper.GetString("consumer_token_command"))
+	consumerToken, err := cliconfig.ResolveSecret(v.GetString("consumer_token"), v.GetString("consumer_token_command"))
 	if err != nil {
 		return cli.Config{}, fmt.Errorf("consumer_token_command: %w", err)
 	}
 
 	cfg := cli.Config{
-		Server:        viper.GetString("server"),
+		Server:        v.GetString("server"),
 		Token:         token,
 		ConsumerToken: consumerToken,
-		Caller:        viper.GetString("caller"),
+		Caller:        v.GetString("caller"),
 		RequireToken:  requireToken,
 	}
 
@@ -144,7 +156,7 @@ func configFilePath() (string, error) {
 // newInitCmd writes a starter config file populated with the same
 // defaults the tool would otherwise fall back to, ready to edit
 // (rules/cli.md).
-func newInitCmd() *cobra.Command {
+func newInitCmd(v *viper.Viper) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
@@ -162,7 +174,7 @@ func newInitCmd() *cobra.Command {
 
 			yes, _ := cmd.Flags().GetBool("yes")
 			if !yes && term.IsTerminal(int(os.Stdin.Fd())) {
-				return runInteractiveInit(cmd, path, bufio.NewScanner(cmd.InOrStdin()), term.ReadPassword)
+				return runInteractiveInit(v, cmd, path, bufio.NewScanner(cmd.InOrStdin()), term.ReadPassword)
 			}
 
 			return writeStarterConfig(cmd, path)
@@ -187,8 +199,8 @@ func writeStarterConfig(cmd *cobra.Command, path string) error {
 // writing live in cliconfig.WriteInteractive, seeded here with whatever
 // viper already resolved. sc and readPassword are threaded through for the
 // reasons its doc comment gives.
-func runInteractiveInit(cmd *cobra.Command, path string, sc *bufio.Scanner, readPassword cliconfig.PasswordReader) error {
-	if err := cliconfig.WriteInteractive(path, sc, cmd.OutOrStdout(), int(os.Stdin.Fd()), readPassword, currentValues()); err != nil {
+func runInteractiveInit(v *viper.Viper, cmd *cobra.Command, path string, sc *bufio.Scanner, readPassword cliconfig.PasswordReader) error {
+	if err := cliconfig.WriteInteractive(path, sc, cmd.OutOrStdout(), int(os.Stdin.Fd()), readPassword, currentValues(v)); err != nil {
 		return fmt.Errorf("%s: %w", path, err)
 	}
 
@@ -196,11 +208,11 @@ func runInteractiveInit(cmd *cobra.Command, path string, sc *bufio.Scanner, read
 }
 
 // currentValues seeds the prompts' defaults with whatever viper resolved.
-func currentValues() cliconfig.Values {
+func currentValues(v *viper.Viper) cliconfig.Values {
 	return cliconfig.Values{
-		Server:     viper.GetString("server"),
-		Caller:     viper.GetString("caller"),
-		Recipients: viper.GetString("recipients"),
+		Server:     v.GetString("server"),
+		Caller:     v.GetString("caller"),
+		Recipients: v.GetString("recipients"),
 	}
 }
 
@@ -217,7 +229,7 @@ func reportWrote(cmd *cobra.Command, path string) error {
 // decision logic lives in cliconfig, where the confirmed-interactively
 // branch is testable: go test's own stdin is never a TTY, so only the
 // term.IsTerminal call below can't be exercised through root.Execute().
-func maybeOfferInit(cmd *cobra.Command) error {
+func maybeOfferInit(v *viper.Viper, cmd *cobra.Command) error {
 	yes, _ := cmd.Flags().GetBool("yes")
 
 	var path string
@@ -237,7 +249,7 @@ func maybeOfferInit(cmd *cobra.Command) error {
 		ReadPassword: term.ReadPassword,
 		Yes:          yes,
 		Interactive:  term.IsTerminal(int(os.Stdin.Fd())),
-		Current:      currentValues(),
+		Current:      currentValues(v),
 	})
 	if err != nil {
 		return fmt.Errorf("%s: %w", path, err)
@@ -251,7 +263,7 @@ func maybeOfferInit(cmd *cobra.Command) error {
 		return err
 	}
 
-	if err := viper.ReadInConfig(); err != nil {
+	if err := v.ReadInConfig(); err != nil {
 		return fmt.Errorf("read newly written config: %w", err)
 	}
 

@@ -10,7 +10,6 @@ import (
 	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/seal"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,15 +26,12 @@ func tagsEnv(t *testing.T, srvURL, token string) string {
 	t.Setenv("HUSH_HUSH_TOKEN", token)
 	t.Setenv("HUSH_HUSH_RECIPIENTS", identity.Recipient().String())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	return identity.Recipient().String()
 }
 
 func runWithStdin(t *testing.T, stdin string, args ...string) (string, error) {
 	t.Helper()
-
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	var out bytes.Buffer

@@ -6,12 +6,13 @@ import (
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // newListCmd requires a token, unlike get: enumerating every stored object
 // is a capability none of the other, id-scoped reads grant on their own,
 // matching hush-hush's own GET /objects.
-func newListCmd() *cobra.Command {
+func newListCmd(v *viper.Viper) *cobra.Command {
 	var (
 		asJSON bool
 		usedBy string
@@ -23,7 +24,7 @@ func newListCmd() *cobra.Command {
 		Short: "List stored objects' metadata",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			cfg, err := config(true)
+			cfg, err := config(v, true)
 			if err != nil {
 				return err
 			}

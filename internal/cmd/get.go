@@ -18,13 +18,13 @@ var errNoIdentity = errors.New("no identity configured (--identity, HUSH_HUSH_ID
 // newGetCmd writes the decrypted value to stdout, and nothing else - no
 // assembled file, no consumer-side file-shape logic (the cli spec's
 // "get returns exactly one decrypted value to stdout per call").
-func newGetCmd() *cobra.Command {
+func newGetCmd(v *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get <id>",
 		Short: "Fetch and decrypt one value to stdout",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			identities, err := cliconfig.ResolveSecret(viper.GetString("identity"), viper.GetString("identity_command"))
+			identities, err := cliconfig.ResolveSecret(v.GetString("identity"), v.GetString("identity_command"))
 			if err != nil {
 				return fmt.Errorf("identity_command: %w", err)
 			}
@@ -33,7 +33,7 @@ func newGetCmd() *cobra.Command {
 				return errNoIdentity
 			}
 
-			cfg, err := config(false)
+			cfg, err := config(v, false)
 			if err != nil {
 				return err
 			}
@@ -54,8 +54,8 @@ func newGetCmd() *cobra.Command {
 
 	cmd.Flags().String("identity", "", "comma-separated age private keys")
 	cmd.Flags().String("identity-command", "", "command whose trimmed stdout is the identity instead (wins over --identity if both are set)")
-	_ = viper.BindPFlag("identity", cmd.Flags().Lookup("identity"))
-	_ = viper.BindPFlag("identity_command", cmd.Flags().Lookup("identity-command"))
+	_ = v.BindPFlag("identity", cmd.Flags().Lookup("identity"))
+	_ = v.BindPFlag("identity_command", cmd.Flags().Lookup("identity-command"))
 
 	return cmd
 }

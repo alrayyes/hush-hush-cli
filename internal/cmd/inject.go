@@ -46,7 +46,7 @@ const tagFlagUsage = "label for grouping secrets (repeatable, or comma-separated
 // newInjectCmd reads the plaintext value from stdin rather than a flag -
 // a flag value ends up in shell history and process listings, exactly
 // what injecting a secret should avoid.
-func newInjectCmd() *cobra.Command {
+func newInjectCmd(v *viper.Viper) *cobra.Command {
 	var (
 		usedBy      []string
 		tags        []string
@@ -64,9 +64,9 @@ func newInjectCmd() *cobra.Command {
 			// both flag objects to the one viper key at construction time
 			// leaves viper pointing at whichever command was registered
 			// last on root, silently ignoring the other's flag.
-			_ = viper.BindPFlag("recipients", cmd.Flags().Lookup("recipients"))
+			_ = v.BindPFlag("recipients", cmd.Flags().Lookup("recipients"))
 
-			recipients := viper.GetString("recipients")
+			recipients := v.GetString("recipients")
 			if recipients == "" && len(usedBy) == 0 {
 				return errNoRecipientsOrUsedBy
 			}
@@ -81,7 +81,7 @@ func newInjectCmd() *cobra.Command {
 				return fmt.Errorf("read value from stdin: %w", err)
 			}
 
-			cfg, err := config(true)
+			cfg, err := config(v, true)
 			if err != nil {
 				return err
 			}

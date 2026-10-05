@@ -9,6 +9,7 @@ import (
 	"github.com/alrayyes/hush-hush-cli/internal/client"
 	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // errUnknownAuditLogFormat is a sentinel: a fixed condition (an
@@ -19,7 +20,7 @@ var errUnknownAuditLogFormat = errors.New("must be table or json")
 // newAuditLogCmd makes exactly one request per invocation and exits -
 // spec.md's "No live/follow mode" requirement, matching gh's own
 // audit-log command shape.
-func newAuditLogCmd() *cobra.Command {
+func newAuditLogCmd(v *viper.Viper) *cobra.Command {
 	var (
 		objectID, actor, caller, since, until, format string
 		limit                                         int
@@ -39,7 +40,7 @@ func newAuditLogCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, err := config(false)
+			cfg, err := config(v, false)
 			if err != nil {
 				return err
 			}

@@ -11,7 +11,6 @@ import (
 	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/seal"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,7 +33,6 @@ func TestUpdateRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 	t.Setenv("HUSH_HUSH_RECIPIENTS", identity.Recipient().String())
 
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"update", "mattermost_deploy_webhook"})
@@ -62,7 +60,6 @@ func TestUpdateFailsFastWithNoTokenConfigured(t *testing.T) {
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("HUSH_HUSH_RECIPIENTS", identity.Recipient().String())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs([]string{"update", "mattermost_deploy_webhook"})
@@ -100,7 +97,6 @@ func runUpdate(t *testing.T, srv *httptest.Server, token string, args ...string)
 	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
 	t.Setenv("HUSH_HUSH_TOKEN", token)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	viper.Reset()
 
 	root := cmd.NewRootCmd("dev")
 	root.SetArgs(append([]string{"update", "secret"}, args...))
