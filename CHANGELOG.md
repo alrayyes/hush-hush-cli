@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.19.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.19.0...v1.19.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **deps:** bump hush-hush-go to v4.4.0 ([1f00388](https://github.com/alrayyes/hush-hush-cli/commit/1f00388f39b65b4ff6188ce9a86dc326c3155f8a))
+* **deps:** bump hush-hush-go to v4.4.0 ([bd8d153](https://github.com/alrayyes/hush-hush-cli/commit/bd8d153dc7b250d47df3e77fa4b2be49ea4229c3))
+* **nix:** update vendorHash for hush-hush-go v4.4.0 ([07b8d49](https://github.com/alrayyes/hush-hush-cli/commit/07b8d49a4e81528960b1a8d8c4a2745fb0ec6520))
+
 ## [1.19.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.18.1...v1.19.0) (2026-10-05)
 
 
