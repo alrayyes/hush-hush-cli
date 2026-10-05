@@ -203,17 +203,20 @@ func writeStarterConfig(cmd *cobra.Command, path string) error {
 // viper already resolved. sc and readPassword are threaded through for the
 // reasons its doc comment gives.
 func runInteractiveInit(cmd *cobra.Command, path string, sc *bufio.Scanner, readPassword cliconfig.PasswordReader) error {
-	current := cliconfig.Values{
-		Server:     viper.GetString("server"),
-		Caller:     viper.GetString("caller"),
-		Recipients: viper.GetString("recipients"),
-	}
-
-	if err := cliconfig.WriteInteractive(path, sc, cmd.OutOrStdout(), int(os.Stdin.Fd()), readPassword, current); err != nil {
+	if err := cliconfig.WriteInteractive(path, sc, cmd.OutOrStdout(), int(os.Stdin.Fd()), readPassword, currentValues()); err != nil {
 		return fmt.Errorf("%s: %w", path, err)
 	}
 
 	return reportWrote(cmd, path)
+}
+
+// currentValues seeds the prompts' defaults with whatever viper resolved.
+func currentValues() cliconfig.Values {
+	return cliconfig.Values{
+		Server:     viper.GetString("server"),
+		Caller:     viper.GetString("caller"),
+		Recipients: viper.GetString("recipients"),
+	}
 }
 
 func reportWrote(cmd *cobra.Command, path string) error {
@@ -224,53 +227,42 @@ func reportWrote(cmd *cobra.Command, path string) error {
 	return nil
 }
 
-// maybeOfferInit is rules/cli.md's "a run with no config file and no
-// relevant environment variable set offers to run init right there":
-// skipped entirely once a config file exists or the environment already
-// configures the tool, and never blocks a non-interactive run (no TTY)
-// on a prompt nothing will ever answer.
-//
-// anyEnvSet is checked before ever resolving a path: ShouldWriteStarter
-// always skips once it's true, and resolving one has a real side effect
-// (creating the parent directory) that can fail on its own - a CI job
-// that already sets every HUSH_HUSH_* variable, exactly the case
-// cli.md's own "runs unmodified inside CI" requirement targets, must
-// never be blocked by a nudge it was never going to act on anyway.
-//
-// The confirmed-interactively branch (yes is false, sc is non-nil) has no
-// direct test through root.Execute(): go test's own stdin is never a TTY,
-// so term.IsTerminal below is always false in CI, same limitation
-// TestRunInteractiveInit*'s own doc comment already notes for init itself.
-// What it delegates to is fully covered there instead - runInteractiveInit
-// end-to-end, and Confirm/PromptConfig sharing one scanner as
-// TestConfirmSharesAScannerWithLaterPrompts (cliconfig_test.go) - so this
-// function's own job, wiring the two together with the right scanner, is
-// what's left untested at the cobra level, not the behavior itself.
+// maybeOfferInit wires cliconfig.OfferInit to this process's real terminal
+// and viper, then reloads the config it may just have written. The
+// decision logic lives in cliconfig, where the confirmed-interactively
+// branch is testable: go test's own stdin is never a TTY, so only the
+// term.IsTerminal call below can't be exercised through root.Execute().
 func maybeOfferInit(cmd *cobra.Command) error {
-	anyEnvSet := cliconfig.AnyEnvVarSet()
-	if anyEnvSet {
+	yes, _ := cmd.Flags().GetBool("yes")
+
+	var path string
+
+	wrote, err := cliconfig.OfferInit(cliconfig.OfferOptions{
+		ResolvePath: func() (string, error) {
+			var err error
+
+			path, err = configFilePath()
+
+			return path, err
+		},
+		In:           cmd.InOrStdin(),
+		Out:          cmd.OutOrStdout(),
+		Err:          cmd.ErrOrStderr(),
+		FD:           int(os.Stdin.Fd()),
+		ReadPassword: term.ReadPassword,
+		Yes:          yes,
+		Interactive:  term.IsTerminal(int(os.Stdin.Fd())),
+		Current:      currentValues(),
+	})
+	if err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+
+	if !wrote {
 		return nil
 	}
 
-	path, err := configFilePath()
-	if err != nil {
-		// Advisory only: a run this environment doesn't already
-		// configure still has to work even where the config path
-		// itself can't be resolved or created.
-		return nil //nolint:nilerr // advisory only, error already explained above
-	}
-
-	exists := cliconfig.Exists(path)
-	yes, _ := cmd.Flags().GetBool("yes")
-	interactive := term.IsTerminal(int(os.Stdin.Fd()))
-
-	sc, confirmed := confirmInitNudge(cmd, exists, anyEnvSet, yes, interactive)
-
-	if !cliconfig.ShouldWriteStarter(exists, anyEnvSet, yes, interactive, confirmed) {
-		return printUnconfiguredNudge(cmd, exists, anyEnvSet, interactive)
-	}
-
-	if err := writeConfig(cmd, path, yes, sc); err != nil {
+	if err := reportWrote(cmd, path); err != nil {
 		return err
 	}
 
@@ -279,49 +271,4 @@ func maybeOfferInit(cmd *cobra.Command) error {
 	}
 
 	return nil
-}
-
-// confirmInitNudge asks "set one up now?" only when every gating
-// condition for offering it holds, and returns the scanner it read the
-// answer from alongside that answer: a caller that goes on to run the
-// interactive flow on a yes needs that exact scanner, not a fresh one
-// over the same reader - see Confirm's doc comment for why.
-func confirmInitNudge(cmd *cobra.Command, exists, anyEnvSet, yes, interactive bool) (*bufio.Scanner, bool) {
-	if yes || !interactive || exists || anyEnvSet {
-		return nil, false
-	}
-
-	sc := bufio.NewScanner(cmd.InOrStdin())
-	confirmed := cliconfig.Confirm(sc, cmd.OutOrStdout(), "No config file found. Set one up now?")
-
-	return sc, confirmed
-}
-
-// printUnconfiguredNudge is the stderr fallback for the one case
-// ShouldWriteStarter leaves nothing written for: fully non-interactive
-// and entirely unconfigured, where there was never a prompt to answer.
-func printUnconfiguredNudge(cmd *cobra.Command, exists, anyEnvSet, interactive bool) error {
-	if exists || anyEnvSet || interactive {
-		return nil
-	}
-
-	if _, err := fmt.Fprintf(cmd.ErrOrStderr(),
-		"no config file and no HUSH_HUSH_* environment variables set - running on defaults (`hush-hush-cli init` writes a starter config)\n",
-	); err != nil {
-		return fmt.Errorf("write config nudge: %w", err)
-	}
-
-	return nil
-}
-
-// writeConfig is what ShouldWriteStarter having said yes actually does:
-// --yes writes the same blank template a non-interactive init would; the
-// confirmed-interactively path (sc is non-nil whenever that's how
-// ShouldWriteStarter came to true) runs the full interactive flow.
-func writeConfig(cmd *cobra.Command, path string, yes bool, sc *bufio.Scanner) error {
-	if yes {
-		return writeStarterConfig(cmd, path)
-	}
-
-	return runInteractiveInit(cmd, path, sc, term.ReadPassword)
 }
