@@ -27,23 +27,13 @@ jobs:
       contents: write
       pull-requests: write
     outputs:
-      # wretry.action exposes the wrapped action's outputs as one JSON map.
-      release_created: ${{ fromJSON(steps.release.outputs.outputs).release_created }}
-      tag_name: ${{ fromJSON(steps.release.outputs.outputs).tag_name }}
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      # rules/release-publishing.md: these three steps call the GitHub API
-      # and can hit its secondary rate limit, which clears in seconds.
-      # Retried rather than failing a release nobody's watching. The wrapped
-      # actions' SHAs sit inside a string, where Dependabot can't see them:
-      # bump them by hand next to the wrapper's own.
-      - uses: Wandalen/wretry.action@e68c23e6309f2871ca8ae4763e7629b9c258e1ea # v3.8.0
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
         with:
-          attempt_limit: 3
-          attempt_delay: 10000
-          action: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7
-          with: |
-            token: ${{ secrets.RELEASE_TOKEN }}
+          token: ${{ secrets.RELEASE_TOKEN }}
 
   goreleaser:
     needs: release-please
@@ -79,27 +69,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: Wandalen/wretry.action@e68c23e6309f2871ca8ae4763e7629b9c258e1ea # v3.8.0
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
-          attempt_limit: 3
-          attempt_delay: 10000
-          action: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94
-          with: |
-            version: v2.17.1
-            args: release --clean
+          version: v2.17.1
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Free SLSA Build L2 provenance tying these binaries to this workflow
       # run - releases.md: adopt unconditionally, no cosign/SBOM needed yet.
       - name: Attest build provenance
-        uses: Wandalen/wretry.action@e68c23e6309f2871ca8ae4763e7629b9c258e1ea # v3.8.0
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          attempt_limit: 3
-          attempt_delay: 10000
-          action: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
-          with: |
-            subject-path: dist/*.tar.gz
+          subject-path: dist/*.tar.gz
 
   # AUR_SSH_KEY exists to publish a package, not to touch this repo's own
   # git history - provisioned per the global CLAUDE.md's "added only once
