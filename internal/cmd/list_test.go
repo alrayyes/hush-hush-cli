@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -49,12 +51,11 @@ func TestListRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 // TestDeleteFailsFastWithNoTokenConfigured for the list command: listing
 // is gated by the write token, same as delete/update, unlike get.
 func TestListFailsFastWithNoTokenConfigured(t *testing.T) {
+	t.Parallel()
+
 	srv, _, _ := testserver.New(t)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, "")
 	root.SetArgs([]string{"list"})
 
 	err := root.Execute()
@@ -65,15 +66,13 @@ func TestListFailsFastWithNoTokenConfigured(t *testing.T) {
 }
 
 func TestListJSONFlagPrintsRawArray(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 
 	require.NoError(t, s.CreateObject(t.Context(), "mattermost_deploy_webhook", []byte("sealed"), []string{"homelab/vps-docker"}, "deploy hook"))
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"list", "--json"})
@@ -93,13 +92,11 @@ func TestListJSONFlagPrintsRawArray(t *testing.T) {
 }
 
 func TestListEmptyStorePrintsJustTheHeader(t *testing.T) {
+	t.Parallel()
+
 	srv, _, token := testserver.New(t)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"list"})
@@ -111,16 +108,14 @@ func TestListEmptyStorePrintsJustTheHeader(t *testing.T) {
 }
 
 func TestListUsedByFlagFiltersToThatConsumer(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 
 	require.NoError(t, s.CreateObject(t.Context(), "for-a", []byte("sealed"), []string{"a"}, ""))
 	require.NoError(t, s.CreateObject(t.Context(), "for-b", []byte("sealed"), []string{"b"}, ""))
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"list", "--used-by", "a", "--json"})
@@ -132,15 +127,13 @@ func TestListUsedByFlagFiltersToThatConsumer(t *testing.T) {
 }
 
 func TestListTableShowsCreatedAndUpdatedTimes(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 
 	require.NoError(t, s.CreateObject(t.Context(), "apple", []byte("sealed"), nil, ""))
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"list"})
@@ -155,15 +148,13 @@ func TestListTableShowsCreatedAndUpdatedTimes(t *testing.T) {
 }
 
 func TestListJSONIncludesCreatedUpdatedAndActors(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 
 	require.NoError(t, s.CreateObject(t.Context(), "apple", []byte("sealed"), nil, ""))
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"list", "--json"})
@@ -182,11 +173,7 @@ func TestListJSONIncludesCreatedUpdatedAndActors(t *testing.T) {
 func listSlugs(t *testing.T, srv *httptest.Server, token string, args ...string) []string {
 	t.Helper()
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs(append([]string{"list", "--json"}, args...))
@@ -218,6 +205,8 @@ func seedTaggedObjects(t *testing.T, s *testserver.Store) {
 }
 
 func TestListTagFiltersToObjectsCarryingIt(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	seedTaggedObjects(t, s)
 
@@ -225,6 +214,8 @@ func TestListTagFiltersToObjectsCarryingIt(t *testing.T) {
 }
 
 func TestListRepeatedAndCommaSeparatedTagsMustAllMatch(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	seedTaggedObjects(t, s)
 
@@ -233,6 +224,8 @@ func TestListRepeatedAndCommaSeparatedTagsMustAllMatch(t *testing.T) {
 }
 
 func TestListTagCombinesWithUsedByAndIgnoresCase(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	seedTaggedObjects(t, s)
 
@@ -242,6 +235,8 @@ func TestListTagCombinesWithUsedByAndIgnoresCase(t *testing.T) {
 }
 
 func TestListWithoutTagStillListsEverything(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	seedTaggedObjects(t, s)
 
@@ -252,6 +247,8 @@ func TestListWithoutTagStillListsEverything(t *testing.T) {
 // hands Execute a context that a signal cancels, and a request to a server
 // that never answers must give up as soon as it is.
 func TestListStopsWhenItsContextIsCancelled(t *testing.T) {
+	t.Parallel()
+
 	release := make(chan struct{})
 	hanging := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		<-release
@@ -262,14 +259,10 @@ func TestListStopsWhenItsContextIsCancelled(t *testing.T) {
 	t.Cleanup(hanging.Close)
 	t.Cleanup(func() { close(release) })
 
-	t.Setenv("HUSH_HUSH_SERVER", hanging.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", "token")
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(100*time.Millisecond, cancel)
 
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, hanging.URL, "token")
 	root.SetArgs([]string{"list"})
 
 	done := make(chan error, 1)
@@ -282,4 +275,24 @@ func TestListStopsWhenItsContextIsCancelled(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("list kept waiting on a hanging server after its context was cancelled")
 	}
+}
+
+// TestWithConfigPathReadsThatFileAndNotTheUserConfigDirectory is what lets
+// a test run in parallel: no XDG_CONFIG_HOME, so no t.Setenv.
+func TestWithConfigPathReadsThatFileAndNotTheUserConfigDirectory(t *testing.T) {
+	t.Parallel()
+
+	srv, s, token := testserver.New(t)
+	require.NoError(t, s.CreateObject(t.Context(), "from-file", []byte("sealed"), nil, ""))
+
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server: "+srv.URL+"\ntoken: "+token+"\n"), 0o600))
+
+	root := cmd.NewRootCmd("dev", cmd.WithConfigPath(path))
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetArgs([]string{"list"})
+
+	require.NoError(t, root.Execute())
+	assert.Contains(t, out.String(), "from-file")
 }

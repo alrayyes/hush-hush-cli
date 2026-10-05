@@ -19,6 +19,30 @@ import (
 // in rather than folded into the message.
 var errConfigAlreadyExists = errors.New("config file already exists (use --force to overwrite)")
 
+// Option configures NewRootCmd.
+type Option func(*options)
+
+type options struct {
+	configPath string
+}
+
+// pathResolver is the config-file path lookup: the fixed path WithConfigPath
+// gave, else the one under XDG_CONFIG_HOME.
+func (o options) pathResolver() func() (string, error) {
+	if o.configPath == "" {
+		return configFilePath
+	}
+
+	return func() (string, error) { return o.configPath, nil }
+}
+
+// WithConfigPath reads and writes the config file at path instead of the one
+// under XDG_CONFIG_HOME. A test that uses it needs no t.Setenv, so it can
+// run in parallel.
+func WithConfigPath(path string) Option {
+	return func(o *options) { o.configPath = path }
+}
+
 // NewRootCmd wires the persistent, env-overridable connection config
 // (server URL, bearer token, caller identity) shared by every subcommand.
 // HUSH_HUSH_SERVER, HUSH_HUSH_TOKEN, and HUSH_HUSH_CALLER override their
@@ -26,15 +50,22 @@ var errConfigAlreadyExists = errors.New("config file already exists (use --force
 // with no bespoke wrapper or Action (the cli spec's "runs unmodified
 // inside CI" requirement). A config file at configPath() sits below both:
 // rules/cli.md's flags > environment > config file > defaults.
-func NewRootCmd(version string) *cobra.Command {
-	root, _ := newRootCmd(version)
+func NewRootCmd(version string, opts ...Option) *cobra.Command {
+	root, _ := newRootCmd(version, opts...)
 
 	return root
 }
 
 // newRootCmd is NewRootCmd plus the viper instance every subcommand reads,
 // for the internal tests that call config() directly.
-func newRootCmd(version string) (*cobra.Command, *viper.Viper) {
+func newRootCmd(version string, opts ...Option) (*cobra.Command, *viper.Viper) {
+	var o options
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	resolvePath := o.pathResolver()
+
 	// One viper per command tree, not the package-level one: two roots (two
 	// tests, say) must never see each other's flags, env or config file.
 	v := viper.New()
@@ -56,7 +87,7 @@ func newRootCmd(version string) (*cobra.Command, *viper.Viper) {
 			case "init", "man", "config", "keyring-get":
 				return nil
 			default:
-				return maybeOfferInit(v, cmd)
+				return maybeOfferInit(v, resolvePath, cmd)
 			}
 		},
 	}
@@ -69,24 +100,18 @@ func newRootCmd(version string) (*cobra.Command, *viper.Viper) {
 	root.PersistentFlags().String("caller", "", "self-presented identity recorded in the audit log")
 	root.PersistentFlags().BoolP("yes", "y", false, "write a starter config with no prompt, if none exists")
 
-	for _, name := range []string{"server", "token", "caller"} {
-		_ = v.BindPFlag(name, root.PersistentFlags().Lookup(name))
-	}
-
-	_ = v.BindPFlag("token_command", root.PersistentFlags().Lookup("token-command"))
-	_ = v.BindPFlag("consumer_token", root.PersistentFlags().Lookup("consumer-token"))
-	_ = v.BindPFlag("consumer_token_command", root.PersistentFlags().Lookup("consumer-token-command"))
+	bindConnectionFlags(root, v)
 
 	v.SetEnvPrefix("hush_hush")
 	v.AutomaticEnv()
 
-	if path, err := configFilePath(); err == nil {
+	if path, err := resolvePath(); err == nil {
 		v.SetConfigFile(path)
 		v.SetConfigType("yaml")
 		_ = v.ReadInConfig() // no config file yet is not an error
 	}
 
-	root.AddCommand(newInitCmd(v))
+	root.AddCommand(newInitCmd(v, resolvePath))
 	root.AddCommand(newInjectCmd(v))
 	root.AddCommand(newGetCmd(v))
 	root.AddCommand(newUpdateCmd(v))
@@ -101,6 +126,19 @@ func newRootCmd(version string) (*cobra.Command, *viper.Viper) {
 	root.AddCommand(newManCmd(root))
 
 	return root, v
+}
+
+// bindConnectionFlags binds the persistent connection flags to their config
+// keys, so a flag, an environment variable and a config-file key all name
+// the same setting.
+func bindConnectionFlags(root *cobra.Command, v *viper.Viper) {
+	for _, name := range []string{"server", "token", "caller"} {
+		_ = v.BindPFlag(name, root.PersistentFlags().Lookup(name))
+	}
+
+	_ = v.BindPFlag("token_command", root.PersistentFlags().Lookup("token-command"))
+	_ = v.BindPFlag("consumer_token", root.PersistentFlags().Lookup("consumer-token"))
+	_ = v.BindPFlag("consumer_token_command", root.PersistentFlags().Lookup("consumer-token-command"))
 }
 
 // config resolves the CLI's connection settings, running --token-command/
@@ -156,14 +194,14 @@ func configFilePath() (string, error) {
 // newInitCmd writes a starter config file populated with the same
 // defaults the tool would otherwise fall back to, ready to edit
 // (rules/cli.md).
-func newInitCmd(v *viper.Viper) *cobra.Command {
+func newInitCmd(v *viper.Viper, resolvePath func() (string, error)) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Write a starter config file",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			path, err := configFilePath()
+			path, err := resolvePath()
 			if err != nil {
 				return err
 			}
@@ -229,7 +267,7 @@ func reportWrote(cmd *cobra.Command, path string) error {
 // decision logic lives in cliconfig, where the confirmed-interactively
 // branch is testable: go test's own stdin is never a TTY, so only the
 // term.IsTerminal call below can't be exercised through root.Execute().
-func maybeOfferInit(v *viper.Viper, cmd *cobra.Command) error {
+func maybeOfferInit(v *viper.Viper, resolvePath func() (string, error), cmd *cobra.Command) error {
 	yes, _ := cmd.Flags().GetBool("yes")
 
 	var path string
@@ -238,7 +276,7 @@ func maybeOfferInit(v *viper.Viper, cmd *cobra.Command) error {
 		ResolvePath: func() (string, error) {
 			var err error
 
-			path, err = configFilePath()
+			path, err = resolvePath()
 
 			return path, err
 		},

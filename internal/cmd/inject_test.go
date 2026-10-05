@@ -46,16 +46,14 @@ func TestInjectRunsFromEnvironmentAloneNoFlags(t *testing.T) {
 // through the hush-hush-go SDK's regenerated CreateObjectRequest, rather
 // than internal/cli.Inject directly.
 func TestInjectDescriptionFlagSetsIt(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 
 	identity, err := age.GenerateX25519Identity()
 	require.NoError(t, err)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	root.SetArgs([]string{
 		"inject", "mattermost_deploy_webhook",
 		"--recipients", identity.Recipient().String(),
@@ -118,6 +116,8 @@ func TestInjectFailsFastWithNoRecipientsConfigured(t *testing.T) {
 // just --used-by naming a consumer already registered with a public key
 // (issue #125).
 func TestInjectWithUsedByAndNoRecipientsResolvesTheConsumersRegisteredKey(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 
 	identity, err := age.GenerateX25519Identity()
@@ -128,11 +128,7 @@ func TestInjectWithUsedByAndNoRecipientsResolvesTheConsumersRegisteredKey(t *tes
 	_, err = s.UpdateConsumer(t.Context(), "homelab/vps-docker", nil, &recipient)
 	require.NoError(t, err)
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	root.SetArgs([]string{"inject", "mattermost_deploy_webhook", "--used-by", "homelab/vps-docker"})
 	root.SetIn(bytes.NewReader([]byte("plaintext-value")))
 
@@ -153,15 +149,13 @@ func TestInjectWithUsedByAndNoRecipientsResolvesTheConsumersRegisteredKey(t *tes
 // #125's own acceptance criteria: a --used-by consumer with no registered
 // key must fail clearly, not seal to fewer recipients than requested.
 func TestInjectWithUsedByAndNoRegisteredKeyFailsNamingTheConsumer(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 
 	require.NoError(t, s.AddConsumer(t.Context(), "homelab/vps-docker"))
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	root.SetArgs([]string{"inject", "mattermost_deploy_webhook", "--used-by", "homelab/vps-docker"})
 	root.SetIn(bytes.NewReader([]byte("plaintext-value")))
 

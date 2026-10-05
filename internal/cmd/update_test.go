@@ -94,11 +94,7 @@ func newConsumerWithKey(t *testing.T, s *testserver.Store, name string) *age.X25
 func runUpdate(t *testing.T, srv *httptest.Server, token string, args ...string) error {
 	t.Helper()
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	root.SetArgs(append([]string{"update", "secret"}, args...))
 	root.SetIn(bytes.NewReader([]byte("new-value")))
 
@@ -110,6 +106,8 @@ func runUpdate(t *testing.T, srv *httptest.Server, token string, args ...string)
 }
 
 func TestUpdateUsedByReplacesConsumersAndSealsToTheirKey(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	b := newConsumerWithKey(t, s, "b")
 
@@ -130,6 +128,8 @@ func TestUpdateUsedByReplacesConsumersAndSealsToTheirKey(t *testing.T) {
 }
 
 func TestUpdateWithoutUsedByLeavesConsumersAlone(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	identity, err := age.GenerateX25519Identity()
 	require.NoError(t, err)
@@ -144,6 +144,8 @@ func TestUpdateWithoutUsedByLeavesConsumersAlone(t *testing.T) {
 }
 
 func TestUpdateClearUsedByRemovesEveryConsumer(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	identity, err := age.GenerateX25519Identity()
 	require.NoError(t, err)
@@ -158,6 +160,8 @@ func TestUpdateClearUsedByRemovesEveryConsumer(t *testing.T) {
 }
 
 func TestUpdateUsedByAndClearUsedByCantBeCombined(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	require.NoError(t, s.CreateObject(t.Context(), "secret", []byte("old"), nil, ""))
 
@@ -167,6 +171,8 @@ func TestUpdateUsedByAndClearUsedByCantBeCombined(t *testing.T) {
 }
 
 func TestUpdateUsedByWithNoRegisteredKeyFailsAndLeavesTheObjectAlone(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	require.NoError(t, s.AddConsumer(t.Context(), "b"))
 	require.NoError(t, s.CreateObject(t.Context(), "secret", []byte("old"), []string{"a"}, ""))

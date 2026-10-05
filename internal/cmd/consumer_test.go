@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/alrayyes/hush-hush-cli/internal/client"
-	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,11 +15,7 @@ import (
 func runConsumerCmd(t *testing.T, srv *httptest.Server, token string, args ...string) (string, error) {
 	t.Helper()
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs(append([]string{"consumer"}, args...))
@@ -31,6 +26,8 @@ func runConsumerCmd(t *testing.T, srv *httptest.Server, token string, args ...st
 }
 
 func TestConsumerListTableShowsNameCountAndKey(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	require.NoError(t, s.AddConsumer(t.Context(), "homelab/vps"))
 	_, err := s.UpdateConsumer(t.Context(), "homelab/vps", nil, new("age1abc"))
@@ -45,6 +42,8 @@ func TestConsumerListTableShowsNameCountAndKey(t *testing.T) {
 }
 
 func TestConsumerListJSONAndQuery(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	require.NoError(t, s.AddConsumer(t.Context(), "homelab/vps"))
 	require.NoError(t, s.AddConsumer(t.Context(), "ci/runner"))
@@ -60,6 +59,8 @@ func TestConsumerListJSONAndQuery(t *testing.T) {
 }
 
 func TestConsumerAddThenAddAgainFails(t *testing.T) {
+	t.Parallel()
+
 	srv, _, token := testserver.New(t)
 
 	_, err := runConsumerCmd(t, srv, token, "add", "homelab/new")
@@ -70,6 +71,8 @@ func TestConsumerAddThenAddAgainFails(t *testing.T) {
 }
 
 func TestConsumerUpdateRenamesAndSetsTheKey(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	require.NoError(t, s.AddConsumer(t.Context(), "old"))
 
@@ -83,6 +86,8 @@ func TestConsumerUpdateRenamesAndSetsTheKey(t *testing.T) {
 }
 
 func TestConsumerUpdateNeedsAtLeastOneFlag(t *testing.T) {
+	t.Parallel()
+
 	srv, _, token := testserver.New(t)
 
 	_, err := runConsumerCmd(t, srv, token, "update", "old")
@@ -92,6 +97,8 @@ func TestConsumerUpdateNeedsAtLeastOneFlag(t *testing.T) {
 }
 
 func TestConsumerUpdateUnknownRenameFails(t *testing.T) {
+	t.Parallel()
+
 	srv, _, token := testserver.New(t)
 
 	_, err := runConsumerCmd(t, srv, token, "update", "ghost", "--name", "other")
@@ -100,6 +107,8 @@ func TestConsumerUpdateUnknownRenameFails(t *testing.T) {
 }
 
 func TestConsumerDeleteRemovesIt(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	require.NoError(t, s.AddConsumer(t.Context(), "gone"))
 
@@ -112,6 +121,8 @@ func TestConsumerDeleteRemovesIt(t *testing.T) {
 }
 
 func TestConsumerAddFailsFastWithNoTokenConfigured(t *testing.T) {
+	t.Parallel()
+
 	srv, _, _ := testserver.New(t)
 
 	_, err := runConsumerCmd(t, srv, "", "add", "x")

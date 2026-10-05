@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"filippo.io/age"
-	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,11 +15,7 @@ import (
 func runWrite(t *testing.T, srv *httptest.Server, token string, args ...string) error {
 	t.Helper()
 
-	t.Setenv("HUSH_HUSH_SERVER", srv.URL)
-	t.Setenv("HUSH_HUSH_TOKEN", token)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	root := cmd.NewRootCmd("dev")
+	root := newRoot(t, srv.URL, token)
 	root.SetArgs(args)
 	root.SetIn(bytes.NewReader([]byte("plaintext-value")))
 
@@ -57,6 +52,8 @@ func ownerWithKey(t *testing.T, s *testserver.Store) *age.X25519Identity {
 }
 
 func TestInjectKeepReadableCopySealsToConsumerAndOwner(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	owner := ownerWithKey(t, s)
 	consumer := newConsumerWithKey(t, s, "c")
@@ -70,6 +67,8 @@ func TestInjectKeepReadableCopySealsToConsumerAndOwner(t *testing.T) {
 }
 
 func TestInjectWithoutKeepReadableCopyNeverAddsTheOwner(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	owner := ownerWithKey(t, s)
 	newConsumerWithKey(t, s, "c")
@@ -82,6 +81,8 @@ func TestInjectWithoutKeepReadableCopyNeverAddsTheOwner(t *testing.T) {
 }
 
 func TestUpdateKeepReadableCopySealsToOwnerToo(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	owner := ownerWithKey(t, s)
 	recipient, err := age.GenerateX25519Identity()
@@ -98,6 +99,8 @@ func TestUpdateKeepReadableCopySealsToOwnerToo(t *testing.T) {
 }
 
 func TestKeepReadableCopyWithNoOwnerKeyFailsBeforeWriting(t *testing.T) {
+	t.Parallel()
+
 	srv, s, token := testserver.New(t)
 	newConsumerWithKey(t, s, "c")
 
