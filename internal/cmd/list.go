@@ -1,14 +1,10 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"strings"
-	"text/tabwriter"
-	"time"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
-	"github.com/alrayyes/hush-hush-cli/internal/client"
+	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
 )
 
@@ -38,10 +34,10 @@ func newListCmd() *cobra.Command {
 			}
 
 			if asJSON {
-				return writeListJSON(cmd, objects)
+				return render.ObjectsJSON(cmd.OutOrStdout(), objects)
 			}
 
-			return writeListTable(cmd, objects)
+			return render.ObjectsTable(cmd.OutOrStdout(), objects)
 		},
 	}
 
@@ -50,45 +46,4 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the raw JSON array instead of a table")
 
 	return cmd
-}
-
-func writeListJSON(cmd *cobra.Command, objects []client.ObjectMetadata) error {
-	if objects == nil {
-		objects = []client.ObjectMetadata{}
-	}
-
-	if err := json.NewEncoder(cmd.OutOrStdout()).Encode(objects); err != nil {
-		return fmt.Errorf("write list as json: %w", err)
-	}
-
-	return nil
-}
-
-func writeListTable(cmd *cobra.Command, objects []client.ObjectMetadata) error {
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-
-	if _, err := fmt.Fprintln(w, "ID\tUSED BY\tTAGS\tCREATED\tUPDATED\tDESCRIPTION"); err != nil {
-		return fmt.Errorf("write list header: %w", err)
-	}
-
-	for _, obj := range objects {
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", obj.Slug, strings.Join(obj.UsedBy, ","), strings.Join(obj.Tags, ","), formatTime(obj.CreatedAt), formatTime(obj.UpdatedAt), obj.Description); err != nil {
-			return fmt.Errorf("write list row: %w", err)
-		}
-	}
-
-	if err := w.Flush(); err != nil {
-		return fmt.Errorf("flush list table: %w", err)
-	}
-
-	return nil
-}
-
-// formatTime renders t in local time, or "-" when the server sent none.
-func formatTime(t *time.Time) string {
-	if t == nil {
-		return "-"
-	}
-
-	return t.Local().Format(time.DateTime)
 }

@@ -1,14 +1,12 @@
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"text/tabwriter"
 	"time"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
-	"github.com/alrayyes/hush-hush-cli/internal/client"
+	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
 )
 
@@ -62,7 +60,7 @@ func newTokenCreateCmd() *cobra.Command {
 				return fmt.Errorf("token create: %w", err)
 			}
 
-			return writeConsumerTokenWithValue(cmd, token, asJSON)
+			return render.ConsumerTokenWithValue(cmd.OutOrStdout(), token, asJSON)
 		},
 	}
 
@@ -92,10 +90,10 @@ func newTokenListCmd() *cobra.Command {
 			}
 
 			if asJSON {
-				return writeConsumerTokensJSON(cmd, tokens)
+				return render.ConsumerTokensJSON(cmd.OutOrStdout(), tokens)
 			}
 
-			return writeConsumerTokensTable(cmd, tokens)
+			return render.ConsumerTokensTable(cmd.OutOrStdout(), tokens)
 		},
 	}
 
@@ -130,7 +128,7 @@ func newTokenRotateCmd() *cobra.Command {
 				return fmt.Errorf("token rotate: %w", err)
 			}
 
-			return writeConsumerTokenWithValue(cmd, token, asJSON)
+			return render.ConsumerTokenWithValue(cmd.OutOrStdout(), token, asJSON)
 		},
 	}
 
@@ -191,64 +189,4 @@ func parseTTL(ttl string) (time.Duration, error) {
 	}
 
 	return d, nil
-}
-
-func writeConsumerTokenWithValue(cmd *cobra.Command, token client.ConsumerTokenWithValue, asJSON bool) error {
-	if asJSON {
-		if err := json.NewEncoder(cmd.OutOrStdout()).Encode(token); err != nil {
-			return fmt.Errorf("write consumer token as json: %w", err)
-		}
-
-		return nil
-	}
-
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-
-	if _, err := fmt.Fprintln(w, "ID\tCONSUMER\tDESCRIPTION\tEXPIRES\tTOKEN"); err != nil {
-		return fmt.Errorf("write consumer token header: %w", err)
-	}
-
-	if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-		token.ID, token.Consumer, token.Description, token.ExpiresAt.Local().Format(time.DateTime), token.Value); err != nil {
-		return fmt.Errorf("write consumer token row: %w", err)
-	}
-
-	if err := w.Flush(); err != nil {
-		return fmt.Errorf("flush consumer token table: %w", err)
-	}
-
-	return nil
-}
-
-func writeConsumerTokensJSON(cmd *cobra.Command, tokens []client.ConsumerToken) error {
-	if tokens == nil {
-		tokens = []client.ConsumerToken{}
-	}
-
-	if err := json.NewEncoder(cmd.OutOrStdout()).Encode(tokens); err != nil {
-		return fmt.Errorf("write consumer tokens as json: %w", err)
-	}
-
-	return nil
-}
-
-func writeConsumerTokensTable(cmd *cobra.Command, tokens []client.ConsumerToken) error {
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-
-	if _, err := fmt.Fprintln(w, "ID\tCONSUMER\tDESCRIPTION\tEXPIRES\tSTATUS"); err != nil {
-		return fmt.Errorf("write token list header: %w", err)
-	}
-
-	for _, t := range tokens {
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-			t.ID, t.Consumer, t.Description, t.ExpiresAt.Local().Format(time.DateTime), t.Status); err != nil {
-			return fmt.Errorf("write token list row: %w", err)
-		}
-	}
-
-	if err := w.Flush(); err != nil {
-		return fmt.Errorf("flush token list table: %w", err)
-	}
-
-	return nil
 }

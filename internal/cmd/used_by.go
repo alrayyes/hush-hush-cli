@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
+	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
 )
 
@@ -30,36 +30,14 @@ func newUsedByCmd() *cobra.Command {
 			}
 
 			if asJSON {
-				return writeUsedByJSON(cmd, usedBy)
+				return render.UsedByJSON(cmd.OutOrStdout(), usedBy)
 			}
 
-			return writeUsedByLines(cmd, usedBy)
+			return render.UsedByLines(cmd.OutOrStdout(), usedBy)
 		},
 	}
 
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the raw JSON array instead of one consumer per line")
 
 	return cmd
-}
-
-func writeUsedByJSON(cmd *cobra.Command, usedBy []string) error {
-	if usedBy == nil {
-		usedBy = []string{}
-	}
-
-	if err := json.NewEncoder(cmd.OutOrStdout()).Encode(usedBy); err != nil {
-		return fmt.Errorf("write used-by as json: %w", err)
-	}
-
-	return nil
-}
-
-func writeUsedByLines(cmd *cobra.Command, usedBy []string) error {
-	for _, consumer := range usedBy {
-		if _, err := fmt.Fprintln(cmd.OutOrStdout(), consumer); err != nil {
-			return fmt.Errorf("write used-by line: %w", err)
-		}
-	}
-
-	return nil
 }
