@@ -7,8 +7,12 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 )
@@ -16,9 +20,33 @@ import (
 // version is stamped in at build time by goreleaser, from the tag.
 var version = "dev"
 
+// exitInterrupted is the shell convention (128 + SIGINT) for a run ended
+// by Ctrl-C.
+const exitInterrupted = 130
+
 func main() {
-	if err := cmd.NewRootCmd(version).Execute(); err != nil {
+	os.Exit(run())
+}
+
+// run is main without the os.Exit, so the signal handler's stop runs.
+// Ctrl-C (or SIGTERM) cancels the context every command's requests carry,
+// so a slow or hung server can be given up on at once.
+func run() int {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	err := cmd.NewRootCmd(version).ExecuteContext(ctx)
+
+	switch {
+	case err == nil:
+		return 0
+	case errors.Is(err, context.Canceled) && ctx.Err() != nil:
+		fmt.Fprintln(os.Stderr, "interrupted")
+
+		return exitInterrupted
+	default:
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+
+		return 1
 	}
 }

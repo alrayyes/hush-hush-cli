@@ -2,7 +2,9 @@ package cmd_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -244,4 +246,40 @@ func TestListWithoutTagStillListsEverything(t *testing.T) {
 	seedTaggedObjects(t, s)
 
 	assert.Equal(t, []string{"a", "b", "c"}, listSlugs(t, srv, token))
+}
+
+// TestListStopsWhenItsContextIsCancelled is what Ctrl-C relies on: main
+// hands Execute a context that a signal cancels, and a request to a server
+// that never answers must give up as soon as it is.
+func TestListStopsWhenItsContextIsCancelled(t *testing.T) {
+	release := make(chan struct{})
+	hanging := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		<-release
+	}))
+
+	// Registered after the server's own cleanup so it runs first: Close
+	// blocks until every in-flight handler has returned.
+	t.Cleanup(hanging.Close)
+	t.Cleanup(func() { close(release) })
+
+	t.Setenv("HUSH_HUSH_SERVER", hanging.URL)
+	t.Setenv("HUSH_HUSH_TOKEN", "token")
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	ctx, cancel := context.WithCancel(t.Context())
+	time.AfterFunc(100*time.Millisecond, cancel)
+
+	root := cmd.NewRootCmd("dev")
+	root.SetArgs([]string{"list"})
+
+	done := make(chan error, 1)
+
+	go func() { done <- root.ExecuteContext(ctx) }()
+
+	select {
+	case err := <-done:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(5 * time.Second):
+		t.Fatal("list kept waiting on a hanging server after its context was cancelled")
+	}
 }
