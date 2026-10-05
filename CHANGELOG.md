@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.19.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.18.1...v1.19.0) (2026-10-05)
+
+
+### Features
+
+* cancel in-flight requests on Ctrl-C ([#219](https://github.com/alrayyes/hush-hush-cli/issues/219)) ([bdff767](https://github.com/alrayyes/hush-hush-cli/commit/bdff7676cde6de3c75ef04a59dc00274de84e6f2))
+
+
+### Bug Fixes
+
+* **nix:** update flake.lock ([#223](https://github.com/alrayyes/hush-hush-cli/issues/223)) ([e6f323f](https://github.com/alrayyes/hush-hush-cli/commit/e6f323f89b8f1c1036909b4f280ed4255c976a49))
+
 ## [1.18.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.18.0...v1.18.1) (2026-10-03)
 
 
