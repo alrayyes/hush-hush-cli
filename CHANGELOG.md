@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.19.2](https://github.com/alrayyes/hush-hush-cli/compare/v1.19.1...v1.19.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* **deps:** override katex and smol-toml to patched versions ([4de5e79](https://github.com/alrayyes/hush-hush-cli/commit/4de5e798678a50463fd83e4b70ed53be9872ef8b))
+* **deps:** override katex and smol-toml to patched versions ([07ce5ae](https://github.com/alrayyes/hush-hush-cli/commit/07ce5ae91dd708c916b76163d77a32cfff8790b6)), closes [#233](https://github.com/alrayyes/hush-hush-cli/issues/233)
+
 ## [1.19.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.19.0...v1.19.1) (2026-10-05)
 
 
