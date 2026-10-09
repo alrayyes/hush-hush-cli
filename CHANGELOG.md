@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.3](https://github.com/alrayyes/hush-hush-cli/compare/v1.19.2...v1.19.3) (2026-10-09)
+
+
+### Bug Fixes
+
+* **nix:** update vendorHash for the gocover-cobertura tool ([8760235](https://github.com/alrayyes/hush-hush-cli/commit/8760235102ca16ddf04dd36555c643abbc7abce8))
+
 ## [1.19.2](https://github.com/alrayyes/hush-hush-cli/compare/v1.19.1...v1.19.2) (2026-10-06)
 
 
