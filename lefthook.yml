@@ -59,57 +59,29 @@ pre-commit:
 
     - name: markdownlint
       glob: "*.md"
-      run: bunx markdownlint-cli2 {staged_files}
+      run: bunx markdownlint-cli2 --no-globs {staged_files}
 
     - name: vale
       glob: "*.md"
-      run: ./scripts/lint-vale.sh
-
-    # `go run` resolves and builds actionlint through the host go toolchain
-    # same as any other Go hook command - the same drift risk as gofmt/
-    # golangci-lint, so it gets the same treatment.
-    - name: actionlint
-      glob: ".github/workflows/*.{yml,yaml}"
-      run: >-
-        docker run --rm --user "$(id -u):$(id -g)"
-        -v "$(pwd):/src" -w /src
-        -e GOCACHE=/gocache -v "$HOME/.cache/go-build-docker:/gocache"
-        -e GOMODCACHE=/gomod -v "$HOME/.cache/go-mod-docker:/gomod"
-        golang:1.27.0-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452
-        go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+      run: ./scripts/lint-vale.sh {staged_files}
 
     # Pinned by digest rather than `latest`, like any other container image
     # (rules/dependencies.md applies to an image named in a hook command
-    # just as much as one named in the Dockerfile itself). Both Dockerfiles
-    # get hadolint (rules/containers.md: "every Dockerfile, no exceptions") -
-    # passed as file arguments rather than stdin so one invocation covers
-    # both.
+    # just as much as one named in the Dockerfile itself). Each staged
+    # Dockerfile is read from the index (`git show :file`), so an unstaged
+    # edit to it can't fail or pass this commit. The whole-tree run, over
+    # both Dockerfiles, is pre-push's hadolint job.
     - name: hadolint
       glob:
         - "Dockerfile"
         - "Dockerfile.release"
       run: >-
-        docker run --rm
+        for f in {staged_files}; do
+        git show ":$f" | docker run --rm -i
         -v "$(pwd)/.hadolint.yaml:/.hadolint.yaml"
-        -v "$(pwd)/Dockerfile:/Dockerfile"
-        -v "$(pwd)/Dockerfile.release:/Dockerfile.release"
         hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d
-        hadolint Dockerfile Dockerfile.release
-
-    # hadolint reads the Dockerfile as text and never proves it actually
-    # builds (rules/containers.md). Dockerfile.release gets that proof from
-    # `container-integration`/goreleaser's own dockers: block elsewhere;
-    # this is only for the from-source Dockerfile, glob-scoped to itself
-    # plus what its own COPY instructions pull in so an unrelated commit
-    # doesn't pay for a docker build. Tagged so the check cleans up after
-    # itself rather than leaving an untagged image behind on every commit.
-    - name: docker build
-      glob:
-        - "Dockerfile"
-        - "*.go"
-        - "go.mod"
-        - "go.sum"
-      run: docker build -t hush-hush-cli:pre-commit-check -f Dockerfile .
+        hadolint - || exit 1;
+        done
 
 commit-msg:
   jobs:
@@ -303,6 +275,21 @@ pre-push:
         -v "$(pwd)/Dockerfile.release:/Dockerfile.release"
         hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d
         hadolint Dockerfile Dockerfile.release
+
+    # Moved here from pre-commit: `go run` fetches actionlint over the
+    # network and the check reads every workflow, neither of which belongs
+    # in a hook that judges only the commit. CI's actionlint job runs the
+    # same command.
+    - name: actionlint
+      glob:
+        - ".github/workflows/*.{yml,yaml}"
+      run: >-
+        docker run --rm --user "$(id -u):$(id -g)"
+        -v "$(pwd):/src" -w /src
+        -e GOCACHE=/gocache -v "$HOME/.cache/go-build-docker:/gocache"
+        -e GOMODCACHE=/gomod -v "$HOME/.cache/go-mod-docker:/gomod"
+        golang:1.27.0-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452
+        go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
 
     # Same files as CI's docker-build job (scripts/changed-paths.sh).
     - name: docker build

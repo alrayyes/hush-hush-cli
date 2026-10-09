@@ -65,6 +65,14 @@ and in `lefthook.yml` for the hook; a new job needs a group in the first,
 a case in `scripts/changed-paths.test.sh` and a matching glob in the
 second. `commits`, `secrets` and `check` always run.
 
+The `pre-commit` hook judges only what the commit contains. Every job gets the
+staged file list (or reads the staged Dockerfile from the index), so a
+half-finished file elsewhere in the tree can't fail, rewrite, or join your
+commit. Checks that need the whole tree, a build or the network (`actionlint`,
+`docker build`, the whole-set `vale` run) live in `pre-push` and CI.
+`./scripts/lint-vale.sh` takes optional file arguments: with them, it lints only
+those; with none, it syncs the styles and lints the whole set.
+
 ## Where this came from
 
 `hush-hush-cli` split out of [`hush-hush`](https://github.com/alrayyes/hush-hush),
