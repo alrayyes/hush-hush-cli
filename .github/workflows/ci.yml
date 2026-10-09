@@ -114,6 +114,16 @@ jobs:
         run: |
           go tool cover -func=coverage.out | tail -1 |
             awk '{ print "**Coverage: " $3 "**" }' >> "$GITHUB_STEP_SUMMARY"
+      # Assembled on pull requests too, so a broken conversion fails here
+      # instead of after the merge (rules/published-reports.md).
+      - name: Assemble the reports
+        run: sh scripts/assemble-reports.sh site/reports
+      - name: Upload the reports
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reports
+          path: site/reports
+          if-no-files-found: error
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
@@ -132,6 +142,44 @@ jobs:
           report_type: test_results
           files: junit.xml
           fail_ci_if_error: false
+
+  # Publishes the test job's reports to apis.ryankes.eu/hush-hush-cli/reports/.
+  # Main only, and only after a green test run: the reports always describe a
+  # commit that passed. A repo has one Pages deployment, so this is the
+  # only job that deploys.
+  pages:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: reports
+          path: site/reports
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      # The deploy succeeds whether or not the URL serves, so fetch the
+      # real file and check what's in it.
+      - name: Check the live URL
+        env:
+          PAGE_URL: ${{ steps.deploy.outputs.page_url }}
+        run: |
+          curl --fail --silent --show-error --location --retry 6 --retry-delay 10 \
+            --retry-all-errors --output coverage.xml \
+            "${PAGE_URL%/}/reports/coverage/coverage.xml"
+          grep -q '<coverage ' coverage.xml
 
   build:
     needs: changes

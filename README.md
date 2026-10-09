@@ -18,6 +18,14 @@ an object.
   plaintext value outside a single `inject`/`get` call.
 - A running `hush-hush` server to talk to.
 
+## Reports
+
+Test and coverage reports from the latest green `main` build:
+
+- [Test results (JUnit XML)](https://apis.ryankes.eu/hush-hush-cli/reports/tests/junit.xml)
+- [Coverage (HTML)](https://apis.ryankes.eu/hush-hush-cli/reports/coverage/)
+- [Coverage (`Cobertura` XML)](https://apis.ryankes.eu/hush-hush-cli/reports/coverage/coverage.xml)
+
 ## Installation
 
 See [INSTALL.md](INSTALL.md) - AUR, `.deb`/`.rpm`, Docker, Nix,
