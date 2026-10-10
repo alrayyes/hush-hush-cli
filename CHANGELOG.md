@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.19.3...v1.20.0) (2026-10-10)
+
+
+### Features
+
+* **health:** add a health command for the server's liveness endpoint ([#247](https://github.com/alrayyes/hush-hush-cli/issues/247)) ([c48d8cd](https://github.com/alrayyes/hush-hush-cli/commit/c48d8cd1afd9dcf9345c48538c0fc036accb459f))
+
 ## [1.19.3](https://github.com/alrayyes/hush-hush-cli/compare/v1.19.2...v1.19.3) (2026-10-09)
 
 
