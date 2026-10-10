@@ -79,6 +79,7 @@ type Store struct {
 	auditLog     []AuditLogEntry
 	auditSeq     int64
 	bootstrapped bool
+	environment  string
 	// consumers holds the consumer directory: name -> registered age public
 	// key, nil if none registered. Presence as a key is what makes a name
 	// a directory entry, whether it got there via AddConsumer or via
@@ -181,6 +182,15 @@ func newStore() *Store {
 		consumerTokens:      make(map[string]*consumerToken),
 		consumerTokenValues: make(map[string]string),
 	}
+}
+
+// SetEnvironment sets the label GET /healthz reports as "environment"; the
+// default is none, and the field is then omitted, as on the real server.
+func (s *Store) SetEnvironment(label string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.environment = label
 }
 
 // SetBootstrapped overrides the value GET /auth/status reports.
@@ -971,6 +981,7 @@ func newMux(s *Store) *http.ServeMux {
 	mux.HandleFunc("DELETE /objects/{id}", requireWriteToken(s, handleDeleteObject(s)))
 	mux.HandleFunc("GET /objects/{id}/used-by", handleGetObjectUsedBy(s))
 	mux.HandleFunc("GET /audit-log", handleQueryAuditLog(s))
+	mux.HandleFunc("GET /healthz", handleHealth(s))
 	mux.HandleFunc("GET /auth/status", handleAuthStatus(s))
 	mux.HandleFunc("GET /auth/identity", requireWriteToken(s, handleAuthIdentity(s)))
 	mux.HandleFunc("GET /consumers", requireWriteToken(s, handleListConsumers(s)))
@@ -1021,6 +1032,23 @@ func handleAuthIdentity(s *Store) http.HandlerFunc {
 
 // handleAuthStatus is unauthenticated, matching hush-hush-go's own
 // AuthStatus doc comment ("no credential is required to call it").
+// handleHealth matches hush-hush's GET /healthz: unauthenticated, always
+// {"status":"ok"}, plus the operator's INSTANCE_LABEL when one is set.
+func handleHealth(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		s.mu.Lock()
+		env := s.environment
+		s.mu.Unlock()
+
+		body := map[string]string{"status": "ok"}
+		if env != "" {
+			body["environment"] = env
+		}
+
+		writeJSON(w, http.StatusOK, body)
+	}
+}
+
 func handleAuthStatus(s *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, s.AuthStatus(r.Context()))

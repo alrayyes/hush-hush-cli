@@ -66,6 +66,8 @@ archives:
         dst: man1/hush-hush-cli-delete.1
       - src: manpages/hush-hush-cli-get.1
         dst: man1/hush-hush-cli-get.1
+      - src: manpages/hush-hush-cli-health.1
+        dst: man1/hush-hush-cli-health.1
       - src: manpages/hush-hush-cli-init.1
         dst: man1/hush-hush-cli-init.1
       - src: manpages/hush-hush-cli-inject.1
@@ -125,6 +127,8 @@ nfpms:
         dst: /usr/share/man/man1/hush-hush-cli-delete.1
       - src: manpages/hush-hush-cli-get.1
         dst: /usr/share/man/man1/hush-hush-cli-get.1
+      - src: manpages/hush-hush-cli-health.1
+        dst: /usr/share/man/man1/hush-hush-cli-health.1
       - src: manpages/hush-hush-cli-init.1
         dst: /usr/share/man/man1/hush-hush-cli-init.1
       - src: manpages/hush-hush-cli-inject.1

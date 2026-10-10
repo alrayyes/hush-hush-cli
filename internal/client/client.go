@@ -373,3 +373,20 @@ func mapError(err error) error {
 		return fmt.Errorf("%w %d", ErrUnexpectedStatus, apiErr.StatusCode)
 	}
 }
+
+// Health is the server's liveness answer. Matches hushhush.Health.
+type Health struct {
+	Status      string  `json:"status"`
+	Environment *string `json:"environment,omitempty"`
+}
+
+// Health asks whether the target server is up - unauthenticated, like
+// AuthStatus.
+func (c *Client) Health(ctx context.Context) (Health, error) {
+	health, err := c.sdk.Health(ctx)
+	if err != nil {
+		return Health{}, mapError(err)
+	}
+
+	return Health{Status: health.Status, Environment: health.Environment}, nil
+}
