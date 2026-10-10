@@ -122,6 +122,7 @@ func newRootCmd(version string, opts ...Option) (*cobra.Command, *viper.Viper) {
 	root.AddCommand(newTokenCmd(v))
 	root.AddCommand(newConsumerCmd(v))
 	root.AddCommand(newStatusCmd(v))
+	root.AddCommand(newHealthCmd(v))
 	root.AddCommand(newConfigCmd())
 	root.AddCommand(newManCmd(root))
 

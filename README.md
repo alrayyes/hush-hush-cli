@@ -163,6 +163,15 @@ hush-hush-cli status
 hush-hush-cli status --json | jq .bootstrapped
 ```
 
+Check whether the target server is up, from its unauthenticated `/healthz`
+endpoint. A server that is down is an error and a non-zero exit, so a deploy
+script can wait on it. A server that sets an instance label also prints it:
+
+```sh
+hush-hush-cli health
+hush-hush-cli health --json | jq .status
+```
+
 Mint a consumer read token, scoped to one consumer, for `get`'s
 `--consumer-token`/`HUSH_HUSH_CONSUMER_TOKEN` - a write token is required,
 the same as `inject`/`update`/`delete`, since issuing a credential that
