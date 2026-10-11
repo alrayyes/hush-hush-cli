@@ -404,7 +404,13 @@ func mapError(err error) error {
 			return ErrSeveralVariants
 		}
 
-		return ErrAlreadyExists
+		// The sentinel stays matchable, but a conflict the server explains
+		// shows its own reason rather than reading as a duplicate.
+		if apiErr.Message == "" || strings.EqualFold(apiErr.Message, ErrAlreadyExists.Error()) {
+			return ErrAlreadyExists
+		}
+
+		return fmt.Errorf("%w: %s", ErrAlreadyExists, apiErr.Message)
 	default:
 		if apiErr.Message != "" {
 			return fmt.Errorf("%w %d: %s", ErrUnexpectedStatus, apiErr.StatusCode, apiErr.Message)
