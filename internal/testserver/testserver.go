@@ -26,6 +26,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // ErrNotFound is returned by Store.GetObject, Store.UpdateObject, and
@@ -581,7 +583,7 @@ func (s *Store) ListObjectsFiltered(_ context.Context, usedByFilter string, tags
 		created, updated := obj.CreatedAt, obj.UpdatedAt
 
 		result = append(result, ObjectMetadata{
-			Slug: id, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags),
+			ID: objectID(id), Slug: id, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags),
 			CreatedAt: &created, CreatedBy: actor, UpdatedAt: &updated, UpdatedBy: actor,
 		})
 	}
@@ -891,6 +893,7 @@ type AuthStatus struct {
 // not id: the server's own internal id is a separate, opaque value never
 // exposed over this API (alrayyes/Hush-Hush#404).
 type ObjectMetadata struct {
+	ID          string   `json:"id"`
 	Slug        string   `json:"slug"`
 	UsedBy      []string `json:"used_by,omitempty"`
 	Description string   `json:"description,omitempty"`
@@ -1098,7 +1101,7 @@ func handleCreateObject(s *Store) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, ObjectMetadata{Slug: req.Slug, UsedBy: req.UsedBy, Description: req.Description, Tags: tagsOrEmpty(tags)})
+		writeJSON(w, http.StatusCreated, ObjectMetadata{ID: objectID(req.Slug), Slug: req.Slug, UsedBy: req.UsedBy, Description: req.Description, Tags: tagsOrEmpty(tags)})
 	}
 }
 
@@ -1213,7 +1216,7 @@ func handleUpdateObject(s *Store) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, ObjectMetadata{Slug: id, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags)})
+		writeJSON(w, http.StatusOK, ObjectMetadata{ID: objectID(id), Slug: id, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags)})
 	}
 }
 
@@ -1563,4 +1566,10 @@ func paged[T any](w http.ResponseWriter, r *http.Request, items []T) []T {
 	end := min(start+limit, len(items))
 
 	return items[start:end]
+}
+
+// objectID derives a stable UUID from a slug. The fake keeps one variant per
+// name, so the slug alone identifies it; the real server's id is random.
+func objectID(slug string) string {
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(slug)).String()
 }

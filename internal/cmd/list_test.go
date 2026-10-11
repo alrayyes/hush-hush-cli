@@ -14,6 +14,7 @@ import (
 
 	"github.com/alrayyes/hush-hush-cli/internal/cmd"
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -80,6 +81,7 @@ func TestListJSONFlagPrintsRawArray(t *testing.T) {
 	require.NoError(t, root.Execute())
 
 	var got []struct {
+		ID          string   `json:"id"`
 		Slug        string   `json:"slug"`
 		UsedBy      []string `json:"used_by"`
 		Description string   `json:"description"`
@@ -87,6 +89,8 @@ func TestListJSONFlagPrintsRawArray(t *testing.T) {
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	require.Len(t, got, 1)
 	assert.Equal(t, "mattermost_deploy_webhook", got[0].Slug)
+	_, err := uuid.Parse(got[0].ID)
+	require.NoError(t, err, "each entry carries the variant's UUID id")
 	assert.Equal(t, []string{"homelab/vps-docker"}, got[0].UsedBy)
 	assert.Equal(t, "deploy hook", got[0].Description)
 }

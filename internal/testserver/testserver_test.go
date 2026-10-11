@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/alrayyes/hush-hush-cli/internal/testserver"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,8 +66,10 @@ func TestListObjectsIncludesCreatedAndUpdatedMetadata(t *testing.T) {
 	}
 }
 
-// withoutAuditFields strips the created/updated metadata GET /objects adds,
-// so a test can compare the rest of the response exactly.
+// withoutAuditFields strips the id and the created/updated metadata
+// GET /objects adds, so a test can compare the rest of the response exactly.
+// It checks the id is a UUID first, since that's the one thing the stripped
+// value must always be.
 func withoutAuditFields(t *testing.T, body string) string {
 	t.Helper()
 
@@ -74,6 +77,11 @@ func withoutAuditFields(t *testing.T, body string) string {
 	require.NoError(t, json.Unmarshal([]byte(body), &objects))
 
 	for _, obj := range objects {
+		id, _ := obj["id"].(string)
+		_, err := uuid.Parse(id)
+		require.NoError(t, err, "every listed object carries its UUID id")
+		delete(obj, "id")
+
 		for _, key := range []string{"created_at", "updated_at", "created_by", "updated_by"} {
 			delete(obj, key)
 		}

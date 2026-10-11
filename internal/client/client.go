@@ -41,7 +41,10 @@ var ErrConsumerNoPublicKey = errors.New("consumer has no registered public key")
 // exist for List's --json output, the first place this type is ever
 // marshaled. Slug, not ID: the server's own internal id is a separate,
 // opaque value this API never exposes (alrayyes/Hush-Hush#404).
+// ID is the variant's UUID: several objects can share a slug, and this is
+// what tells them apart.
 type ObjectMetadata struct {
+	ID          string   `json:"id"`
 	Slug        string   `json:"slug"`
 	UsedBy      []string `json:"used_by,omitempty"`
 	Description string   `json:"description,omitempty"`
@@ -321,7 +324,7 @@ func toAuditLogEntry(e hushhush.AuditLogEntry) AuditLogEntry {
 }
 
 func toObjectMetadata(m *hushhush.ObjectMetadata) ObjectMetadata {
-	meta := ObjectMetadata{Slug: m.Slug, Tags: m.Tags}
+	meta := ObjectMetadata{ID: m.Id.String(), Slug: m.Slug, Tags: m.Tags}
 	if meta.Tags == nil {
 		meta.Tags = []string{}
 	}
