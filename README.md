@@ -109,6 +109,17 @@ hush-hush-cli used-by mattermost_deploy_webhook
 hush-hush-cli used-by mattermost_deploy_webhook --json
 ```
 
+A name can hold a different value per consumer. Each of those variants has
+its own `id`, shown by `list --json`, and a name with several is refused
+until you say which: `get`, `update`, `delete` and `used-by` all take
+`--id <uuid>` for it. A UUID that isn't one of the name's variants is
+"not found":
+
+```sh
+hush-hush-cli list --json | jq '.[] | select(.slug == "RELEASE_TOKEN") | .id'
+hush-hush-cli update RELEASE_TOKEN --id 2f0c1c8e-5b1e-4a52-9a53-3d5f0d6a7b11
+```
+
 Rotate the value, then remove the object once nothing needs it any more:
 
 ```sh
@@ -254,6 +265,7 @@ way to fix it.
 | `--used-by`                | -                                  | -                        | Consumers of the secret (repeatable or comma-separated), `inject` only. With no `--recipients`, each consumer's registered public key is resolved instead. |
 | `--json`                   | -                                  | -                        | Print the raw JSON array instead of a table, `list` only.                                                                                                  |
 | `--description`            | -                                  | -                        | Free-text label, fixed at creation, `inject` only.                                                                                                         |
+| `--id`                     | -                                  | -                        | UUID of one variant of a name that has several, `get`/`update`/`delete`/`used-by`. From `list --json`.                                                     |
 
 ## Contributing
 

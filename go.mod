@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	filippo.io/age v1.3.2
 	github.com/adrg/xdg v0.5.3
-	github.com/alrayyes/hush-hush-go/v4 v4.4.0
+	github.com/alrayyes/hush-hush-go/v4 v4.5.0
 	github.com/google/uuid v1.6.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
@@ -22,7 +22,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/bitfield/gotestdox v0.2.2 // indirect
-	github.com/boumenot/gocover-cobertura v1.4.0 // indirect
+	github.com/boumenot/gocover-cobertura v1.5.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect

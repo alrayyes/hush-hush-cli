@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/alrayyes/hush-hush-cli/internal/client"
 	"github.com/alrayyes/hush-hush-cli/internal/seal"
 )
 
@@ -43,7 +44,7 @@ func Update(ctx context.Context, cfg Config, id string, value []byte, recipients
 		return fmt.Errorf("seal value: %w", err)
 	}
 
-	if _, err := cl.Update(ctx, id, sealed, w.tags, w.usedBy, w.keepReadableCopy); err != nil {
+	if _, err := cl.Update(ctx, id, sealed, w.tags, w.usedBy, w.keepReadableCopy, client.WithVariant(w.variantID)); err != nil {
 		return fmt.Errorf("update object: %w", err)
 	}
 
