@@ -7,7 +7,6 @@ import (
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/alrayyes/hush-hush-cli/internal/cliconfig"
-	"github.com/alrayyes/hush-hush-cli/internal/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -20,13 +19,17 @@ var errNoIdentity = errors.New("no identity configured (--identity, HUSH_HUSH_ID
 // assembled file, no consumer-side file-shape logic (the cli spec's
 // "get returns exactly one decrypted value to stdout per call").
 func newGetCmd(v *viper.Viper) *cobra.Command {
-	var variantID string
+	var variant variantFlags
 
 	cmd := &cobra.Command{
 		Use:   "get <id>",
 		Short: "Fetch and decrypt one value to stdout",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := variant.validate(); err != nil {
+				return err
+			}
+
 			identities, err := cliconfig.ResolveSecret(v.GetString("identity"), v.GetString("identity_command"))
 			if err != nil {
 				return fmt.Errorf("identity_command: %w", err)
@@ -41,7 +44,7 @@ func newGetCmd(v *viper.Viper) *cobra.Command {
 				return err
 			}
 
-			plaintext, err := cli.Get(cmd.Context(), cfg, args[0], strings.Split(identities, ","), client.WithVariant(variantID))
+			plaintext, err := cli.Get(cmd.Context(), cfg, args[0], strings.Split(identities, ","), variant.callOptions()...)
 			if err != nil {
 				return fmt.Errorf("get: %w", err)
 			}
@@ -55,7 +58,7 @@ func newGetCmd(v *viper.Viper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&variantID, "id", "", variantIDUsage)
+	variant.register(cmd)
 	cmd.Flags().String("identity", "", "comma-separated age private keys")
 	cmd.Flags().String("identity-command", "", "command whose trimmed stdout is the identity instead (wins over --identity if both are set)")
 	_ = v.BindPFlag("identity", cmd.Flags().Lookup("identity"))

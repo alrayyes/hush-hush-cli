@@ -20,6 +20,10 @@ func newUpdateCmd(v *viper.Viper) *cobra.Command {
 		Short: "Seal a new value (read from stdin) and replace an object's stored value",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := f.variant.validate(); err != nil {
+				return err
+			}
+
 			// See newInjectCmd: rebound here, not at construction, since
 			// inject and update share the --recipients/HUSH_HUSH_RECIPIENTS
 			// name and only one command's flag object can hold the viper
@@ -45,7 +49,7 @@ func newUpdateCmd(v *viper.Viper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&f.variantID, "id", "", variantIDUsage)
+	f.variant.register(cmd)
 	cmd.Flags().String("recipients", "", "comma-separated age recipient public keys")
 	cmd.Flags().StringSliceVar(&f.tags, "tag", nil, tagFlagUsage+"; replaces the object's tags")
 	cmd.Flags().BoolVar(&f.clearTags, "clear-tags", false, "remove every tag from the object")
@@ -63,7 +67,7 @@ type updateFlags struct {
 	usedBy      []string
 	clearUsedBy bool
 	keepCopy    bool
-	variantID   string
+	variant     variantFlags
 }
 
 // recipients validates the flag combination and returns the explicit
@@ -113,8 +117,12 @@ func (f updateFlags) options(cmd *cobra.Command) []cli.WriteOption {
 		opts = append(opts, cli.WithKeepReadableCopy())
 	}
 
-	if f.variantID != "" {
-		opts = append(opts, cli.WithVariant(f.variantID))
+	if f.variant.id != "" {
+		opts = append(opts, cli.WithVariant(f.variant.id))
+	}
+
+	if f.variant.consumer != "" {
+		opts = append(opts, cli.WithConsumer(f.variant.consumer))
 	}
 
 	return opts
