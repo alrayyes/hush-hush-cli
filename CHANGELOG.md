@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.21.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.20.0...v1.21.0) (2026-10-11)
+
+
+### Features
+
+* **list:** show each object's id in list --json ([ab0034d](https://github.com/alrayyes/hush-hush-cli/commit/ab0034ddc81ad5f468b9dfb26e93d28d4bd32d74)), closes [#250](https://github.com/alrayyes/hush-hush-cli/issues/250)
+* **list:** show variant ids and name the several-variants conflict ([5fac20f](https://github.com/alrayyes/hush-hush-cli/commit/5fac20fc03cd2cae398c588b620774ccf0e8a207))
+
+
+### Bug Fixes
+
+* **client:** say a name has several variants instead of "already exists" ([a77c08a](https://github.com/alrayyes/hush-hush-cli/commit/a77c08ab91870157c9fad6cce12490acf8181449)), closes [#250](https://github.com/alrayyes/hush-hush-cli/issues/250)
+
 ## [1.20.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.19.3...v1.20.0) (2026-10-10)
 
 
