@@ -1,6 +1,8 @@
 package client_test
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -188,4 +190,40 @@ func TestQueryAuditLogUnexpectedStatusMapsToSentinel(t *testing.T) {
 
 	_, err = cl.QueryAuditLog(t.Context(), client.AuditLogFilter{ObjectID: new("Not_Valid!")})
 	require.ErrorIs(t, err, client.ErrUnexpectedStatus)
+}
+
+func TestUpdateOfANameWithSeveralVariantsSaysToPassAnID(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(`{"error":"name has several variants; pass id to say which"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cl, err := client.New(srv.URL, "token")
+	require.NoError(t, err)
+
+	_, err = cl.Update(t.Context(), "RELEASE_TOKEN", []byte("v"), nil, nil, false)
+	require.ErrorIs(t, err, client.ErrSeveralVariants)
+	require.NotErrorIs(t, err, client.ErrAlreadyExists)
+	require.ErrorContains(t, err, "several variants")
+}
+
+func TestPlainConflictStillMapsToAlreadyExists(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(`{"error":"object already exists"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cl, err := client.New(srv.URL, "token")
+	require.NoError(t, err)
+
+	_, err = cl.Update(t.Context(), "X", []byte("v"), nil, nil, false)
+	require.ErrorIs(t, err, client.ErrAlreadyExists)
 }

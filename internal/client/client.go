@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	hushhush "github.com/alrayyes/hush-hush-go/v4"
@@ -24,6 +25,9 @@ var (
 	ErrUnauthorized  = errors.New("missing or invalid bearer token")
 	ErrNotFound      = errors.New("object not found")
 	ErrAlreadyExists = errors.New("object already exists")
+	// ErrSeveralVariants is the server's 409 for a name that holds more
+	// than one variant, addressed without saying which.
+	ErrSeveralVariants = errors.New("name has several variants; say which by its id (see list --json)")
 )
 
 // ErrUnexpectedStatus anchors an unmapped status's error to something
@@ -367,6 +371,10 @@ func mapError(err error) error {
 	case http.StatusNotFound:
 		return ErrNotFound
 	case http.StatusConflict:
+		if strings.Contains(apiErr.Message, "several variants") {
+			return ErrSeveralVariants
+		}
+
 		return ErrAlreadyExists
 	default:
 		if apiErr.Message != "" {
