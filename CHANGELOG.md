@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.22.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.22.0...v1.22.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* **client:** show the server's message on a 409 ([92e1cb3](https://github.com/alrayyes/hush-hush-cli/commit/92e1cb33bcfbed9de584765e83d85c388ce3f033))
+* **client:** show the server's message on a 409 ([1f09c01](https://github.com/alrayyes/hush-hush-cli/commit/1f09c014a7e9c8c4d3a0a84f9db14fa0c8ec1786)), closes [#258](https://github.com/alrayyes/hush-hush-cli/issues/258)
+
 ## [1.22.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.21.0...v1.22.0) (2026-10-11)
 
 
