@@ -62,8 +62,14 @@ var ErrConsumerTokenActive = errors.New("consumer token is still active")
 
 var objectIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
 
-// Object is a stored object's current state.
+// ErrSeveralVariants is returned for a name holding more than one variant
+// when a request didn't say which, matching the real server's 409.
+var ErrSeveralVariants = errors.New("name has several variants; pass id to say which")
+
+// Object is a stored object's current state. ID is its UUID, the one thing
+// that tells apart variants sharing a name.
 type Object struct {
+	ID          string
 	Value       []byte
 	UsedBy      []string
 	Description string
@@ -75,8 +81,13 @@ type Object struct {
 // Store is an in-memory object store plus write-token issuance, backing a
 // Server started by New. Safe for concurrent use.
 type Store struct {
-	mu           sync.Mutex
-	objects      map[string]Object
+	mu      sync.Mutex
+	objects map[string]Object
+	// extra holds the variants AddVariant adds beyond the one in objects, so
+	// the rest of the fake keeps its one-object-per-name shape. They take
+	// part in list, get, used-by, update and delete, not in the consumer
+	// rename, delete and secret-count walks.
+	extra        map[string][]Object
 	tokens       map[string]time.Time
 	auditLog     []AuditLogEntry
 	auditSeq     int64
@@ -178,6 +189,7 @@ func toConsumerTokenWithValue(t *consumerToken) ConsumerTokenWithValue {
 func newStore() *Store {
 	return &Store{
 		objects:             make(map[string]Object),
+		extra:               make(map[string][]Object),
 		tokens:              make(map[string]time.Time),
 		bootstrapped:        true,
 		consumers:           make(map[string]*string),
@@ -230,7 +242,7 @@ func (s *Store) createObject(_ context.Context, id string, value []byte, usedBy 
 	}
 
 	now := time.Now()
-	s.objects[id] = Object{Value: value, UsedBy: usedBy, Description: description, Tags: tags, CreatedAt: now, UpdatedAt: now}
+	s.objects[id] = Object{ID: objectID(id), Value: value, UsedBy: usedBy, Description: description, Tags: tags, CreatedAt: now, UpdatedAt: now}
 
 	for _, name := range usedBy {
 		if _, ok := s.consumers[name]; !ok {
@@ -242,34 +254,110 @@ func (s *Store) createObject(_ context.Context, id string, value []byte, usedBy 
 }
 
 // GetObject returns id's current stored state, or ErrNotFound.
-func (s *Store) GetObject(_ context.Context, id string) (Object, error) {
+func (s *Store) GetObject(ctx context.Context, id string) (Object, error) {
+	return s.GetVariant(ctx, id, "")
+}
+
+// GetVariant returns one variant of id: the one with that UUID, or, with
+// variantID empty, the only one. ErrSeveralVariants if the name has more
+// and no id was given, ErrNotFound for an unknown name or an id that
+// doesn't belong to it.
+func (s *Store) GetVariant(_ context.Context, id, variantID string) (Object, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	obj, ok := s.objects[id]
-	if !ok {
-		return Object{}, ErrNotFound
+	_, obj, err := s.findLocked(id, variantID)
+
+	return obj, err
+}
+
+// AddVariant gives an existing name a further variant with its own UUID and
+// value, returning that UUID. ErrNotFound if the name doesn't exist yet.
+func (s *Store) AddVariant(_ context.Context, id string, value []byte, usedBy []string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.objects[id]; !ok {
+		return "", ErrNotFound
 	}
 
-	return obj, nil
+	now := time.Now()
+	variant := Object{ID: uuid.NewString(), Value: value, UsedBy: usedBy, CreatedAt: now, UpdatedAt: now}
+	s.extra[id] = append(s.extra[id], variant)
+
+	return variant.ID, nil
+}
+
+// variantsLocked is every variant of id, the one in objects first.
+func (s *Store) variantsLocked(id string) []Object {
+	primary, ok := s.objects[id]
+	if !ok {
+		return nil
+	}
+
+	return append([]Object{primary}, s.extra[id]...)
+}
+
+// storeVariantsLocked writes variants back as variantsLocked read them.
+func (s *Store) storeVariantsLocked(id string, variants []Object) {
+	if len(variants) == 0 {
+		delete(s.objects, id)
+		delete(s.extra, id)
+
+		return
+	}
+
+	s.objects[id] = variants[0]
+
+	if len(variants) > 1 {
+		s.extra[id] = variants[1:]
+	} else {
+		delete(s.extra, id)
+	}
+}
+
+// findLocked picks one variant of id: variantID's, or the only one when it
+// is empty. It returns the variant's index in variantsLocked's order.
+func (s *Store) findLocked(id, variantID string) (int, Object, error) {
+	variants := s.variantsLocked(id)
+
+	switch {
+	case len(variants) == 0:
+		return 0, Object{}, ErrNotFound
+	case variantID == "" && len(variants) > 1:
+		return 0, Object{}, ErrSeveralVariants
+	case variantID == "":
+		return 0, variants[0], nil
+	}
+
+	for i, v := range variants {
+		if v.ID == variantID {
+			return i, v, nil
+		}
+	}
+
+	return 0, Object{}, ErrNotFound
 }
 
 // UpdateObject replaces id's stored value, leaving used_by, description
 // and tags unchanged, or ErrNotFound.
 func (s *Store) UpdateObject(ctx context.Context, id string, value []byte) error {
-	return s.updateObject(ctx, id, value, nil, nil)
+	_, err := s.updateVariant(ctx, id, "", value, nil, nil)
+
+	return err
 }
 
-// updateObject also replaces id's tags when tags is non-nil (an empty
-// slice clears them), and likewise its used_by when usedBy is non-nil,
-// matching PUT /objects/{slug}'s own semantics.
-func (s *Store) updateObject(_ context.Context, id string, value []byte, tags, usedBy *[]string) error {
+// updateVariant also replaces the variant's tags when tags is non-nil (an
+// empty slice clears them), and likewise its used_by when usedBy is
+// non-nil, matching PUT /objects/{slug}'s own semantics. It returns the
+// variant as updated.
+func (s *Store) updateVariant(_ context.Context, id, variantID string, value []byte, tags, usedBy *[]string) (Object, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	obj, ok := s.objects[id]
-	if !ok {
-		return ErrNotFound
+	i, obj, err := s.findLocked(id, variantID)
+	if err != nil {
+		return Object{}, err
 	}
 
 	obj.Value = value
@@ -289,9 +377,11 @@ func (s *Store) updateObject(_ context.Context, id string, value []byte, tags, u
 		}
 	}
 
-	s.objects[id] = obj
+	variants := s.variantsLocked(id)
+	variants[i] = obj
+	s.storeVariantsLocked(id, variants)
 
-	return nil
+	return obj, nil
 }
 
 // SetObjectTags replaces id's tags as given - a test-setup shortcut that
@@ -312,15 +402,21 @@ func (s *Store) SetObjectTags(_ context.Context, id string, tags []string) error
 }
 
 // DeleteObject removes id, or ErrNotFound.
-func (s *Store) DeleteObject(_ context.Context, id string) error {
+func (s *Store) DeleteObject(ctx context.Context, id string) error {
+	return s.deleteVariant(ctx, id, "")
+}
+
+func (s *Store) deleteVariant(_ context.Context, id, variantID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, ok := s.objects[id]; !ok {
-		return ErrNotFound
+	i, _, err := s.findLocked(id, variantID)
+	if err != nil {
+		return err
 	}
 
-	delete(s.objects, id)
+	variants := s.variantsLocked(id)
+	s.storeVariantsLocked(id, slices.Delete(variants, i, i+1))
 
 	return nil
 }
@@ -570,27 +666,38 @@ func (s *Store) ListObjectsFiltered(_ context.Context, usedByFilter string, tags
 	defer s.mu.Unlock()
 
 	result := make([]ObjectMetadata, 0, len(s.objects))
-	for id, obj := range s.objects {
-		if usedByFilter != "" && !slices.Contains(obj.UsedBy, usedByFilter) {
-			continue
+
+	for id := range s.objects {
+		for _, obj := range s.variantsLocked(id) {
+			meta, ok := listedObject(id, obj, usedByFilter, tags)
+			if ok {
+				result = append(result, meta)
+			}
 		}
-
-		if !hasAllTags(obj.Tags, tags) {
-			continue
-		}
-
-		actor := &Actor{ID: "testserver", Type: "token"}
-		created, updated := obj.CreatedAt, obj.UpdatedAt
-
-		result = append(result, ObjectMetadata{
-			ID: objectID(id), Slug: id, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags),
-			CreatedAt: &created, CreatedBy: actor, UpdatedAt: &updated, UpdatedBy: actor,
-		})
 	}
 
 	slices.SortFunc(result, func(a, b ObjectMetadata) int { return strings.Compare(a.Slug, b.Slug) })
 
 	return result, nil
+}
+
+// listedObject is obj's list entry, or false when the filters leave it out.
+func listedObject(id string, obj Object, usedByFilter string, tags []string) (ObjectMetadata, bool) {
+	if usedByFilter != "" && !slices.Contains(obj.UsedBy, usedByFilter) {
+		return ObjectMetadata{}, false
+	}
+
+	if !hasAllTags(obj.Tags, tags) {
+		return ObjectMetadata{}, false
+	}
+
+	actor := &Actor{ID: "testserver", Type: "token"}
+	created, updated := obj.CreatedAt, obj.UpdatedAt
+
+	return ObjectMetadata{
+		ID: obj.ID, Slug: id, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags),
+		CreatedAt: &created, CreatedBy: actor, UpdatedAt: &updated, UpdatedBy: actor,
+	}, true
 }
 
 // AuditLogEntry mirrors hush-hush's GET /audit-log response shape
@@ -1134,9 +1241,9 @@ func handleGetObject(s *Store) http.HandlerFunc {
 			return
 		}
 
-		obj, err := s.GetObject(r.Context(), r.PathValue("id"))
+		obj, err := s.GetVariant(r.Context(), r.PathValue("id"), r.URL.Query().Get("id"))
 		if err != nil {
-			writeError(w, http.StatusNotFound, "unknown object")
+			writeVariantError(w, err)
 
 			return
 		}
@@ -1162,9 +1269,9 @@ type usedByResponse struct {
 // object's own recorded consumers need no more than its id to fetch.
 func handleGetObjectUsedBy(s *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		obj, err := s.GetObject(r.Context(), r.PathValue("id"))
+		obj, err := s.GetVariant(r.Context(), r.PathValue("id"), r.URL.Query().Get("id"))
 		if err != nil {
-			writeError(w, http.StatusNotFound, "unknown object")
+			writeVariantError(w, err)
 
 			return
 		}
@@ -1203,20 +1310,14 @@ func handleUpdateObject(s *Store) http.HandlerFunc {
 
 		id := r.PathValue("id")
 
-		if err := s.updateObject(r.Context(), id, req.Value, tags, req.UsedBy); err != nil {
-			writeError(w, http.StatusNotFound, "unknown object")
-
-			return
-		}
-
-		obj, err := s.GetObject(r.Context(), id)
+		obj, err := s.updateVariant(r.Context(), id, r.URL.Query().Get("id"), req.Value, tags, req.UsedBy)
 		if err != nil {
-			writeError(w, http.StatusNotFound, "unknown object")
+			writeVariantError(w, err)
 
 			return
 		}
 
-		writeJSON(w, http.StatusOK, ObjectMetadata{ID: objectID(id), Slug: id, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags)})
+		writeJSON(w, http.StatusOK, ObjectMetadata{ID: obj.ID, Slug: id, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags)})
 	}
 }
 
@@ -1239,8 +1340,8 @@ func handleListObjects(s *Store) http.HandlerFunc {
 
 func handleDeleteObject(s *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := s.DeleteObject(r.Context(), r.PathValue("id")); err != nil {
-			writeError(w, http.StatusNotFound, "unknown object")
+		if err := s.deleteVariant(r.Context(), r.PathValue("id"), r.URL.Query().Get("id")); err != nil {
+			writeVariantError(w, err)
 
 			return
 		}
@@ -1572,4 +1673,16 @@ func paged[T any](w http.ResponseWriter, r *http.Request, items []T) []T {
 // name, so the slug alone identifies it; the real server's id is random.
 func objectID(slug string) string {
 	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(slug)).String()
+}
+
+// writeVariantError answers a lookup that failed: the 409 for a name with
+// several variants and no id, the 404 for everything else.
+func writeVariantError(w http.ResponseWriter, err error) {
+	if errors.Is(err, ErrSeveralVariants) {
+		writeError(w, http.StatusConflict, err.Error())
+
+		return
+	}
+
+	writeError(w, http.StatusNotFound, "unknown object")
 }
