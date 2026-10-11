@@ -227,3 +227,37 @@ func TestPlainConflictStillMapsToAlreadyExists(t *testing.T) {
 	_, err = cl.Update(t.Context(), "X", []byte("v"), nil, nil, false)
 	require.ErrorIs(t, err, client.ErrAlreadyExists)
 }
+
+func TestOtherConflictShowsTheServersMessage(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(`{"error":"slug is reserved by a pending deletion"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cl, err := client.New(srv.URL, "token")
+	require.NoError(t, err)
+
+	_, err = cl.Update(t.Context(), "X", []byte("v"), nil, nil, false)
+	require.ErrorIs(t, err, client.ErrAlreadyExists)
+	require.ErrorContains(t, err, "slug is reserved by a pending deletion")
+}
+
+func TestConflictWithNoBodyIsJustAlreadyExists(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusConflict)
+	}))
+	t.Cleanup(srv.Close)
+
+	cl, err := client.New(srv.URL, "token")
+	require.NoError(t, err)
+
+	_, err = cl.Update(t.Context(), "X", []byte("v"), nil, nil, false)
+	require.ErrorIs(t, err, client.ErrAlreadyExists)
+	require.EqualError(t, err, client.ErrAlreadyExists.Error())
+}
