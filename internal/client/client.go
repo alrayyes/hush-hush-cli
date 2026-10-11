@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	hushhush "github.com/alrayyes/hush-hush-go/v4"
@@ -24,6 +25,9 @@ var (
 	ErrUnauthorized  = errors.New("missing or invalid bearer token")
 	ErrNotFound      = errors.New("object not found")
 	ErrAlreadyExists = errors.New("object already exists")
+	// ErrSeveralVariants is the server's 409 for a name that holds more
+	// than one variant, addressed without saying which.
+	ErrSeveralVariants = errors.New("name has several variants; say which by its id (see list --json)")
 )
 
 // ErrUnexpectedStatus anchors an unmapped status's error to something
@@ -41,7 +45,10 @@ var ErrConsumerNoPublicKey = errors.New("consumer has no registered public key")
 // exist for List's --json output, the first place this type is ever
 // marshaled. Slug, not ID: the server's own internal id is a separate,
 // opaque value this API never exposes (alrayyes/Hush-Hush#404).
+// ID is the variant's UUID: several objects can share a slug, and this is
+// what tells them apart.
 type ObjectMetadata struct {
+	ID          string   `json:"id"`
 	Slug        string   `json:"slug"`
 	UsedBy      []string `json:"used_by,omitempty"`
 	Description string   `json:"description,omitempty"`
@@ -321,7 +328,7 @@ func toAuditLogEntry(e hushhush.AuditLogEntry) AuditLogEntry {
 }
 
 func toObjectMetadata(m *hushhush.ObjectMetadata) ObjectMetadata {
-	meta := ObjectMetadata{Slug: m.Slug, Tags: m.Tags}
+	meta := ObjectMetadata{ID: m.Id.String(), Slug: m.Slug, Tags: m.Tags}
 	if meta.Tags == nil {
 		meta.Tags = []string{}
 	}
@@ -364,6 +371,10 @@ func mapError(err error) error {
 	case http.StatusNotFound:
 		return ErrNotFound
 	case http.StatusConflict:
+		if strings.Contains(apiErr.Message, "several variants") {
+			return ErrSeveralVariants
+		}
+
 		return ErrAlreadyExists
 	default:
 		if apiErr.Message != "" {
