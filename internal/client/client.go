@@ -27,7 +27,7 @@ var (
 	ErrAlreadyExists = errors.New("object already exists")
 	// ErrSeveralVariants is the server's 409 for a name that holds more
 	// than one variant, addressed without saying which.
-	ErrSeveralVariants = errors.New("name has several variants; pass --id to say which (ids are in list --json)")
+	ErrSeveralVariants = errors.New("name has several variants; pass --id or --consumer to say which (ids are in list --json)")
 )
 
 // CallOption adjusts one call that addresses an existing object by name:
@@ -36,6 +36,7 @@ type CallOption func(*callConfig)
 
 type callConfig struct {
 	variantID string
+	consumer  string
 }
 
 // WithVariant addresses one variant of a name that has several, by the
@@ -45,6 +46,13 @@ func WithVariant(id string) CallOption {
 	return func(c *callConfig) { c.variantID = id }
 }
 
+// WithConsumer addresses the one variant of a name whose consumers include
+// consumer, for a caller who knows who reads the value and not its UUID.
+// Giving it together with WithVariant is the server's 400.
+func WithConsumer(consumer string) CallOption {
+	return func(c *callConfig) { c.consumer = consumer }
+}
+
 // objectOptions is the SDK's form of opts.
 func objectOptions(opts []CallOption) []hushhush.ObjectOption {
 	var cfg callConfig
@@ -52,11 +60,17 @@ func objectOptions(opts []CallOption) []hushhush.ObjectOption {
 		opt(&cfg)
 	}
 
-	if cfg.variantID == "" {
-		return nil
+	var out []hushhush.ObjectOption
+
+	if cfg.variantID != "" {
+		out = append(out, hushhush.WithVariantID(cfg.variantID))
 	}
 
-	return []hushhush.ObjectOption{hushhush.WithVariantID(cfg.variantID)}
+	if cfg.consumer != "" {
+		out = append(out, hushhush.WithConsumer(cfg.consumer))
+	}
+
+	return out
 }
 
 // ErrUnexpectedStatus anchors an unmapped status's error to something

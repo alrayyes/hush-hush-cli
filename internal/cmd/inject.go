@@ -41,9 +41,6 @@ func injectOptions(tags []string, keepCopy bool) []cli.WriteOption {
 }
 
 // tagFlagUsage is shared by inject and update's --tag.
-// variantIDUsage is --id's help on get, update, delete and used-by.
-const variantIDUsage = "UUID of one variant, for a name that has several (see list --json)"
-
 const tagFlagUsage = "label for grouping secrets (repeatable, or comma-separated; 1-32 chars of a-z 0-9 . _ / -, max 10)"
 
 // newInjectCmd reads the plaintext value from stdin rather than a flag -

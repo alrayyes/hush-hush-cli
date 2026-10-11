@@ -262,11 +262,15 @@ func (s *Store) GetObject(ctx context.Context, id string) (Object, error) {
 // variantID empty, the only one. ErrSeveralVariants if the name has more
 // and no id was given, ErrNotFound for an unknown name or an id that
 // doesn't belong to it.
-func (s *Store) GetVariant(_ context.Context, id, variantID string) (Object, error) {
+func (s *Store) GetVariant(ctx context.Context, id, variantID string) (Object, error) {
+	return s.getVariant(ctx, id, selector{id: variantID})
+}
+
+func (s *Store) getVariant(_ context.Context, id string, sel selector) (Object, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	_, obj, err := s.findLocked(id, variantID)
+	_, obj, err := s.findLocked(id, sel)
 
 	return obj, err
 }
@@ -316,22 +320,32 @@ func (s *Store) storeVariantsLocked(id string, variants []Object) {
 	}
 }
 
-// findLocked picks one variant of id: variantID's, or the only one when it
-// is empty. It returns the variant's index in variantsLocked's order.
-func (s *Store) findLocked(id, variantID string) (int, Object, error) {
+// selector says which variant of a name a request means: by UUID, by a
+// consumer it names, or neither (the only one).
+type selector struct {
+	id       string
+	consumer string
+}
+
+// findLocked picks one variant of id: the selector's, or the only one when
+// it is empty. It returns the variant's index in variantsLocked's order.
+func (s *Store) findLocked(id string, sel selector) (int, Object, error) {
 	variants := s.variantsLocked(id)
 
-	switch {
-	case len(variants) == 0:
+	if len(variants) == 0 {
 		return 0, Object{}, ErrNotFound
-	case variantID == "" && len(variants) > 1:
-		return 0, Object{}, ErrSeveralVariants
-	case variantID == "":
+	}
+
+	if sel == (selector{}) {
+		if len(variants) > 1 {
+			return 0, Object{}, ErrSeveralVariants
+		}
+
 		return 0, variants[0], nil
 	}
 
 	for i, v := range variants {
-		if v.ID == variantID {
+		if (sel.id != "" && v.ID == sel.id) || (sel.consumer != "" && slices.Contains(v.UsedBy, sel.consumer)) {
 			return i, v, nil
 		}
 	}
@@ -342,7 +356,7 @@ func (s *Store) findLocked(id, variantID string) (int, Object, error) {
 // UpdateObject replaces id's stored value, leaving used_by, description
 // and tags unchanged, or ErrNotFound.
 func (s *Store) UpdateObject(ctx context.Context, id string, value []byte) error {
-	_, err := s.updateVariant(ctx, id, "", value, nil, nil)
+	_, err := s.updateVariant(ctx, id, selector{}, value, nil, nil)
 
 	return err
 }
@@ -351,11 +365,11 @@ func (s *Store) UpdateObject(ctx context.Context, id string, value []byte) error
 // empty slice clears them), and likewise its used_by when usedBy is
 // non-nil, matching PUT /objects/{slug}'s own semantics. It returns the
 // variant as updated.
-func (s *Store) updateVariant(_ context.Context, id, variantID string, value []byte, tags, usedBy *[]string) (Object, error) {
+func (s *Store) updateVariant(_ context.Context, id string, sel selector, value []byte, tags, usedBy *[]string) (Object, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	i, obj, err := s.findLocked(id, variantID)
+	i, obj, err := s.findLocked(id, sel)
 	if err != nil {
 		return Object{}, err
 	}
@@ -403,14 +417,14 @@ func (s *Store) SetObjectTags(_ context.Context, id string, tags []string) error
 
 // DeleteObject removes id, or ErrNotFound.
 func (s *Store) DeleteObject(ctx context.Context, id string) error {
-	return s.deleteVariant(ctx, id, "")
+	return s.deleteVariant(ctx, id, selector{})
 }
 
-func (s *Store) deleteVariant(_ context.Context, id, variantID string) error {
+func (s *Store) deleteVariant(_ context.Context, id string, sel selector) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	i, _, err := s.findLocked(id, variantID)
+	i, _, err := s.findLocked(id, sel)
 	if err != nil {
 		return err
 	}
@@ -1241,7 +1255,12 @@ func handleGetObject(s *Store) http.HandlerFunc {
 			return
 		}
 
-		obj, err := s.GetVariant(r.Context(), r.PathValue("id"), r.URL.Query().Get("id"))
+		sel, ok := selectorFrom(w, r)
+		if !ok {
+			return
+		}
+
+		obj, err := s.getVariant(r.Context(), r.PathValue("id"), sel)
 		if err != nil {
 			writeVariantError(w, err)
 
@@ -1269,7 +1288,12 @@ type usedByResponse struct {
 // object's own recorded consumers need no more than its id to fetch.
 func handleGetObjectUsedBy(s *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		obj, err := s.GetVariant(r.Context(), r.PathValue("id"), r.URL.Query().Get("id"))
+		sel, ok := selectorFrom(w, r)
+		if !ok {
+			return
+		}
+
+		obj, err := s.getVariant(r.Context(), r.PathValue("id"), sel)
 		if err != nil {
 			writeVariantError(w, err)
 
@@ -1310,7 +1334,12 @@ func handleUpdateObject(s *Store) http.HandlerFunc {
 
 		id := r.PathValue("id")
 
-		obj, err := s.updateVariant(r.Context(), id, r.URL.Query().Get("id"), req.Value, tags, req.UsedBy)
+		sel, ok := selectorFrom(w, r)
+		if !ok {
+			return
+		}
+
+		obj, err := s.updateVariant(r.Context(), id, sel, req.Value, tags, req.UsedBy)
 		if err != nil {
 			writeVariantError(w, err)
 
@@ -1340,7 +1369,12 @@ func handleListObjects(s *Store) http.HandlerFunc {
 
 func handleDeleteObject(s *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := s.deleteVariant(r.Context(), r.PathValue("id"), r.URL.Query().Get("id")); err != nil {
+		sel, ok := selectorFrom(w, r)
+		if !ok {
+			return
+		}
+
+		if err := s.deleteVariant(r.Context(), r.PathValue("id"), sel); err != nil {
 			writeVariantError(w, err)
 
 			return
@@ -1685,4 +1719,17 @@ func writeVariantError(w http.ResponseWriter, err error) {
 	}
 
 	writeError(w, http.StatusNotFound, "unknown object")
+}
+
+// selectorFrom reads ?id= and ?consumer=, answering 400 itself, as the real
+// server does, when both are given.
+func selectorFrom(w http.ResponseWriter, r *http.Request) (selector, bool) {
+	sel := selector{id: r.URL.Query().Get("id"), consumer: r.URL.Query().Get("consumer")}
+	if sel.id != "" && sel.consumer != "" {
+		writeError(w, http.StatusBadRequest, "pass id or consumer to pick a variant, not both")
+
+		return selector{}, false
+	}
+
+	return sel, true
 }

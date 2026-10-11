@@ -23,6 +23,8 @@ type writeOptions struct {
 	// variantID names one variant of a name that has several; empty means
 	// the only one.
 	variantID string
+	// consumer picks the variant used by this consumer; empty means none.
+	consumer string
 }
 
 func newWriteOptions(opts []WriteOption) writeOptions {
@@ -59,6 +61,12 @@ func WithUsedBy(usedBy []string) WriteOption {
 // by the UUID list --json shows.
 func WithVariant(id string) WriteOption {
 	return func(w *writeOptions) { w.variantID = id }
+}
+
+// WithConsumer makes Update change the variant used by consumer, for a name
+// that has several.
+func WithConsumer(consumer string) WriteOption {
+	return func(w *writeOptions) { w.consumer = consumer }
 }
 
 // WithKeepReadableCopy seals the value to the owner's escrowed identity

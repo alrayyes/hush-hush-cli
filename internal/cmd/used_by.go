@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
-	"github.com/alrayyes/hush-hush-cli/internal/client"
 	"github.com/alrayyes/hush-hush-cli/internal/render"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -15,8 +14,8 @@ import (
 // full enumeration.
 func newUsedByCmd(v *viper.Viper) *cobra.Command {
 	var (
-		asJSON    bool
-		variantID string
+		asJSON  bool
+		variant variantFlags
 	)
 
 	cmd := &cobra.Command{
@@ -24,12 +23,16 @@ func newUsedByCmd(v *viper.Viper) *cobra.Command {
 		Short: "Print an object's recorded consumers",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := variant.validate(); err != nil {
+				return err
+			}
+
 			cfg, err := config(v, false)
 			if err != nil {
 				return err
 			}
 
-			usedBy, err := cli.UsedBy(cmd.Context(), cfg, args[0], client.WithVariant(variantID))
+			usedBy, err := cli.UsedBy(cmd.Context(), cfg, args[0], variant.callOptions()...)
 			if err != nil {
 				return fmt.Errorf("used-by: %w", err)
 			}
@@ -42,7 +45,7 @@ func newUsedByCmd(v *viper.Viper) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&variantID, "id", "", variantIDUsage)
+	variant.register(cmd)
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the raw JSON array instead of one consumer per line")
 
 	return cmd
