@@ -28,7 +28,7 @@ const errNoReadCredentialMsg = "no token configured (--token/--consumer-token, "
 // token already authorizes reads, and there's exactly one Authorization
 // header per request, so the two are never sent together (design.md's
 // "Decisions").
-func Get(ctx context.Context, cfg Config, id string, identities []string) ([]byte, error) {
+func Get(ctx context.Context, cfg Config, id string, identities []string, opts ...client.CallOption) ([]byte, error) {
 	credential := cfg.Token
 	if credential == "" {
 		credential = cfg.ConsumerToken
@@ -41,7 +41,7 @@ func Get(ctx context.Context, cfg Config, id string, identities []string) ([]byt
 
 	cl.Caller = cfg.Caller
 
-	sealed, err := cl.Get(ctx, id)
+	sealed, err := cl.Get(ctx, id, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("fetch object: %w", readError(err, cfg))
 	}

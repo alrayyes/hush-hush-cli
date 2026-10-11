@@ -45,6 +45,7 @@ func newUpdateCmd(v *viper.Viper) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&f.variantID, "id", "", variantIDUsage)
 	cmd.Flags().String("recipients", "", "comma-separated age recipient public keys")
 	cmd.Flags().StringSliceVar(&f.tags, "tag", nil, tagFlagUsage+"; replaces the object's tags")
 	cmd.Flags().BoolVar(&f.clearTags, "clear-tags", false, "remove every tag from the object")
@@ -62,6 +63,7 @@ type updateFlags struct {
 	usedBy      []string
 	clearUsedBy bool
 	keepCopy    bool
+	variantID   string
 }
 
 // recipients validates the flag combination and returns the explicit
@@ -109,6 +111,10 @@ func (f updateFlags) options(cmd *cobra.Command) []cli.WriteOption {
 
 	if f.keepCopy {
 		opts = append(opts, cli.WithKeepReadableCopy())
+	}
+
+	if f.variantID != "" {
+		opts = append(opts, cli.WithVariant(f.variantID))
 	}
 
 	return opts

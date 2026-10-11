@@ -27,8 +27,37 @@ var (
 	ErrAlreadyExists = errors.New("object already exists")
 	// ErrSeveralVariants is the server's 409 for a name that holds more
 	// than one variant, addressed without saying which.
-	ErrSeveralVariants = errors.New("name has several variants; say which by its id (see list --json)")
+	ErrSeveralVariants = errors.New("name has several variants; pass --id to say which (ids are in list --json)")
 )
+
+// CallOption adjusts one call that addresses an existing object by name:
+// Get, Update, Delete and UsedBy.
+type CallOption func(*callConfig)
+
+type callConfig struct {
+	variantID string
+}
+
+// WithVariant addresses one variant of a name that has several, by the
+// UUID list --json shows. Without it a name with one variant is addressed
+// as always, and one with several is ErrSeveralVariants.
+func WithVariant(id string) CallOption {
+	return func(c *callConfig) { c.variantID = id }
+}
+
+// objectOptions is the SDK's form of opts.
+func objectOptions(opts []CallOption) []hushhush.ObjectOption {
+	var cfg callConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	if cfg.variantID == "" {
+		return nil
+	}
+
+	return []hushhush.ObjectOption{hushhush.WithVariantID(cfg.variantID)}
+}
 
 // ErrUnexpectedStatus anchors an unmapped status's error to something
 // errors.Is can match, since the status code and server message vary per
@@ -118,8 +147,8 @@ func (c *Client) Create(ctx context.Context, id string, value []byte, usedBy []s
 }
 
 // Get fetches an object's stored ciphertext exactly as sealed.
-func (c *Client) Get(ctx context.Context, id string) ([]byte, error) {
-	value, err := c.sdk.GetObject(ctx, id, c.Caller)
+func (c *Client) Get(ctx context.Context, id string, opts ...CallOption) ([]byte, error) {
+	value, err := c.sdk.GetObject(ctx, id, c.Caller, objectOptions(opts)...)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -130,13 +159,13 @@ func (c *Client) Get(ctx context.Context, id string) ([]byte, error) {
 // Update replaces id's stored value, leaving its used_by metadata
 // unchanged. A nil tags leaves the object's tags alone; a non-nil one
 // replaces them, and an empty one clears them.
-func (c *Client) Update(ctx context.Context, id string, value []byte, tags, usedBy *[]string, keepReadableCopy bool) (ObjectMetadata, error) {
+func (c *Client) Update(ctx context.Context, id string, value []byte, tags, usedBy *[]string, keepReadableCopy bool, opts ...CallOption) (ObjectMetadata, error) {
 	req := hushhush.UpdateObjectRequest{Value: value, Tags: tags, UsedBy: usedBy}
 	if keepReadableCopy {
 		req.KeepReadableCopy = &keepReadableCopy
 	}
 
-	meta, err := c.sdk.UpdateObject(ctx, id, req, c.Caller)
+	meta, err := c.sdk.UpdateObject(ctx, id, req, c.Caller, objectOptions(opts)...)
 	if err != nil {
 		return ObjectMetadata{}, mapError(err)
 	}
@@ -161,8 +190,8 @@ func (c *Client) OwnerPublicKey(ctx context.Context) (string, error) {
 }
 
 // Delete permanently removes id.
-func (c *Client) Delete(ctx context.Context, id string) error {
-	if err := c.sdk.DeleteObject(ctx, id, c.Caller); err != nil {
+func (c *Client) Delete(ctx context.Context, id string, opts ...CallOption) error {
+	if err := c.sdk.DeleteObject(ctx, id, c.Caller, objectOptions(opts)...); err != nil {
 		return mapError(err)
 	}
 
@@ -188,8 +217,8 @@ func (c *Client) List(ctx context.Context, usedBy string, tags []string) ([]Obje
 
 // UsedBy returns id's recorded consumers - unauthenticated, matching Get's
 // auth boundary rather than List's, which needs a credential.
-func (c *Client) UsedBy(ctx context.Context, id string) ([]string, error) {
-	usedBy, err := c.sdk.GetObjectUsedBy(ctx, id)
+func (c *Client) UsedBy(ctx context.Context, id string, opts ...CallOption) ([]string, error) {
+	usedBy, err := c.sdk.GetObjectUsedBy(ctx, id, objectOptions(opts)...)
 	if err != nil {
 		return nil, mapError(err)
 	}

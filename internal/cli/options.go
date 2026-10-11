@@ -20,6 +20,9 @@ type writeOptions struct {
 	usedBy *[]string
 	// keepReadableCopy adds the owner's escrowed key as a recipient.
 	keepReadableCopy bool
+	// variantID names one variant of a name that has several; empty means
+	// the only one.
+	variantID string
 }
 
 func newWriteOptions(opts []WriteOption) writeOptions {
@@ -50,6 +53,12 @@ func WithTags(tags []string) WriteOption {
 // non-nil slice to clear them. Inject takes its consumers as an argument.
 func WithUsedBy(usedBy []string) WriteOption {
 	return func(w *writeOptions) { w.usedBy = &usedBy }
+}
+
+// WithVariant makes Update change one variant of a name that has several,
+// by the UUID list --json shows.
+func WithVariant(id string) WriteOption {
+	return func(w *writeOptions) { w.variantID = id }
 }
 
 // WithKeepReadableCopy seals the value to the owner's escrowed identity

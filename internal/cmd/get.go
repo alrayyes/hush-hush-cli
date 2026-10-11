@@ -7,6 +7,7 @@ import (
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
 	"github.com/alrayyes/hush-hush-cli/internal/cliconfig"
+	"github.com/alrayyes/hush-hush-cli/internal/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -19,6 +20,8 @@ var errNoIdentity = errors.New("no identity configured (--identity, HUSH_HUSH_ID
 // assembled file, no consumer-side file-shape logic (the cli spec's
 // "get returns exactly one decrypted value to stdout per call").
 func newGetCmd(v *viper.Viper) *cobra.Command {
+	var variantID string
+
 	cmd := &cobra.Command{
 		Use:   "get <id>",
 		Short: "Fetch and decrypt one value to stdout",
@@ -38,7 +41,7 @@ func newGetCmd(v *viper.Viper) *cobra.Command {
 				return err
 			}
 
-			plaintext, err := cli.Get(cmd.Context(), cfg, args[0], strings.Split(identities, ","))
+			plaintext, err := cli.Get(cmd.Context(), cfg, args[0], strings.Split(identities, ","), client.WithVariant(variantID))
 			if err != nil {
 				return fmt.Errorf("get: %w", err)
 			}
@@ -52,6 +55,7 @@ func newGetCmd(v *viper.Viper) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&variantID, "id", "", variantIDUsage)
 	cmd.Flags().String("identity", "", "comma-separated age private keys")
 	cmd.Flags().String("identity-command", "", "command whose trimmed stdout is the identity instead (wins over --identity if both are set)")
 	_ = v.BindPFlag("identity", cmd.Flags().Lookup("identity"))

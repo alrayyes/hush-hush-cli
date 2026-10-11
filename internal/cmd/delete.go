@@ -4,12 +4,15 @@ import (
 	"fmt"
 
 	"github.com/alrayyes/hush-hush-cli/internal/cli"
+	"github.com/alrayyes/hush-hush-cli/internal/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 func newDeleteCmd(v *viper.Viper) *cobra.Command {
-	return &cobra.Command{
+	var variantID string
+
+	cmd := &cobra.Command{
 		Use:   "delete <id>",
 		Short: "Permanently remove an object",
 		Args:  cobra.ExactArgs(1),
@@ -19,11 +22,15 @@ func newDeleteCmd(v *viper.Viper) *cobra.Command {
 				return err
 			}
 
-			if err := cli.Delete(cmd.Context(), cfg, args[0]); err != nil {
+			if err := cli.Delete(cmd.Context(), cfg, args[0], client.WithVariant(variantID)); err != nil {
 				return fmt.Errorf("delete: %w", err)
 			}
 
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVar(&variantID, "id", "", variantIDUsage)
+
+	return cmd
 }
