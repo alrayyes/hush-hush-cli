@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.22.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.21.0...v1.22.0) (2026-10-11)
+
+
+### Features
+
+* add --id to get, update, delete and used-by ([0b3fd42](https://github.com/alrayyes/hush-hush-cli/commit/0b3fd42cec1a2a7407442d3dfb65f757b393fd04))
+* add --id to get, update, delete and used-by ([c2df0a6](https://github.com/alrayyes/hush-hush-cli/commit/c2df0a624e99551a9b9fc8fbb74e6fbf3d9975cd)), closes [#254](https://github.com/alrayyes/hush-hush-cli/issues/254)
+
+
+### Bug Fixes
+
+* **nix:** update vendorHash for hush-hush-go v4.5.0 ([78ad157](https://github.com/alrayyes/hush-hush-cli/commit/78ad1576b83c12f75d9c14416d0af2e35b227bfd)), closes [#254](https://github.com/alrayyes/hush-hush-cli/issues/254)
+
 ## [1.21.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.20.0...v1.21.0) (2026-10-11)
 
 
