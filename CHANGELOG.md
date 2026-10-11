@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.23.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.22.1...v1.23.0) (2026-10-11)
+
+
+### Features
+
+* add --consumer to get, update, delete and used-by ([17e59b1](https://github.com/alrayyes/hush-hush-cli/commit/17e59b1dbe4a1fdb867fb17c09537c3596c51c09))
+* add --consumer to get, update, delete and used-by ([9e12d25](https://github.com/alrayyes/hush-hush-cli/commit/9e12d250d607c227ce93100a852c829e9bffdf22)), closes [#262](https://github.com/alrayyes/hush-hush-cli/issues/262)
+
+
+### Bug Fixes
+
+* **nix:** update vendorHash for hush-hush-go v4.6.0 ([a3e062b](https://github.com/alrayyes/hush-hush-cli/commit/a3e062bcc6821ddd564d40d4c5853452d7990841)), closes [#262](https://github.com/alrayyes/hush-hush-cli/issues/262)
+
 ## [1.22.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.22.0...v1.22.1) (2026-10-11)
 
 
