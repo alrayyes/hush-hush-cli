@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.23.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.23.0...v1.23.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* **deps:** bump golang ([c7a5ca4](https://github.com/alrayyes/hush-hush-cli/commit/c7a5ca485793dbc0ecfb7738e1ffab640d4815b3))
+* **deps:** bump golang from 1.27.1-bookworm to 1.27.2-bookworm in the docker-images group across 1 directory ([b79a197](https://github.com/alrayyes/hush-hush-cli/commit/b79a1974e077db2eaba22f064f4bcff7d12936b4))
+* **nix:** update flake.lock ([#268](https://github.com/alrayyes/hush-hush-cli/issues/268)) ([47f86cd](https://github.com/alrayyes/hush-hush-cli/commit/47f86cd3e95de033440e8a80066e691162645c37))
+
 ## [1.23.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.22.1...v1.23.0) (2026-10-11)
 
 
