@@ -155,6 +155,23 @@ func TestQueryAuditLogAcceptsAMixedCaseObjectID(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
+func TestQueryAuditLogObjectIDMustStartWithALetterOrDigit(t *testing.T) {
+	t.Parallel()
+
+	srv, _, _ := testserver.New(t)
+
+	for _, id := range []string{"_token", "-token"} {
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL+"/audit-log?object_id="+id, nil)
+		require.NoError(t, err)
+
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, id)
+	}
+}
+
 func TestAuthStatusDefaultsToBootstrapped(t *testing.T) {
 	t.Parallel()
 
