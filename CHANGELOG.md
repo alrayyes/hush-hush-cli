@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.23.2](https://github.com/alrayyes/hush-hush-cli/compare/v1.23.1...v1.23.2) (2026-10-13)
+
+
+### Bug Fixes
+
+* **testserver:** accept mixed-case object names, bump hush-hush-go to v4.6.2 ([#274](https://github.com/alrayyes/hush-hush-cli/issues/274)) ([22ff26c](https://github.com/alrayyes/hush-hush-cli/commit/22ff26c746ee7cd2c7cdf033be028f13ec2d9c9a))
+
 ## [1.23.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.23.0...v1.23.1) (2026-10-12)
 
 
