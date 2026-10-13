@@ -139,20 +139,17 @@ func TestQueryAuditLogRejectsAnInvalidObjectID(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
-func TestQueryAuditLogAcceptsAMixedCaseObjectID(t *testing.T) {
+func TestQueryAuditLogObjectIDIsCaseSensitive(t *testing.T) {
 	t.Parallel()
 
 	srv, store, _ := testserver.New(t)
 	store.RecordAuditEntry(testserver.AuditLogEntry{ObjectID: "Api_Token", Action: "read", IP: "10.0.0.1"})
+	store.RecordAuditEntry(testserver.AuditLogEntry{ObjectID: "api_token", Action: "create", IP: "10.0.0.2"})
 
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL+"/audit-log?object_id=Api_Token", nil)
-	require.NoError(t, err)
+	body := getAuditLog(t, srv.URL, "object_id=Api_Token")
 
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	defer func() { _ = resp.Body.Close() }()
-
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Contains(t, body, `"object_id":"Api_Token"`)
+	require.NotContains(t, body, `"object_id":"api_token"`)
 }
 
 func TestQueryAuditLogObjectIDMustStartWithALetterOrDigit(t *testing.T) {
