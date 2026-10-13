@@ -139,6 +139,36 @@ func TestQueryAuditLogRejectsAnInvalidObjectID(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
+func TestQueryAuditLogObjectIDIsCaseSensitive(t *testing.T) {
+	t.Parallel()
+
+	srv, store, _ := testserver.New(t)
+	store.RecordAuditEntry(testserver.AuditLogEntry{ObjectID: "Api_Token", Action: "read", IP: "10.0.0.1"})
+	store.RecordAuditEntry(testserver.AuditLogEntry{ObjectID: "api_token", Action: "create", IP: "10.0.0.2"})
+
+	body := getAuditLog(t, srv.URL, "object_id=Api_Token")
+
+	require.Contains(t, body, `"object_id":"Api_Token"`)
+	require.NotContains(t, body, `"object_id":"api_token"`)
+}
+
+func TestQueryAuditLogObjectIDMustStartWithALetterOrDigit(t *testing.T) {
+	t.Parallel()
+
+	srv, _, _ := testserver.New(t)
+
+	for _, id := range []string{"_token", "-token"} {
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL+"/audit-log?object_id="+id, nil)
+		require.NoError(t, err)
+
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, id)
+	}
+}
+
 func TestAuthStatusDefaultsToBootstrapped(t *testing.T) {
 	t.Parallel()
 
