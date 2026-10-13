@@ -139,6 +139,22 @@ func TestQueryAuditLogRejectsAnInvalidObjectID(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
+func TestQueryAuditLogAcceptsAMixedCaseObjectID(t *testing.T) {
+	t.Parallel()
+
+	srv, store, _ := testserver.New(t)
+	store.RecordAuditEntry(testserver.AuditLogEntry{ObjectID: "Api_Token", Action: "read", IP: "10.0.0.1"})
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL+"/audit-log?object_id=Api_Token", nil)
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
 func TestAuthStatusDefaultsToBootstrapped(t *testing.T) {
 	t.Parallel()
 

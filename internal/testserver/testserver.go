@@ -60,7 +60,7 @@ var ErrConsumerTokenNotFound = errors.New("consumer token not found")
 // token that's neither revoked nor expired yet.
 var ErrConsumerTokenActive = errors.New("consumer token is still active")
 
-var objectIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
+var objectIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 
 // ErrSeveralVariants is returned for a name holding more than one variant
 // when a request didn't say which, matching the real server's 409.
