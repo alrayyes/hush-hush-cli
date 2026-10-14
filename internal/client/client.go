@@ -31,7 +31,7 @@ var (
 )
 
 // CallOption adjusts one call that addresses an existing object by name:
-// Get, Update, Delete and UsedBy.
+// Get, Update, Patch, Delete and UsedBy.
 type CallOption func(*callConfig)
 
 type callConfig struct {
@@ -180,6 +180,18 @@ func (c *Client) Update(ctx context.Context, id string, value []byte, tags, used
 	}
 
 	meta, err := c.sdk.UpdateObject(ctx, id, req, c.Caller, objectOptions(opts)...)
+	if err != nil {
+		return ObjectMetadata{}, mapError(err)
+	}
+
+	return toObjectMetadata(meta), nil
+}
+
+// Patch changes id's description, tags or slug without touching its sealed
+// value. A nil field stays as it is; a non-nil empty description or tags
+// clears it. A new slug renames every variant of the name.
+func (c *Client) Patch(ctx context.Context, id string, description, slug *string, tags *[]string, opts ...CallOption) (ObjectMetadata, error) {
+	meta, err := c.sdk.PatchObject(ctx, id, hushhush.PatchObjectRequest{Description: description, Slug: slug, Tags: tags}, c.Caller, objectOptions(opts)...)
 	if err != nil {
 		return ObjectMetadata{}, mapError(err)
 	}

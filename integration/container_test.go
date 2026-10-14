@@ -182,6 +182,48 @@ func TestContainerListReturnsInjectedObjects(t *testing.T) {
 	require.True(t, found, "injected object not present in list")
 }
 
+// TestContainerEditChangesMetadataAndRenames proves internal/testserver's
+// PATCH /objects/{slug} fake agrees with the real server: description and
+// tags change, the sealed value does not, a rename moves the name, and a
+// rename onto a taken name is refused.
+func TestContainerEditChangesMetadataAndRenames(t *testing.T) {
+	identity, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
+
+	cfg := cli.Config{Server: containerServer, Token: containerToken}
+	recipients := []string{identity.Recipient().String()}
+	value := []byte("edit-integration-value")
+
+	for _, slug := range []string{"hush_hush_cli_edit_a", "hush_hush_cli_edit_b", "hush_hush_cli_edit_renamed"} {
+		t.Cleanup(func() { _ = cli.Delete(t.Context(), cfg, slug) })
+	}
+
+	require.NoError(t, cli.Inject(t.Context(), cfg, "hush_hush_cli_edit_a", value, recipients, nil, "typo"))
+	require.NoError(t, cli.Inject(t.Context(), cfg, "hush_hush_cli_edit_b", value, recipients, nil, ""))
+
+	require.NoError(t, cli.Edit(t.Context(), cfg, "hush_hush_cli_edit_a",
+		cli.WithDescription("fixed"), cli.WithTags([]string{"prod"})))
+
+	err = cli.Edit(t.Context(), cfg, "hush_hush_cli_edit_a", cli.WithSlug("hush_hush_cli_edit_b"))
+	require.Error(t, err, "a rename onto a taken name is refused")
+
+	require.NoError(t, cli.Edit(t.Context(), cfg, "hush_hush_cli_edit_a", cli.WithSlug("hush_hush_cli_edit_renamed")))
+
+	plaintext, err := cli.Get(t.Context(), cfg, "hush_hush_cli_edit_renamed", []string{identity.String()})
+	require.NoError(t, err)
+	require.Equal(t, value, plaintext, "editing never touches the sealed value")
+
+	objects, err := cli.List(t.Context(), cfg, "", nil)
+	require.NoError(t, err)
+
+	for _, obj := range objects {
+		if obj.Slug == "hush_hush_cli_edit_renamed" {
+			require.Equal(t, "fixed", obj.Description)
+			require.Equal(t, []string{"prod"}, obj.Tags)
+		}
+	}
+}
+
 // TestContainerAuditLogReturnsRecordedEntries proves internal/testserver's
 // hand-written /audit-log fake matches the real server's actual response
 // shape and object_id filtering - the fake's own logic (the ObjectId

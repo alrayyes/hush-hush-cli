@@ -20,6 +20,9 @@ type writeOptions struct {
 	usedBy *[]string
 	// keepReadableCopy adds the owner's escrowed key as a recipient.
 	keepReadableCopy bool
+	// description and slug are Edit's: nil leaves the field alone.
+	description *string
+	slug        *string
 	// variantID names one variant of a name that has several; empty means
 	// the only one.
 	variantID string
@@ -67,6 +70,17 @@ func WithVariant(id string) WriteOption {
 // that has several.
 func WithConsumer(consumer string) WriteOption {
 	return func(w *writeOptions) { w.consumer = consumer }
+}
+
+// WithDescription makes Edit replace an object's description; an empty one
+// clears it.
+func WithDescription(description string) WriteOption {
+	return func(w *writeOptions) { w.description = &description }
+}
+
+// WithSlug makes Edit rename an object, every variant of the name included.
+func WithSlug(slug string) WriteOption {
+	return func(w *writeOptions) { w.slug = &slug }
 }
 
 // WithKeepReadableCopy seals the value to the owner's escrowed identity
