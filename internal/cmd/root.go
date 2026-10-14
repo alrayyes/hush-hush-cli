@@ -115,6 +115,7 @@ func newRootCmd(version string, opts ...Option) (*cobra.Command, *viper.Viper) {
 	root.AddCommand(newInjectCmd(v))
 	root.AddCommand(newGetCmd(v))
 	root.AddCommand(newUpdateCmd(v))
+	root.AddCommand(newEditCmd(v))
 	root.AddCommand(newListCmd(v))
 	root.AddCommand(newDeleteCmd(v))
 	root.AddCommand(newUsedByCmd(v))

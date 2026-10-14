@@ -398,6 +398,48 @@ func (s *Store) updateVariant(_ context.Context, id string, sel selector, value 
 	return obj, nil
 }
 
+// patchVariant applies PATCH /objects/{slug}'s semantics: a nil field stays
+// as it is, description and tags change only the addressed variant, and a
+// new slug moves every variant of the name, or ErrAlreadyExists when that
+// slug is taken. It returns the addressed variant as patched.
+func (s *Store) patchVariant(_ context.Context, id string, sel selector, description, slug *string, tags *[]string) (Object, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	i, obj, err := s.findLocked(id, sel)
+	if err != nil {
+		return Object{}, err
+	}
+
+	if slug != nil && *slug != id {
+		if _, taken := s.objects[*slug]; taken {
+			return Object{}, ErrAlreadyExists
+		}
+	}
+
+	if description != nil {
+		obj.Description = *description
+	}
+
+	if tags != nil {
+		obj.Tags = *tags
+	}
+
+	obj.UpdatedAt = time.Now()
+
+	variants := s.variantsLocked(id)
+	variants[i] = obj
+
+	if slug != nil && *slug != id {
+		s.storeVariantsLocked(id, nil)
+		id = *slug
+	}
+
+	s.storeVariantsLocked(id, variants)
+
+	return obj, nil
+}
+
 // SetObjectTags replaces id's tags as given - a test-setup shortcut that
 // skips the HTTP layer's normalization, so pass already-valid tags.
 func (s *Store) SetObjectTags(_ context.Context, id string, tags []string) error {
@@ -1042,6 +1084,25 @@ type createObjectRequest struct {
 	Tags        []string `json:"tags,omitempty"`
 }
 
+type patchObjectRequest struct {
+	Description *string   `json:"description,omitempty"`
+	Slug        *string   `json:"slug,omitempty"`
+	Tags        *[]string `json:"tags,omitempty"`
+}
+
+// problem is the 400 message for a request the real server would refuse, or
+// "" when it is fine.
+func (r patchObjectRequest) problem() string {
+	switch {
+	case r.Description == nil && r.Slug == nil && r.Tags == nil:
+		return "at least one of description, slug or tags is required"
+	case r.Slug != nil && *r.Slug == "":
+		return "slug must not be empty"
+	default:
+		return ""
+	}
+}
+
 type updateObjectRequest struct {
 	Value  []byte    `json:"value"`
 	Tags   *[]string `json:"tags,omitempty"`
@@ -1079,6 +1140,21 @@ func normalizeTags(in []string) ([]string, error) {
 	return out, nil
 }
 
+// normalizeOptionalTags is normalizeTags for a field a request may leave
+// out: nil in, nil out.
+func normalizeOptionalTags(in *[]string) (*[]string, error) {
+	if in == nil {
+		return nil, nil
+	}
+
+	out, err := normalizeTags(*in)
+	if err != nil {
+		return nil, err
+	}
+
+	return &out, nil
+}
+
 // tagsOrEmpty makes sure a response always carries the tags array, never
 // null, as the real API does.
 func tagsOrEmpty(tags []string) []string {
@@ -1102,6 +1178,7 @@ func newMux(s *Store) *http.ServeMux {
 	mux.HandleFunc("GET /objects", requireWriteToken(s, handleListObjects(s)))
 	mux.HandleFunc("GET /objects/{id}", handleGetObject(s))
 	mux.HandleFunc("PUT /objects/{id}", requireWriteToken(s, handleUpdateObject(s)))
+	mux.HandleFunc("PATCH /objects/{id}", requireWriteToken(s, handlePatchObject(s)))
 	mux.HandleFunc("DELETE /objects/{id}", requireWriteToken(s, handleDeleteObject(s)))
 	mux.HandleFunc("GET /objects/{id}/used-by", handleGetObjectUsedBy(s))
 	mux.HandleFunc("GET /audit-log", handleQueryAuditLog(s))
@@ -1347,6 +1424,57 @@ func handleUpdateObject(s *Store) http.HandlerFunc {
 		}
 
 		writeJSON(w, http.StatusOK, ObjectMetadata{ID: obj.ID, Slug: id, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags)})
+	}
+}
+
+func handlePatchObject(s *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req patchObjectRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "malformed request body")
+
+			return
+		}
+
+		if msg := req.problem(); msg != "" {
+			writeError(w, http.StatusBadRequest, msg)
+
+			return
+		}
+
+		tags, err := normalizeOptionalTags(req.Tags)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+
+			return
+		}
+
+		id := r.PathValue("id")
+
+		sel, ok := selectorFrom(w, r)
+		if !ok {
+			return
+		}
+
+		obj, err := s.patchVariant(r.Context(), id, sel, req.Description, req.Slug, tags)
+		if errors.Is(err, ErrAlreadyExists) {
+			writeError(w, http.StatusConflict, "object already exists")
+
+			return
+		}
+
+		if err != nil {
+			writeVariantError(w, err)
+
+			return
+		}
+
+		slug := id
+		if req.Slug != nil {
+			slug = *req.Slug
+		}
+
+		writeJSON(w, http.StatusOK, ObjectMetadata{ID: obj.ID, Slug: slug, UsedBy: obj.UsedBy, Description: obj.Description, Tags: tagsOrEmpty(obj.Tags)})
 	}
 }
 

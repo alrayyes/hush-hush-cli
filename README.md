@@ -100,6 +100,23 @@ hush-hush-cli update db_password --tag staging
 hush-hush-cli update db_password --clear-tags
 ```
 
+`edit` changes a secret's description, tags or name without touching its
+value, so fixing a typo or reorganizing needs no plaintext and no re-inject.
+It reads nothing from stdin, and needs at least one of `--description`,
+`--tag`, `--clear-tags` or `--slug` (without one it exits non-zero with a
+usage message). Fields you leave out stay as they are; `--description ""`
+clears the description. `--slug` renames every variant of the name, and the
+server refuses a name that already exists. Needs hush-hush v3.10.0 or later.
+
+```sh
+hush-hush-cli edit db_password --description "primary database, rotated quarterly"
+hush-hush-cli edit db_password --tag prod,db
+hush-hush-cli edit db_password --slug primary_db_password
+```
+
+For a name with several variants, pick one with `--id` or `--consumer`, as in
+`update` (a rename still moves all of them).
+
 Check what a single object is recorded as being used by - no credential
 required, unlike `list`, since this only ever discloses what a caller
 already knows the slug of:
@@ -266,9 +283,10 @@ way to fix it.
 | `--identity-command`       | `HUSH_HUSH_IDENTITY_COMMAND`       | `identity_command`       | Command whose trimmed stdout is the identity instead - wins over `--identity` if both are set.                                                             |
 | `--used-by`                | -                                  | -                        | Consumers of the secret (repeatable or comma-separated), `inject` only. With no `--recipients`, each consumer's registered public key is resolved instead. |
 | `--json`                   | -                                  | -                        | Print the raw JSON array instead of a table, `list` only.                                                                                                  |
-| `--description`            | -                                  | -                        | Free-text label, fixed at creation, `inject` only.                                                                                                         |
-| `--id`                     | -                                  | -                        | UUID of one variant of a name that has several, `get`/`update`/`delete`/`used-by`. From `list --json`.                                                     |
-| `--consumer`               | -                                  | -                        | Pick the variant used by this consumer, for a name that has several; `get`/`update`/`delete`/`used-by`. Not with `--id`.                                   |
+| `--description`            | -                                  | -                        | Free-text label: set at creation by `inject`, replaced by `edit`.                                                                                          |
+| `--slug`                   | -                                  | -                        | New name for the secret, `edit` only. Moves every variant of the name.                                                                                     |
+| `--id`                     | -                                  | -                        | UUID of one variant of a name that has several, `get`/`update`/`edit`/`delete`/`used-by`. From `list --json`.                                              |
+| `--consumer`               | -                                  | -                        | Pick the variant used by this consumer, for a name that has several; `get`/`update`/`edit`/`delete`/`used-by`. Not with `--id`.                            |
 
 ## Contributing
 
