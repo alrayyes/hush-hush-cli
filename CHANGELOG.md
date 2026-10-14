@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.24.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.23.2...v1.24.0) (2026-10-14)
+
+
+### Features
+
+* **cmd:** add edit to change a secret's description, tags or name ([83025d2](https://github.com/alrayyes/hush-hush-cli/commit/83025d2dbc6b3ba4d1bf1c7b12fe2d7431d2de15)), closes [#277](https://github.com/alrayyes/hush-hush-cli/issues/277)
+
 ## [1.23.2](https://github.com/alrayyes/hush-hush-cli/compare/v1.23.1...v1.23.2) (2026-10-13)
 
 
