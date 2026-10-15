@@ -32,6 +32,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       actionlint: ${{ steps.paths.outputs.actionlint }}
+      deps: ${{ steps.paths.outputs.deps }}
       docker: ${{ steps.paths.outputs.docker }}
       docker_build: ${{ steps.paths.outputs.docker_build }}
       go: ${{ steps.paths.outputs.go }}
@@ -224,7 +225,7 @@ jobs:
   # Boots the real, published server image via testcontainers-go and drives
   # internal/cli's actual functions against it - the layer neither `test`
   # above (internal/testserver's fake) nor a unit test reaches. Not run in
-  # a `container:` job the way `lint`/`govulncheck` are: a nested container
+  # a `container:` job the way `lint` is: a nested container
   # job would need its own Docker-outside-of-Docker setup for no benefit
   # over just not nesting, the same reasoning hush-hush's own equivalent
   # job gives.
@@ -255,19 +256,33 @@ jobs:
       - name: go mod tidy -diff
         run: go mod tidy -diff
 
-  govulncheck:
+  # Fails only on advisories this change adds to go.mod/go.sum or bun.lock over its base
+  # (rules/dependencies.md, #281). What is already on main is the scan's to track, in
+  # advisory-scan.yml. The action retries a registry failure itself and never retries a real
+  # finding. bun audit reads the lockfile, so that side needs no install.
+  audit:
     needs: changes
-    if: needs.changes.outputs.go == 'true'
+    if: needs.changes.outputs.deps == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    container:
-      image: golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61
     steps:
-      - run: apt-get update && apt-get install -y --no-install-recommends ca-certificates git nodejs
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
-      - run: govulncheck ./...
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      # Pinned to a main commit of alrayyes/advisory-scan until its first release; re-pin then.
+      # Both ecosystems in one step, so the gate compares one set of IDs.
+      - uses: alrayyes/advisory-scan@425418a63e80eb10142fbd2e82127b7ef3a51d68
+        with:
+          mode: gate
+          command: |
+            rc=0
+            go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./... || rc=1
+            bun audit || rc=1
+            exit "$rc"
 
   goreleaser-check:
     needs: changes
@@ -415,15 +430,6 @@ jobs:
             echo "::error file=bun.lock::lockfileVersion is $version, Dependabot's bun updater only supports 1 (hush-hush-cli#42)"
             exit 1
           fi
-      # rules/dependencies.md: run the ecosystem's own audit tool in CI on
-      # every push, separately from whatever raises the update pull
-      # request - a real CVE already slipped through here once
-      # (smol-toml's DoS advisory, patched by hand via `overrides` in #44)
-      # before anything automated would have caught it.
-      # GHSA-vfj7-8cjw-p6xm (braces) has no patched release yet; remove
-      # the ignore once one ships (hush-hush-cli#166).
-      - name: bun audit
-        run: bun audit --ignore GHSA-vfj7-8cjw-p6xm
       - name: prettier --check
         run: bun run format:check
       - name: sort-package-json --check

@@ -38,6 +38,8 @@ group() {
 }
 
 group go "$GO"
+# The audit gate (advisory-scan) reads only the manifests and the lockfiles.
+group deps '^(go\.(mod|sum)|package\.json|bun\.lock)$'
 group actionlint '^\.github/workflows/'
 group docker '^(Dockerfile|Dockerfile\.release|\.dockerignore|\.hadolint\.yaml)$'
 # The from-source Dockerfile copies the whole tree, so Go changes can break it.
