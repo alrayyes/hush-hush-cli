@@ -26,18 +26,21 @@ expect() {
 }
 
 expect "README only runs the prose and markdown checks" "markdown prose" README.md
-expect "internal/ runs the Go, Docker, packaging and nix checks" "go docker_build release nix" internal/cli/cli.go
-expect "a test file counts as Go" "go docker_build release nix" internal/cmd/get_test.go
-expect "go.mod runs the Go checks" "go docker_build release nix" go.mod
+expect "internal/ runs the Go, Docker, packaging and nix checks, and the audit" "deps go docker_build release nix" internal/cli/cli.go
+expect "a test file counts as Go, audit included" "deps go docker_build release nix" internal/cmd/get_test.go
+expect "go.mod runs the Go checks and the audit" "deps go docker_build release nix" go.mod
+expect "go.sum runs the audit too" "deps go docker_build release nix" go.sum
 expect "Dockerfile runs the Docker checks" "docker docker_build" Dockerfile
 expect "Dockerfile.release feeds the packaging build too" "docker release" Dockerfile.release
 expect "goreleaser config runs the packaging checks, and prettier reads it" "markdown release" .goreleaser.yml
 expect "PKGBUILD runs only the pkgbuild check" "pkgbuild" PKGBUILD
 expect "flake.lock runs only the nix check" "nix" flake.lock
-expect "bun.lock runs only the markdown job" "markdown" bun.lock
+expect "bun.lock runs the markdown job and the audit" "deps markdown" bun.lock
+expect "package.json runs the markdown job and the audit" "deps markdown" package.json
 expect "styles/ runs only the prose checks" "prose" styles/config/vocabularies/House/accept.txt
 expect "a workflow other than ci.yml runs actionlint" "actionlint markdown" .github/workflows/release.yml
-expect "ci.yml runs everything" "actionlint docker docker_build go markdown nix pkgbuild prose release" .github/workflows/ci.yml
+expect "advisory-scan.yml is the scan, not the gate" "actionlint markdown" .github/workflows/advisory-scan.yml
+expect "ci.yml runs everything" "actionlint deps docker docker_build go markdown nix pkgbuild prose release" .github/workflows/ci.yml
 expect "an unrelated file runs nothing" "" LICENSE
 expect "no changed files runs nothing" ""
 

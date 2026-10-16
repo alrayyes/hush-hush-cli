@@ -73,6 +73,24 @@ commit. Checks that need the whole tree, a build or the network (`actionlint`,
 `./scripts/lint-vale.sh` takes optional file arguments: with them, it lints only
 those; with none, it syncs the styles and lints the whole set.
 
+## Dependency advisories
+
+Two jobs share the work, both through
+[advisory-scan](https://github.com/alrayyes/advisory-scan). The `audit` job runs
+`govulncheck` and `bun audit` on the pull request and on its base, and fails
+only on advisories the pull request adds, so one published overnight doesn't
+turn unrelated pull requests red. It runs when a `.go` file, `go.mod`, `go.sum`,
+`package.json` or `bun.lock` change. `advisory-scan.yml` audits `main` daily, on
+every push that changes the manifests or lock files and on demand, and keeps
+one open issue titled "Dependency advisories". It closes that issue when the
+audit is clean.
+There is no ignore list: an advisory with no fix stays in that issue until one
+ships.
+
+No pre-push hook runs the audit: it would fail every push the day an
+advisory lands on `main`, whatever the push changed. To check by hand, run
+`bun audit` and `go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...`.
+
 ## Where this came from
 
 `hush-hush-cli` split out of [`hush-hush`](https://github.com/alrayyes/hush-hush),
