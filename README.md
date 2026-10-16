@@ -11,7 +11,7 @@ an object.
 
 ## Requirements
 
-- **Go 1.27 or newer** to build from source.
+- **Go 1.27.2 or newer** to build from source.
 - **[age](https://github.com/FiloSottile/age)**, to generate the keypairs a
   writer and a consumer each need. Not a dependency of this CLI itself — it
   only ever handles already-sealed ciphertext, never a private key or

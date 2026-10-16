@@ -5,7 +5,7 @@ for whoever runs it.
 
 ## Getting set up
 
-- **Go 1.27 or newer** — for editor/IDE tooling (`gopls`, `go build`/`go test`
+- **Go 1.27.2 or newer** — for editor/IDE tooling (`gopls`, `go build`/`go test`
   run by hand) and the container-integration test, which needs a real Go
   toolchain outside the hooks. Not required for the hooks themselves; see
   below.
