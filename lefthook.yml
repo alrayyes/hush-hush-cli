@@ -25,7 +25,7 @@ pre-commit:
         -e GOCACHE=/gocache -v "$HOME/.cache/go-build-docker:/gocache"
         -e GOMODCACHE=/gomod -v "$HOME/.cache/go-mod-docker:/gomod"
         -e GOLANGCI_LINT_CACHE=/lintcache -v "$HOME/.cache/golangci-lint-docker:/lintcache"
-        golangci/golangci-lint:v2.13.1@sha256:d371321370bf2907bd13a8f6f8baff0e0ca7438d76fdf636b281eadf7e2305e3
+        golangci/golangci-lint:v2.15.0@sha256:fbfcfd12a6f8d7f1b97b3362ca80fc2a244d46863148c73cb88e7793af96c481
         golangci-lint fmt {staged_files}
       stage_fixed: true
 
@@ -41,7 +41,7 @@ pre-commit:
         -v "$(pwd):/src" -w /src
         -e GOCACHE=/gocache -v "$HOME/.cache/go-build-docker:/gocache"
         -e GOMODCACHE=/gomod -v "$HOME/.cache/go-mod-docker:/gomod"
-        golang:1.27.0-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452
+        golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61
         go mod edit -fmt go.mod
       stage_fixed: true
 
@@ -121,7 +121,7 @@ pre-push:
         -v "$(pwd):/src" -w /src
         -e GOCACHE=/gocache -v "$HOME/.cache/go-build-docker:/gocache"
         -e GOMODCACHE=/gomod -v "$HOME/.cache/go-mod-docker:/gomod"
-        golang:1.27.0-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452
+        golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61
         go test ./...
 
     # Boots the real, published hush-hush server image and drives
@@ -161,7 +161,7 @@ pre-push:
         -e GOCACHE=/gocache -v "$HOME/.cache/go-build-docker:/gocache"
         -e GOMODCACHE=/gomod -v "$HOME/.cache/go-mod-docker:/gomod"
         -e GOLANGCI_LINT_CACHE=/lintcache -v "$HOME/.cache/golangci-lint-docker:/lintcache"
-        golangci/golangci-lint:v2.13.1@sha256:d371321370bf2907bd13a8f6f8baff0e0ca7438d76fdf636b281eadf7e2305e3
+        golangci/golangci-lint:v2.15.0@sha256:fbfcfd12a6f8d7f1b97b3362ca80fc2a244d46863148c73cb88e7793af96c481
         golangci-lint run ./...
 
     # No check-only flag on `go mod edit -fmt`, so the gate is running it
@@ -180,7 +180,7 @@ pre-push:
         -v "$(pwd):/src" -w /src
         -e GOCACHE=/gocache -v "$HOME/.cache/go-build-docker:/gocache"
         -e GOMODCACHE=/gomod -v "$HOME/.cache/go-mod-docker:/gomod"
-        golang:1.27.0-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452
+        golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61
         go mod edit -fmt go.mod
         && git diff --exit-code go.mod
 
@@ -198,7 +198,7 @@ pre-push:
         -v "$(pwd):/src" -w /src
         -e GOCACHE=/gocache -v "$HOME/.cache/go-build-docker:/gocache"
         -e GOMODCACHE=/gomod -v "$HOME/.cache/go-mod-docker:/gomod"
-        golang:1.27.0-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452
+        golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61
         go mod tidy -diff
 
     # Dependabot's bun updater only understands bun.lock lockfileVersion 1;
@@ -278,7 +278,7 @@ pre-push:
         -v "$(pwd):/src" -w /src
         -e GOCACHE=/gocache -v "$HOME/.cache/go-build-docker:/gocache"
         -e GOMODCACHE=/gomod -v "$HOME/.cache/go-mod-docker:/gomod"
-        golang:1.27.0-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452
+        golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61
         go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
 
     # Same files as CI's docker-build job (scripts/changed-paths.sh).

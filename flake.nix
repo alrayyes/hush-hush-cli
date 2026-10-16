@@ -2,7 +2,7 @@
   description = "Client for the hush-hush secrets object store";
 
   inputs = {
-    # go.mod pins go 1.27.0 - only available as the pkgs.go_1_27 attribute
+    # go.mod pins go 1.27.2 - only available as the pkgs.go_1_27 attribute
     # here, not the default pkgs.go (1.26.7 on this channel at the time
     # this was written). Pin nixpkgs to whatever channel actually carries
     # the toolchain version this repo needs, not reflexively the latest
