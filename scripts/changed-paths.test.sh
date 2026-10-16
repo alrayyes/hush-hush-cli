@@ -26,8 +26,8 @@ expect() {
 }
 
 expect "README only runs the prose and markdown checks" "markdown prose" README.md
-expect "internal/ runs the Go, Docker, packaging and nix checks" "go docker_build release nix" internal/cli/cli.go
-expect "a test file counts as Go" "go docker_build release nix" internal/cmd/get_test.go
+expect "internal/ runs the Go, Docker, packaging and nix checks, and the audit" "deps go docker_build release nix" internal/cli/cli.go
+expect "a test file counts as Go, audit included" "deps go docker_build release nix" internal/cmd/get_test.go
 expect "go.mod runs the Go checks and the audit" "deps go docker_build release nix" go.mod
 expect "go.sum runs the audit too" "deps go docker_build release nix" go.sum
 expect "Dockerfile runs the Docker checks" "docker docker_build" Dockerfile

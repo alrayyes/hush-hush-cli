@@ -79,9 +79,9 @@ Two jobs share the work, both through
 [advisory-scan](https://github.com/alrayyes/advisory-scan). The `audit` job runs
 `govulncheck` and `bun audit` on the pull request and on its base, and fails
 only on advisories the pull request adds, so one published overnight doesn't
-turn unrelated pull requests red. It runs when `go.mod`, `go.sum`,
+turn unrelated pull requests red. It runs when a `.go` file, `go.mod`, `go.sum`,
 `package.json` or `bun.lock` change. `advisory-scan.yml` audits `main` daily, on
-every push that changes those files and on demand, and keeps one open issue
+every push that changes the manifests or lockfiles and on demand, and keeps one open issue
 titled "Dependency advisories". It closes that issue when the audit is clean.
 There is no ignore list: an advisory with no fix stays in that issue until one
 ships.

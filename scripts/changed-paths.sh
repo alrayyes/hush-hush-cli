@@ -38,8 +38,10 @@ group() {
 }
 
 group go "$GO"
-# The audit gate (advisory-scan) reads only the manifests and the lockfiles.
-group deps '^(go\.(mod|sum)|package\.json|bun\.lock)$'
+# The audit gate (advisory-scan) reads the manifests and the lockfiles, and
+# govulncheck reports only vulnerable code the build calls, so a Go-only change
+# can introduce a finding too.
+group deps "^(go\.(mod|sum)|package\.json|bun\.lock)$|\.go$"
 group actionlint '^\.github/workflows/'
 group docker '^(Dockerfile|Dockerfile\.release|\.dockerignore|\.hadolint\.yaml)$'
 # The from-source Dockerfile copies the whole tree, so Go changes can break it.
