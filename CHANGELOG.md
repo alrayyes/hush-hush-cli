@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.24.1](https://github.com/alrayyes/hush-hush-cli/compare/v1.24.0...v1.24.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* **deps:** bump go to 1.27.2 ([#289](https://github.com/alrayyes/hush-hush-cli/issues/289)) ([16ddf39](https://github.com/alrayyes/hush-hush-cli/commit/16ddf397879e902833de2b268ca5a2150a53689b))
+
 ## [1.24.0](https://github.com/alrayyes/hush-hush-cli/compare/v1.23.2...v1.24.0) (2026-10-14)
 
 
