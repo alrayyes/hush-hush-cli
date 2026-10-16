@@ -86,6 +86,10 @@ titled "Dependency advisories". It closes that issue when the audit is clean.
 There is no ignore list: an advisory with no fix stays in that issue until one
 ships.
 
+No pre-push hook runs the audit: it would fail every push the day an
+advisory lands on `main`, whatever the push changed. To check by hand, run
+`bun audit` and `go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...`.
+
 ## Where this came from
 
 `hush-hush-cli` split out of [`hush-hush`](https://github.com/alrayyes/hush-hush),

@@ -216,14 +216,6 @@ pre-push:
           exit 1;
         }
 
-    # rules/dependencies.md: the ecosystem's own audit tool, separately
-    # from whatever raises the update pull request.
-    - name: bun audit
-      glob:
-        - "bun.lock"
-        - "package.json"
-      run: bun audit
-
     - name: prettier
       glob:
         - "*.{md,yml,yaml}"
