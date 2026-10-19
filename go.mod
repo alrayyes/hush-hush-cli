@@ -5,14 +5,14 @@ go 1.27.2
 require (
 	filippo.io/age v1.3.2
 	github.com/adrg/xdg v0.5.3
-	github.com/alrayyes/hush-hush-go/v4 v4.7.1
+	github.com/alrayyes/hush-hush-go/v4 v4.7.10
 	github.com/google/uuid v1.6.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/zalando/go-keyring v0.2.8
-	golang.org/x/term v0.46.0
+	golang.org/x/term v0.47.0
 )
 
 require (
@@ -87,7 +87,7 @@ require (
 	golang.org/x/crypto v0.56.0 // indirect
 	golang.org/x/mod v0.39.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect
 	gotest.tools/gotestsum v1.13.0 // indirect
