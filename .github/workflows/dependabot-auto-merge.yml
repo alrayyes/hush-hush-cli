@@ -9,14 +9,24 @@
 # broken. Per the standing CLAUDE.md exception ("merge one yourself once
 # every check is green, no separate ask"), there's no separate gate on
 # update-type layered on top of the green-check gate.
+#
+# pull_request_target, not pull_request: a pull_request run opened by
+# Dependabot reads the separate Dependabot secret store, a second copy of
+# RELEASE_TOKEN that went stale on rotation and made this job fail with 401
+# (alrayyes/dotfiles#880). pull_request_target runs in the base repo's context
+# and reads the ordinary Actions secret, so there is one copy to rotate. It is
+# safe here because this job checks out no code and runs one gh command, and
+# Dependabot's branches live on this repo, never a fork.
 name: dependabot-auto-merge
 
-on: pull_request
+on: pull_request_target
 
 concurrency:
   # A newer push re-runs this and arms the merge again (`gh pr merge --auto`
-  # is idempotent), so cancelling a superseded run can't lose a merge.
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # is idempotent), so cancelling a superseded run can't lose a merge. Keyed on
+  # the pull request, because github.ref is the base branch for every one under
+  # pull_request_target.
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
@@ -25,7 +35,7 @@ permissions:
 
 jobs:
   auto-merge:
-    if: github.actor == 'dependabot[bot]'
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
