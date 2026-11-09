@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.24.9](https://github.com/alrayyes/hush-hush-cli/compare/v1.24.8...v1.24.9) (2026-11-09)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/testcontainers/testcontainers-go from 0.44.0 to 0.45.0 in the go-dependencies group across 1 directory ([#318](https://github.com/alrayyes/hush-hush-cli/issues/318)) ([e1f7ba6](https://github.com/alrayyes/hush-hush-cli/commit/e1f7ba6d9505a0d77054dd384677a4c4d497fc9d))
+
 ## [1.24.8](https://github.com/alrayyes/hush-hush-cli/compare/v1.24.7...v1.24.8) (2026-11-09)
 
 
