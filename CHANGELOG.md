@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.24.8](https://github.com/alrayyes/hush-hush-cli/compare/v1.24.7...v1.24.8) (2026-11-09)
+
+
+### Bug Fixes
+
+* **deps:** bump golang from `d9b6a1b` to `dc0963f` ([#319](https://github.com/alrayyes/hush-hush-cli/issues/319)) ([16e4252](https://github.com/alrayyes/hush-hush-cli/commit/16e42525fb9bdc5872a3cb5b58b21c75a2ae6464))
+
 ## [1.24.7](https://github.com/alrayyes/hush-hush-cli/compare/v1.24.6...v1.24.7) (2026-11-02)
 
 
