@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.24.12](https://github.com/alrayyes/hush-hush-cli/compare/v1.24.11...v1.24.12) (2026-11-16)
+
+
+### Bug Fixes
+
+* **nix:** update flake.lock ([#332](https://github.com/alrayyes/hush-hush-cli/issues/332)) ([5b14f2e](https://github.com/alrayyes/hush-hush-cli/commit/5b14f2ebed89cf69b5d8d4d69d28fa635c467aea))
+
 ## [1.24.11](https://github.com/alrayyes/hush-hush-cli/compare/v1.24.10...v1.24.11) (2026-11-16)
 
 
