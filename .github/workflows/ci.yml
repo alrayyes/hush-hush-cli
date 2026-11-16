@@ -45,8 +45,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Test the classifier
-        run: sh scripts/changed-paths.test.sh
+      - name: Test the classifier and the vendorHash script
+        run: |
+          sh scripts/changed-paths.test.sh
+          sh scripts/update-vendor-hash.test.sh
       # A push to main has no base to diff against, so everything runs.
       - name: Classify the changed files
         id: paths

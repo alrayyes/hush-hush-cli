@@ -57,3 +57,13 @@ eval .#default.go.version` kept reporting the channel default until
   `nixos-unstable` even though the channel's default `go` is older -
   check `nix eval --raw '.#legacyPackages.<system>.go_1_2N.version'`
   before assuming a version needs a whole different channel.
+- **`vendorHash` in `flake.nix` is refreshed by CI on Dependabot Go PRs.**
+  `vendor-hash-update.yml` runs `scripts/update-vendor-hash.sh` when
+  `go.mod`/`go.sum` change on a Dependabot branch and pushes a
+  `fix(nix): update vendorHash` commit with `RELEASE_TOKEN` (#334). That
+  is a recorded exception to "no unattended tooling commits": Dependabot
+  branches only, the one hash line only. A human's PR that drifts the hash
+  stays red on purpose; run the script yourself. Dependabot won't
+  rebase a branch carrying a commit it didn't make, so a stale or
+  conflicting one needs `@dependabot recreate` (the workflow re-adds the
+  hash).
