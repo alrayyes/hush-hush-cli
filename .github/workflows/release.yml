@@ -107,7 +107,7 @@ jobs:
     steps:
       # git/openssh for the AUR push, github-cli for the pull request
       # below - none of them ship in archlinux:base-devel by default.
-      - run: pacman -Sy --noconfirm git openssh github-cli
+      - run: pacman -Syu --noconfirm git openssh github-cli
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
