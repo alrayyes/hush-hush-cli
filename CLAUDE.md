@@ -63,4 +63,7 @@ eval .#default.go.version` kept reporting the channel default until
   `fix(nix): update vendorHash` commit with `RELEASE_TOKEN` (#334). That
   is a recorded exception to "no unattended tooling commits": Dependabot
   branches only, the one hash line only. A human's PR that drifts the hash
-  stays red on purpose; run the script yourself.
+  stays red on purpose; run the script yourself. Dependabot won't
+  rebase a branch carrying a commit it didn't make, so a stale or
+  conflicting one needs `@dependabot recreate` (the workflow re-adds the
+  hash).

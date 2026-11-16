@@ -24,6 +24,21 @@ case "$1" in
     echo "         specified: $OLD"
     echo "            got:    $NEW"
     exit 1 ;;
+  noisy)
+    # -L output: a build step printing its own "got:" must not be mistaken
+    # for Nix's report, and a second mismatch means a guess, not a fix.
+    echo "hush-hush-cli> got: sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    echo "error: hash mismatch in fixed-output derivation '/nix/store/x.drv':"
+    echo "         specified: $OLD"
+    echo "            got:    $NEW"
+    echo "error: hash mismatch in fixed-output derivation '/nix/store/y.drv':"
+    echo "         specified: $OLD"
+    echo "            got:    sha256-BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="
+    exit 1 ;;
+  prefixed)
+    echo "hush-hush-cli> got: $NEW"
+    echo "error: builder failed"
+    exit 1 ;;
   other)
     echo "error: builder for '/nix/store/x.drv' failed with exit code 1"
     exit 1 ;;
@@ -60,5 +75,13 @@ grep -q 'other = "x";' "$tmp/flake.nix"; check "other lines are untouched" $?
 run other
 [ "$status" -ne 0 ]; check "a non-hash build failure still fails" $?
 grep -q "$OLD" "$tmp/flake.nix"; check "a non-hash failure leaves flake.nix alone" $?
+
+run noisy
+[ "$status" -ne 0 ]; check "two different mismatches fail rather than guess" $?
+grep -q "$OLD" "$tmp/flake.nix"; check "two mismatches leave flake.nix alone" $?
+
+run prefixed
+[ "$status" -ne 0 ]; check "a prefixed build-log 'got:' is not Nix's report" $?
+grep -q "$OLD" "$tmp/flake.nix"; check "a prefixed 'got:' leaves flake.nix alone" $?
 
 exit "$fail"
