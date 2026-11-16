@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.24.11](https://github.com/alrayyes/hush-hush-cli/compare/v1.24.10...v1.24.11) (2026-11-16)
+
+
+### Bug Fixes
+
+* **deps:** bump golang ([#329](https://github.com/alrayyes/hush-hush-cli/issues/329)) ([229e98a](https://github.com/alrayyes/hush-hush-cli/commit/229e98ac520fcd8b9d8b4eef9bcf91cc260c998e))
+
 ## [1.24.10](https://github.com/alrayyes/hush-hush-cli/compare/v1.24.9...v1.24.10) (2026-11-09)
 
 
