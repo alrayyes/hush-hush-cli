@@ -50,7 +50,7 @@ group docker_build "^(Dockerfile|\.dockerignore)$|$GO"
 group release "^(\.goreleaser\.ya?ml|Dockerfile\.release)$|^manpages/|$GO"
 group pkgbuild '^(PKGBUILD|\.SRCINFO)$|\.install$'
 # The flake builds from source, so Go changes can stale its vendorHash.
-group nix "^flake\.(nix|lock)$|$GO"
+group nix "^flake\.(nix|lock)$|^scripts/update-vendor-hash(\.test)?\.sh$|$GO"
 # prettier covers every md/yml/yaml file; bun's own files and the
 # markdown/prettier config round it out.
 group markdown '\.(md|ya?ml)$|^(package\.json|bun\.lock|\.prettierrc\.json|\.prettierignore|\.markdownlint-cli2\.yaml|\.editorconfig)$'

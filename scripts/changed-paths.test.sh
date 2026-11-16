@@ -35,6 +35,7 @@ expect "Dockerfile.release feeds the packaging build too" "docker release" Docke
 expect "goreleaser config runs the packaging checks, and prettier reads it" "markdown release" .goreleaser.yml
 expect "PKGBUILD runs only the pkgbuild check" "pkgbuild" PKGBUILD
 expect "flake.lock runs only the nix check" "nix" flake.lock
+expect "the vendorHash script runs only the nix check" "nix" scripts/update-vendor-hash.sh
 expect "bun.lock runs the markdown job and the audit" "deps markdown" bun.lock
 expect "package.json runs the markdown job and the audit" "deps markdown" package.json
 expect "styles/ runs only the prose checks" "prose" styles/config/vocabularies/House/accept.txt
