@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.24.13](https://github.com/alrayyes/hush-hush-cli/compare/v1.24.12...v1.24.13) (2026-11-16)
+
+
+### Bug Fixes
+
+* **deps:** bump go.opentelemetry.io/otel/trace from 1.44.0 to 1.47.0 ([544f9d2](https://github.com/alrayyes/hush-hush-cli/commit/544f9d2e2985642d0ef5ccda17d158d95259de9b))
+* **deps:** bump go.opentelemetry.io/otel/trace from 1.44.0 to 1.47.0 ([cf0d64a](https://github.com/alrayyes/hush-hush-cli/commit/cf0d64a7a2489436b68e58fcf2b587d4d80fcd66))
+* **nix:** update vendorHash ([2f2ff78](https://github.com/alrayyes/hush-hush-cli/commit/2f2ff786b0cb1027caf7c2696d27b4e298c08ca1))
+
 ## [1.24.12](https://github.com/alrayyes/hush-hush-cli/compare/v1.24.11...v1.24.12) (2026-11-16)
 
 
