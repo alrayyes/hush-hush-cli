@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.24.14](https://github.com/alrayyes/hush-hush-cli/compare/v1.24.13...v1.24.14) (2026-11-16)
+
+
+### Bug Fixes
+
+* **deps:** bump golang.org/x/term from 0.47.0 to 0.48.0 in the go-dependencies group across 1 directory ([#327](https://github.com/alrayyes/hush-hush-cli/issues/327)) ([e02d246](https://github.com/alrayyes/hush-hush-cli/commit/e02d2460a75b48e62d210c5b30577890d278b00b))
+
 ## [1.24.13](https://github.com/alrayyes/hush-hush-cli/compare/v1.24.12...v1.24.13) (2026-11-16)
 
 
