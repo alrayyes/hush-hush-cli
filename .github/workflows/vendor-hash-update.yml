@@ -78,8 +78,13 @@ jobs:
           git commit -m "fix(nix): update vendorHash" -- flake.nix
           # RELEASE_TOKEN, not GITHUB_TOKEN: a push made with GITHUB_TOKEN
           # doesn't start a new CI run, so nix-flake would never re-check.
-          # Sent as a header so it never appears in the URL or on argv.
+          # Sent as a header through the environment, so neither the token nor
+          # its base64 form is in the URL or on argv. Masked in case a log
+          # echoes it, since Actions only masks the raw secret.
           auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-          git -c "http.https://github.com/.extraheader=Authorization: basic ${auth}" \
-            push "https://github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"
+          echo "::add-mask::${auth}"
+          GIT_CONFIG_COUNT=1 \
+            GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" \
+            GIT_CONFIG_VALUE_0="Authorization: basic ${auth}" \
+            git push "https://github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"
           gh pr comment "$PR_URL" --body "Pushed \`fix(nix): update vendorHash\`: go.mod/go.sum changed, so the Nix vendor hash needed refreshing (#334). CI re-runs on the new head. Dependabot won't rebase a branch with a commit it didn't make: if this goes stale or conflicts, comment \`@dependabot recreate\` and the hash is refreshed again."
